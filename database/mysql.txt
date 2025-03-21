@@ -1,0 +1,1685 @@
+-- ------------------------------------------------------------------------------------------------------
+-- Initial mysql script for creating the database for the Community-driven Open Research Ecosystem (CORE)
+-- ------------------------------------------------------------------------------------------------------
+
+-- Settings and database creation
+
+SET sql_mode='NO_AUTO_VALUE_ON_ZERO';
+SET time_zone = '+00:00';    -- set time zone to UTC
+SET NAMES utf8mb4;
+
+CREATE DATABASE IF NOT EXISTS `core` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `core`;
+
+
+-- Global parameters in CORE
+
+CREATE TABLE `IntParameters` (  -- valid: the parameter is in effect starting from this time
+    pname VARCHAR(255) NOT NULL,
+    pvalue INT UNSIGNED NOT NULL,
+    valid DATETIME NOT NULL default '0000-00-00 00:00:00',  -- starting valid time
+    ts DATETIME NOT NULL default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,  -- update time
+    PRIMARY KEY (pname, valid)
+);
+-- initial int parameters
+INSERT INTO IntParameters (pname,pvalue) VALUES ('max_dutysum',875); -- maximum of sum of all duty values
+INSERT INTO IntParameters (pname,pvalue) VALUES ('nthr_rate',5);  -- threshold number of ratings to reveal ECP
+INSERT INTO IntParameters (pname,pvalue) VALUES ('nthr_invited',6);  -- Nthreshold for invited reviews
+INSERT INTO IntParameters (pname,pvalue) VALUES ('nthr_contributed',10);  -- Nthreshold for contributed reviews
+INSERT INTO IntParameters (pname,pvalue) VALUES ('nthr_comment',50);   -- Nthreshold for comments
+INSERT INTO IntParameters (pname,pvalue) VALUES ('AL_max',5);  -- maximum number of achievements to be considered
+INSERT INTO IntParameters (pname,pvalue) VALUES ('max_adoc',64);  -- maximum number of r-docs allowed in one a-doc
+-- update the latest one: UPDATE IntParameters SET pvalue = new_value WHERE pname = xxx ORDER BY valid DESC LIMIT 1
+-- insert a new one: INSERT INTO IntParameters (pname,pvalue,valid) VALUES ('new_name',new_value,NOW());
+
+CREATE TABLE DoubleParameters (  -- valid: the parameter is in effect starting from this time 
+    pname VARCHAR(255) NOT NULL,
+    pvalue DOUBLE NOT NULL,
+    valid DATETIME NOT NULL default '0000-00-00 00:00:00',  -- starting valid time
+    ts DATETIME NOT NULL default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,  -- update time
+    PRIMARY KEY (pname, valid)
+);
+-- initial double parameters
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('a',18e0);
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('b',1.6);
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('c',1.5);
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('d',0.888);
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('a_inv',0.6);  -- a value for ECP of invited review
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('a_con',0.4); -- a value for ECP of contributed review
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('ECP_vote',1.0); -- voting in one v-doc worth f_vote points for ECP
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('fo_1',0.5);   -- fo openness factor for semi-anonymous
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('fo_2',0.25); -- fo openness factor for anonymous
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('Sp0',2);  -- <S>_p0 in attention factor f_a
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('f_neg',3); -- 3 for negative case in f_a and also in ALS
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('AL_base',6);
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('AL_quality',2.5);
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('AL_k',6);  -- the exponent k=6 used in a-doc synthesized Asyn calculations
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('feb_1',0.5); -- factor in f_eb
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('ft_1',0.125); -- factor in f_t
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('fr',2);  -- rating factor for a parent doc
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('fd_1',0.4); -- factor in f_d (rating with invited review)
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('fd_2',0.2); -- factor in f_d (rating with contributed review)
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('fd_3',0.1); -- factor in f_d (rating with creditable comments)
+INSERT INTO DoubleParameters (pname,pvalue) VALUES ('fd_4',0.01); -- factor in f_d (rating with no creditable contributions)
+
+
+-- Research branches and their parameters in CORE
+
+CREATE TABLE BranchTypes (   -- Discipline.FIELD.area.Topic_Direction
+    ID TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    btname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    is_active TINYINT(1) NOT NULL default 1,  -- 0 means a decommissioned type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO BranchTypes (ID,btname,is_active) VALUES (0,'DUMMY',0);
+INSERT INTO BranchTypes (ID,btname,detail) VALUES (1,'Discipline','top level branches; format: TitleCase; special: Cross, All');
+INSERT INTO BranchTypes (ID,btname,detail) VALUES (2,'Fieldre,'2nd level branches; format: ALLCAPS or ACRONYM; special: MISC');
+INSERT INTO BranchTypes (ID,btname,detail) VALUES (3,'Area','3rd level branches; format: all-lowercases; special: other');
+INSERT INTO BranchTypes (ID,btname,detail) VALUES (4,'Topic','4th level branches, format: Title_Case; no special one, all topics have to be specific');
+-- possible extensions include Focus, Question, etc. The new lower-level branches may have multiple parents instead of one.
+
+CREATE TABLE ResearchBranches (
+    bID INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    parent_bID INT UNSIGNED default 0,        -- For hierarchical structure (NULL or 0 for disciplines)
+    btype TINYINT UNSIGNED NOT NULL,     -- 0='Dummy",1='Discipline', 2='Field', 3='Area', 4='Topic'
+    bname VARCHAR(255) COLLATE ascii_general_ci UNIQUE NOT NULL,  -- e.g., 'Physics', 'Nuclear Physics', 'Nuclear Experiment'
+    abbr VARCHAR(30) COLLATE ascii_general_ci UNIQUE NOT NULL,    -- e.g., 'Phys', 'Phys.NP', 'Phys.NP.nucl-ex'
+--    f_n FLOAT NOT NULL default 1,     -- the normalization factor for ECP from both parent documents and derived contributions that accounts for differences in different branches
+    is_active TINYINT(1) NOT NULL default 1,    -- 0 means a decommissioned research branch
+    detail TEXT COLLATE utf8mb4_general_ci,     -- Optional detailed description
+    -- ... metadata about the branch (e.g., key journals, representative topics)
+    FOREIGN KEY (btype) REFERENCES BranchTypes (ID),
+    FOREIGN KEY (parent_bID) REFERENCES ResearchBranches (bID), -- Self-referencing for hierarchy
+    INDEX (btype, bname)                       -- Index to filter by branch type
+);
+INSERT INTO ResearchBranches (bID,btype,bname,abbr) VALUES (0,0,'DUMMY','DUMMY');
+-- Disciplines
+INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Physics', 'Phys');
+INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Mathematics', 'Math');
+INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Chemistry', 'Chem');
+INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Life Science', 'Life');
+INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Medical Science', 'Med');
+INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Earth Science', 'Earth');
+INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Computer Science', 'Comp');
+INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Engineering and Technology', 'Engr');
+INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Social Science', 'Soc');
+INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Uncategorized', 'Uncat');
+INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Cross-Disciplinary', 'Cross');
+INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Unknown/Undecided', 'Un');
+INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'All Disciplines', 'All');
+-- Fields within Physics
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Nuclear and Particle Physics', 'Phys.NP' FROM ResearchBranches WHERE abbr = 'Phys';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Condensed Matter Physics', 'Phys.CM' FROM ResearchBranches WHERE abbr = 'Phys';
+-- Areas within NP
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Experimental Nuclear Physics', 'Phys.NP.nucl-ex' FROM ResearchBranches WHERE abbr = 'Phys.NP';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Nuclear Theory', 'Phys.NP.nucl-th' FROM ResearchBranches WHERE abbr = 'Phys.NP';
+
+CREATE TABLE BranchParameters (  -- parameters that depend on different research branches 
+    pname VARCHAR(255) NOT NULL,
+    bID INT UNSIGNED NOT NULL,
+    pvalue DOUBLE NOT NULL,
+    valid DATETIME NOT NULL default '0000-00-00 00:00:00',  -- starting valid time
+    ts DATETIME NOT NULL default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,  -- update time
+    FOREIGN KEY (bID) REFERENCES ResearchBranches (bID),
+    PRIMARY KEY (pname, bID, valid)
+);
+-- initial double parameters
+-- INSERT INTO DoubleParameters (pname,bID,pvalue) VALUES ('f_n',0,1);   -- default=1, insert only if not 1.
+
+
+-- Member-related tables
+
+CREATE TABLE RoleTypes (  -- IDs in between major roles can be used for subtypes of a role, e.g., Member0-Member99
+    ID SMALLINT UNSIGNED PRIMARY KEY,
+    rtname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    is_active TINYINT(1) NOT NULL default 1,    -- 0 means a decommissioned type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO RoleTypes (ID,rtname,is_active) VALUES (0,'DUMMY',0);
+INSERT INTO RoleTypes (ID,rtname,detail) VALUES (100,'Member','entry-level membership');
+INSERT INTO RoleTypes (ID,rtname,detail) VALUES (200,'Reader','eligible to reivew and rate on a topic');
+INSERT INTO RoleTypes (ID,rtname,detail) VALUES (300,'Reviewer','eligible to reivew and rate in an area');
+INSERT INTO RoleTypes (ID,rtname,detail) VALUES (400,'Moderator','eligible to moderate and chair committees in a field');
+INSERT INTO RoleTypes (ID,rtname,detail) VALUES (500,'Leader','eligible to lead and serve as board directors in a discipline');
+
+CREATE TABLE AdminTypes (  -- IDs in between major roles can be used for subtypes, e.g., Editor0-Editor99
+    ID SMALLINT UNSIGNED PRIMARY KEY,
+    atname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    is_active TINYINT(1) NOT NULL default 1,    -- 0 means a decommissioned type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO AdminTypes (ID,atname,is_active) VALUES (0,'DUMMY',0);
+INSERT INTO AdminTypes (ID,atname,detail) VALUES (100,'Viewer','view only');
+INSERT INTO AdminTypes (ID,atname,detail) VALUES (200,'Updater','update simple stuff');
+INSERT INTO AdminTypes (ID,atname,detail) VALUES (300,'Editor','edit non-critical content');
+INSERT INTO AdminTypes (ID,atname,detail) VALUES (400,'Senior Editor','edit more critical content');
+INSERT INTO AdminTypes (ID,atname,detail) VALUES (500,'Chief Editor','edit most content');
+INSERT INTO AdminTypes (ID,atname,detail) VALUES (600,'Administrator','full access/permission');
+
+CREATE TABLE AuthorClasses (  -- fixed-scheme and variable-scheme, sum of all non-general authors <= 875%
+    ID TINYINT UNSIGNED PRIMARY KEY,
+    acname VARCHAR(3) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    duty TINYINT UNSIGNED,      -- significance in contribution (percentage) normalized to 100% of 1st-class
+    duty_min TINYINT UNSIGNED,
+    duty_max TINYINT UNSIGNED,
+    is_fixed TINYINT(1) NOT NULL default 1,     -- 1 is fixed to use duty, otherwise use variable-scheme in between duty_min and duty_min
+    is_active TINYINT(1) NOT NULL default 1,    -- 0 means a decommissioned type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO AuthorClasses (ID,acname,duty,is_active) VALUES (0,'DUMMY',0,0);
+INSERT INTO AuthorClasses (ID,acname,duty) VALUES (1,'1st',100);   -- 1st-class  100%
+INSERT INTO AuthorClasses (ID,acname,duty) VALUES (2,'2nd',50);    -- 2nd-class  50%
+INSERT INTO AuthorClasses (ID,acname,duty) VALUES (3,'3rd',25);     -- 3rd-class  25%
+INSERT INTO AuthorClasses (ID,acname,duty) VALUES (4,'gen',10);    -- general class   10%
+INSERT INTO AuthorClasses (ID,acname,duty_min,duty_max,is_fixed) VALUES (5,'v',20,99,0);   -- variable-class  20-99%
+
+CREATE TABLE Members (
+    mID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,          -- Unique identifier for each member
+    ID_alphanum VARCHAR(12) COLLATE ascii_general_ci UNIQUE, -- NOT NULL default (CONV(member_ID,10,36)), -- alphanumerical format of member_ID
+    ORCID CHAR(19) COLLATE ascii_general_ci UNIQUE,     -- ORCID ID as unique identifier
+    family_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL,
+    first_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL default '',    -- empty string '' if a member has no first name
+    display_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL default (IF(first_name = '', family_name, CONCAT(first_name, ' ', family_name))),
+    publication_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL default (IF(first_name = '', family_name, CONCAT(SUBSTRING(first_name,1,1),  '. ', family_name))),
+    email VARCHAR(254) COLLATE utf8mb4_general_ci UNIQUE,
+    pass VARCHAR(255) COLLATE utf8mb4_general_ci,
+    good TINYINT(1) NOT NULL default 1,             -- true for good standing
+    is_active TINYINT(1) NOT NULL default 1,	    -- true for active member
+    deceased TINYINT(1) NOT NULL default 0,
+    mrole SMALLINT UNSIGNED NOT NULL default 100,    -- highest role: 100=member,200=reader,300=reviewer,400=moderator,500=leader
+    admin_role SMALLINT UNSIGNED NOT NULL default 100,  -- 100=viewer, 200=updater, 300=editor, 400=senior editor, 500=chief editor, 600=administrator
+    timezone VARCHAR(32) COLLATE utf8mb4_general_ci NOT NULL default '+00:00',  -- "Timezone/Location" format, default 'UTC'
+--  lang VARCHAR(32) COLLATE ascii_general_ci default 'en',
+    start_membership DATETIME DEFAULT CURRENT_TIMESTAMP,
+    AL VARCHAR(5) COLLATE ascii_general_ci NOT NULL default '0',   -- Achievement Level, e.g., "L2.5/3", "L-/999" (where 999 is the number difference between A- and A+ docs) without the leading 'L', -- Ln/m <=> alpha > m(6^(n+0.5)-1)
+    ALS DOUBLE NOT NULL default 0,     -- achievement level score = alpha = top five + others (A>2.5)
+    ECP DOUBLE NOT NULL DEFAULT 10e0,  -- Total Earned Credit Points (initially 10 points)
+    FOREIGN KEY (mrole) REFERENCES RoleTypes (ID),
+    FOREIGN KEY (admin_role) REFERENCES AdminTypes (ID),
+    INDEX (mrole),
+    INDEX (family_name, first_name)
+);
+INSERT INTO Members (mID,ID_alphanum,family_name,first_name,display_name,publication_name,
+    good,is_active,mrole,admin_role,AL,ECP) VALUES (0,'0','UNKNOWN','UNKNOWN','UNKNOWN','UNKNOWN',0,0,0,0,'',0);
+-- after each INSERT, UPDATE Members SET ID_alphanum = CONV(mID,10,36) WHERE ID_alphanum IS NULL;
+-- can log in via ORCID, or ID_alphanum (stripped leading 0s and hyphens) / email + password
+-- to use a nice-looking member-ID in php and web display: wordwrap(str_pad(ID_alphanum,12,"0",STR_PAD_LEFT),4,"-",true), in php ID_alphanum = base_convert(mID,10,36)
+
+CREATE TABLE MemberMetaKeys (  -- optional member information
+    ID TINYINT UNSIGNED PRIMARY KEY,
+    mkname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    is_active TINYINT(1) NOT NULL default 1,    -- 0 means a decommissioned key
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO MemberMetaKeys (ID,mkname,is_active) VALUES (0,'DUMMY',0);
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (1,'full_name','Full Name');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (2,'other_names','comma-separated other names');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (3,'prefix','Name Prefix');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (4,'suffix','Name Suffix');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (5,'positioin','job title');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (6,'affiliation','semicolon-separated affiliations');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (7,'address','mailing address');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (8,'url1','Professional HomePage');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (9,'url2','Personal HomePage');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (10,'education','semicolon-separated (year, degree, major, institution)');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (11,'cv','Link to CV');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (12,'research_statement','Research Statement');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (13,'interest_areas','Comma-separated research branch-IDs that the member is interested (subscribed for updates, private or public for display), no more than 10 IDs');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (14,'mstatus','self-claimed member status information (retired, on vacation, no access, etc.)');
+
+CREATE TABLE MemberMeta (  -- optional member information to be filled
+    ID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    mID BIGINT UNSIGNED NOT NULL,
+    meta_ID TINYINT UNSIGNED NOT NULL,
+    meta_value TEXT COLLATE utf8mb4_general_ci NOT NULL,
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    FOREIGN KEY (meta_ID) REFERENCES MemberMetaKeys(ID),
+    UNIQUE (mID, meta_ID),
+    INDEX (meta_ID)
+);
+-- e.g., INSERT INTO MemberMeta (mID,meta_ID,meta_value) VALUES (1,2,'a test') ON DUPLICATE KEY UPDATE  meta_value = VALUES(meta_value);
+
+CREATE TABLE MembershipHistory (  -- record starting time of roles above membership>100
+    mID BIGINT UNSIGNED NOT NULL,
+    mrole SMALLINT UNSIGNED NOT NULL,
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,    -- starting time of this role
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    FOREIGN KEY (mrole) REFERENCES RoleTypes (ID),
+    PRIMARY KEY (mID, mrole)
+);
+-- e.g., INSERT INTO MembershipHistory (mID,mrole) VALUES (1,200);
+
+CREATE TABLE ALSHistory ( -- weekly update if necessary
+    ID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    mID BIGINT UNSIGNED NOT NULL,
+    ALS DOUBLE NOT NULL,
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    INDEX (mID)
+);
+
+CREATE TABLE ECPHistory ( -- weekly update if necessary
+    ID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    mID BIGINT UNSIGNED NOT NULL,
+    ECP DOUBLE NOT NULL,
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    INDEX (mID)
+);
+
+CREATE TABLE MemberRoles (     --  member list with their current role of readership or above for a given research branch
+    mID BIGINT UNSIGNED NOT NULL,
+    bID INT UNSIGNED NOT NULL,
+    mrole SMALLINT UNSIGNED NOT NULL,
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    FOREIGN KEY (bID) REFERENCES ResearchBranches(bID),
+    FOREIGN KEY (mrole) REFERENCES RoleTypes (ID),
+    PRIMARY KEY (mID, bID),
+    INDEX (bID)
+);
+
+
+-- Committee-related tables
+
+CREATE TABLE CommTypes (   -- committee types
+    ID TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    ctname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    is_active TINYINT(1) NOT NULL default 1,  -- 0 means a decommissioned type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO CommTypes (ID,ctname,is_active) VALUES (0,'DUMMY',0);
+INSERT INTO CommTypes (ID,ctname,detail) VALUES (1,'CORE Executive','entire community-wide, disciplinary-wide, field-wide');
+INSERT INTO CommTypes (ID,ctname,detail) VALUES (2,'Task Force','long-term task force committees like NSAC');
+INSERT INTO CommTypes (ID,ctname,detail) VALUES (3,'PAC/Review Panel','PAC at user-facilities, Panel for advisory activities');
+INSERT INTO CommTypes (ID,ctname,detail) VALUES (4,'Investigation','Investigate critical issues in the community');
+INSERT INTO CommTypes (ID,ctname,detail) VALUES (5,'Research Moderation','Make moderation decisions on frauds and new phases at CORE');
+INSERT INTO CommTypes (ID,ctname,detail) VALUES (6,'CORE Issues','Modify AL/EPS formulas / Decide on bugs/new features/issues at CORE');
+INSERT INTO CommTypes (ID,ctname,detail) VALUES (7,'Conference/Meeting','Organizing conferences, meetings, workshops, summer schools');
+INSERT INTO CommTypes (ID,ctname,detail) VALUES (8,'Prize/Award', 'A committee for a prize or award');
+INSERT INTO CommTypes (ID,ctname,detail) VALUES (9,'Academic Hiring', 'for hiring in academia');
+INSERT INTO CommTypes (ID,ctname,detail) VALUES (255,'Ad hoc','temporary committee for a particular issue or task');
+
+CREATE TABLE Committees (       -- CORE committees
+    ID INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    commtype TINYINT UNSIGNED NOT NULL, 
+    parent_ID INT UNSIGNED default 0,           -- >0 if it is a sub-committee
+    commname VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL,
+    creator BIGINT UNSIGNED NOT NULL,       -- committee creator
+    is_active TINYINT(1) NOT NULL default 1,
+    email VARCHAR(254) COLLATE utf8mb4_general_ci,
+    contact VARCHAR(255) COLLATE utf8mb4_general_ci,
+    task TEXT COLLATE utf8mb4_general_ci,
+    UNIQUE (commname, bID),
+    FOREIGN KEY (commtype) REFERENCES CommTypes (ID),
+    FOREIGN KEY (creator) REFERENCES Members(mID),
+    FOREIGN KEY (parent_ID) REFERENCES Committees(ID), -- Self-referencing for hierarchy
+    INDEX (commtype)
+);
+INSERT INTO Committees (ID,commtype,commname,bID,creator,is_active) VALUES (0,0,'DUMMY',0,0,0);
+
+CREATE TABLE CommitteeBranches (  -- a committee can be related to several branches or no branch at all
+    comm_ID INT UNSIGNED NOT NULL,
+    bID INT UNSIGNED NOT NULL,
+    impact TINYINT UNSIGNED NOT NULL default 100,    -- impact percentage points on this branch, also used for ECP, no more than 100% for the sum
+    FOREIGN KEY (comm_ID) REFERENCES Committees(ID),
+    FOREIGN KEY (bID) REFERENCES ResearchBranches(bID),
+    PRIMARY KEY (comm_ID, bID)
+);
+-- e.g., INSERT INTO CommitteeBranches (comm_ID, bID, impact) VALUES (1,2,33) ON DUPLICATE KEY UPDATE impact = VALUES(impact);
+
+CREATE TABLE CommitteeMembers (    -- for non-general classes only, duty=20-100; gen-class is not allowed; sum of all committee members: duty <=875
+    comm_ID INT UNSIGNED NOT NULL,
+    mID BIGINT UNSIGNED NOT NULL,
+    term TINYINT UNSIGNED NOT NULL default 1,         -- the n-th term
+    duty TINYINT UNSIGNED NOT NULL default 100,       -- Significance/responsibility/duty percentage in contribution normalized to 100% of 1st-class
+    position VARCHAR(60) COLLATE utf8mb4_general_ci,  -- 'chair', 'vice chair', 'member', 'non-voting member'
+    start_date DATE DEFAULT CURRENT_DATE,
+    end_date DATE,
+    FOREIGN KEY (comm_ID) REFERENCES Committees(ID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    PRIMARY KEY (comm_ID, mID, term)  -- can serve multiple terms
+);
+
+
+-- DocType-related tables (including associated parameters)
+
+CREATE TABLE VisibilityTypes (
+    ID TINYINT UNSIGNED PRIMARY KEY,
+    vtname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    is_active TINYINT(1) NOT NULL default 1,  -- 0 means a decommissioned type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (99,'Visible to submitter only / Draft / Unpublished','also other 1st-authors');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (1,'Visible to all','Published and viewable by everybody');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (2,'Visible to members','not shown to the general public');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (3,'Visible to readers+','Readers and above can see');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (4,'Visible to reviewers+','Reviewers and above');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (5,'Visible to moderators+','Moderators and above');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (6,'Visible to leaders+','Leaders and above');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (100,'Visible to administrators only','System protected');
+
+CREATE TABLE DocGoals (
+    ID TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    dgname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    is_active TINYINT(1) NOT NULL default 1,  -- 0 means a decommissioned type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO DocGoals (ID,dgname,is_active) VALUES (0,'DUMMY',0);
+INSERT INTO DocGoals (ID,dgname,detail) VALUES (1,'AL','for achievement level');
+INSERT INTO DocGoals (ID,dgname,detail) VALUES (2,'ECP','to earn credit');
+INSERT INTO DocGoals (ID,dgname,detail) VALUES (3,'Funding','to obtain funding support');
+INSERT INTO DocGoals (ID,dgname,detail) VALUES (4,'Facility Time','to get time for user facility');
+INSERT INTO DocGoals (ID,dgname,detail) VALUES (255,'Other Resources','to get other resources or benefits');
+
+CREATE TABLE DocTypes (
+    ID TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    dtname VARCHAR(255) COLLATE ascii_general_ci UNIQUE NOT NULL,    -- "Original Research"
+    abbr VARCHAR(2) COLLATE ascii_general_ci UNIQUE NOT NULL,     -- e.g., "o" for "o-doc"
+    goal TINYINT UNSIGNED NOT NULL,     -- 0 for dummy, 1 for AL(o/a-doc), 2 for ECP, 3 for funding, 4 for facility time
+    f_p DOUBLE NOT NULL default 0.1,       -- the factor for ECP calculation of derived contributions that accounts for different types of parent documents
+    f_type DOUBLE NOT NULL default 0.1,    -- the factor for ECP calculation of parent documents due to their different types
+    is_active TINYINT(1) NOT NULL default 1,  -- 0 means a decommissioned type
+    detail TEXT COLLATE utf8mb4_general_ci,   -- optional detailed description
+    FOREIGN KEY (goal) REFERENCES DocGoals (ID)
+);
+-- if goal=3,4,255, then f_type=0
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,is_active) VALUES (0,'DUMMY','DMY',0,0,0,0);
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (1,'Original Research','o',1,1,0.1,'main document type for innovation');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (2,'Review, Expository, and Survey Articles','r',2,0.5,1,'');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (3,'Synthesized Achievements for Evaluation','a',1,0.25,0,'collection of o/r-docs');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (4,'Textbooks, Lectures, and Other Books','b',2,0.25,1,'non-original research');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (5,'Conference/Meeting/School Organization','c',2,0.1,0.25,'conferences, meetings, workshops, summer schools');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (6,'Discussions on Community Issues','d',2,0.5,0.1,'forums in CORE community');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (7,'Pop-Science Essays','e',2,0.1,0.25,'for general audiences');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (8,'Applications for Funding Facility-Oriented Programs','f',3,0.5,0,'Large projects for building new facilities, establishing new centers or collaboration networks');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (9,'Applications for Funding Project-Oriented Original Research','p',3,1,0,'emphasis on high-risk high-reward projects');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (10,'Applications for Funding R&D Quests','q',3,0.5,0,'building high-precision/cutting-edge experimental equipment and reaching the limits of measurements');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (11,'Applications for Funding Service/Support Activities','s',3,0.5,0,'meetings, etc.');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (12,'Applications for Time Allocation at Research Facilities','t',4,0.5,0,'access to user facilities');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (13,'Open Source Scientific Softwares','u',2,0.5,1,'codes for end users; highly rated ones could be funded');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (14,'Open Experimental Equipment','x',2,0.5,1,'encourage sharing of experimental equipment');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (15,'Voting for Election and Awards','v',2,0.1,0.1,'including committee work, nomination, comments, and actual votes');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (16,'White Papers and Other Official Reports from CORE committees','w',2,0.25,0.5,'important for mainstream research');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (17,'Issues and/or Bugs in the CORE System','i',2,0.5,0.1,'for the website and databases of CORE');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (18,'New Suggestions for the CORE System','n',2,0.5,0.1,'request for new features, modifications to improve CORE');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (19,'Moderation Decisions and Investigation Reports','m',2,0.25,0.25,'acknowledge contributions from moderators');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (253,'Other Service Documents','zx',2,0.1,0.1,'to earn ECP in other ways');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (254,'Applications for Other Funding Opportunities','zy',3,0.1,0,'seeking other funding possibilities');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (255,'Miscellaneous Documents','zz',255,0.1,0,'seeking other benefits and resources');
+
+CREATE TABLE DocTypeParameters (  -- parameters that depend on different doc types 
+    pname VARCHAR(255) NOT NULL,
+    dtype TINYINT UNSIGNED NOT NULL,  -- doc_type
+    pvalue DOUBLE NOT NULL,
+    valid DATETIME NOT NULL,  -- starting valid time
+    ts DATETIME NOT NULL default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,  -- update time
+    FOREIGN KEY (dtype) REFERENCES DocTypes(ID),
+    PRIMARY KEY (pname, dtype, valid)
+);
+-- only insert newly modified parameters (initial ones in the table DocTypes)
+-- INSERT INTO DoubleParameters (pname,dtype,pvalue,valid) VALUES ('f_p',1,1,NOW());
+-- INSERT INTO DoubleParameters (pname,dtype,pvalue,valid) VALUES ('f_type',1,0.1,NOW());
+
+
+-- Document-related tables
+
+CREATE TABLE Documents (
+    dID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,    -- unique identifier of a parent document
+    ID_alphanum VARCHAR(12) COLLATE ascii_general_ci UNIQUE, -- NOT NULL default (CONV(parent_doc_ID,10,36)), -- alphanumerical format of parent_doc_ID
+    dtype TINYINT UNSIGNED NOT NULL,          -- e.g., 'o-docs', 'r-docs', 'p-docs'
+    title TEXT COLLATE utf8mb4_general_ci NOT NULL,
+    abstract TEXT COLLATE utf8mb4_general_ci NOT NULL,
+    notes VARCHAR(255) COLLATE utf8mb4_general_ci,            -- page#, fig#, other brief comments or changes for new revision
+    full_text_url VARCHAR(255) COLLATE utf8mb4_general_ci,   -- Link to local PDF or full text document
+    submitter_ID BIGINT UNSIGNED NOT NULL,                                   -- member ID of the submitter
+    author_list JSON,        -- JSON array of member_IDs [name,id,significance_factor](author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author     -- more complex: {"authors" : [name, id, sigfactor, [list# of affiliations]], "affiliations": [order, name]}
+    visibility TINYINT UNSIGNED NOT NULL default 1,   -- 99=visible to submitter/authors only (e.g., back to draft  or unpublished) , 1=visible to all, 2=visible to members, 3=visible to readers, 4=visible to reviewers, 5=visible to moderators, 6=visible to leaders, 100=visible to administrators only
+    submission_time DATETIME DEFAULT CURRENT_TIMESTAMP,   -- deadline for v-doc
+    last_revision_time DATETIME DEFAULT (submission_time),
+    last_update_time DATETIME DEFAULT (submission_time) ON UPDATE CURRENT_TIMESTAMP,
+    version TINYINT UNSIGNED NOT NULL default 1,   -- current version# starting with 1, maybe max of 16
+    revision_history JSON NOT NULL default ('[]'), -- (JSON_ARRAY(JSON_ARRAY(version, last_revision_time, notes, full_text_url or abstract for a-doc))),  -- JSON array to track revision history JSON_ARRAY(version, last_revision_time, notes, full_text_url or abstract for a-doc))   
+    Tresp SMALLINT UNSIGNED NOT NULL default 14,   -- responding time for the f_t factor in unit of days (typically 2 weeks for 20 pages or less, additional 1 week per extra 10 pages)
+    nphase TINYINT UNSIGNED NOT NULL DEFAULT 1,          -- current phase#
+    reset_time DATETIME NOT NULL DEFAULT (submission_time),        -- starting time of this phase
+    Ntot_invited TINYINT UNSIGNED NOT NULL default 0,       -- total# of invited reviews during this phase, not all docs required
+    Ntot_contributed TINYINT UNSIGNED NOT NULL default 0,   -- total# of contributed reviews during this phase, not all required
+    Ntot_comments INT UNSIGNED NOT NULL default 0, -- total# of creditable comments during this phase
+    Ntot_ratings INT UNSIGNED NOT NULL default 0,  -- total# of ratings during this phase
+    S_ave DOUBLE NOT NULL default 0,     -- average rating (Aj for o-doc; Asyn for a-doc, <S> for others)
+    ECP DOUBLE NOT NULL default 0,       -- ECP of this doc
+    datetime_added DATETIME DEFAULT CURRENT_TIMESTAMP,   -- datetime added to database
+    full_text LONGTEXT COLLATE utf8mb4_general_ci,       -- Storing text content for search or retrieval (optional)
+    -- ... more metadata
+    FOREIGN KEY (dtype) REFERENCES DocTypes(ID),
+    FOREIGN KEY (submitter_ID) REFERENCES Members(mID),
+    FOREIGN KEY (visibility) REFERENCES VisibilityTypes (ID),
+    INDEX (dtype),                            -- Index for document type filtering
+    INDEX (submitter_ID),
+    FULLTEXT INDEX (title, abstract)          -- Fulltext index for title/abstract search
+);
+INSERT INTO Documents (dID,ID_alphanum,dtype,title,abstract,submitter_ID,visibility) VALUES (0,'0',0,'DUMMY','DUMMY',0,100);
+-- update revision_history before insert a new revision: UPDATE Documents SET revision_history = JSON_ARRAY_APPEND(revision_history, '$', JSON_ARRAY(version, last_revision_time, notes, full_text_url));
+-- after each INSERT, UPDATE Documents SET ID_alphanum = CONV(dID,10,36) WHERE ID_alphanum IS NULL;
+-- overall_ columns saved to a separate table (nphase=0), previous phases need to be recalculated according to reset_time
+
+CREATE TABLE ExternalTypes (
+    ID TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    etname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    is_active TINYINT(1) NOT NULL default 1,  -- 0 means a decommissioned type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO DocGoals (ID,etname,is_active) VALUES (0,'DUMMY',0);
+INSERT INTO DocGoals (ID,etname,detail) VALUES (1,'Journal','peer-reviewed journal publications');
+INSERT INTO DocGoals (ID,etname,detail) VALUES (2,'Preprint','various e-preprint services');
+INSERT INTO DocGoals (ID,etname,detail) VALUES (3,'Review/Comment','external review or comment links');
+INSERT INTO DocGoals (ID,etname,detail) VALUES (4,'MultiMedia','multimeida links');
+-- maybe build a large source type table including all canonical/abbr names of journals, preprint services, and other sources
+
+CREATE TABLE ExternalDocs ( -- external DOIs/links/sources to documents (typically o/r-docs)
+    ID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    dID BIGINT UNSIGNED NOT NULL,
+    ext_type TINYINT UNSIGNED NOT NULL,
+    src VARCHAR(60) COLLATE utf8mb4_general_ci NOT NULL,    -- source name like PRL, arXiv, etc; could be inferred directly from the doi/url link
+    link VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL,  -- doi, url links
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    FOREIGN KEY (ext_type) ExternalTypes (ID),
+    UNIQUE (dID, ext-type, src)
+);
+
+
+CREATE TABLE DocPhases (   -- statistics for past phases and overall numbers
+    dID BIGINT UNSIGNED NOT NULL,
+    nphase TINYINT UNSIGNED NOT NULL,    -- phase#: 0=overall, 1,2,3... = past phases
+    reset_time DATETIME NOT NULL,        -- starting time of this phase
+    Ntot_invited TINYINT UNSIGNED NOT NULL,  -- total# of invited reviews during this phase, not all docs required
+    Ntot_contributed TINYINT UNSIGNED NOT NULL, -- total# of contributed reviews during this phase, not all required
+    Ntot_comments INT UNSIGNED NOT NULL, -- total# of creditable comments during this phase
+    Ntot_ratings INT UNSIGNED NOT NULL,  -- total# of ratings during this phase
+    S_ave DOUBLE NOT NULL,               -- average rating (Aj for o-doc; Asyn for a-doc, <S> for others)
+    ECP DOUBLE NOT NULL,                 -- ECP of this doc
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    PRIMARY KEY (dID,nphase)
+);
+
+
+CREATE TABLE DocBranches (    -- each doc can list in (e.g., 3) research branches in general, but exceptions can be made
+    dID BIGINT UNSIGNED NOT NULL,
+    bID INT UNSIGNED NOT NULL,    -- must be a subfield or area (e.g., Phys.NP.nucl-ex) for a/o-doc
+    impact TINYINT UNSIGNED NOT NULL default 100,    -- impact percentage points used for ALS on this branch, user must assign 100 to the first area, optionally another 100 points to two more areas; moderators can modify or add up to three more areas (no more than 400 points in total)
+    frac DOUBLE NOT NULL,    -- calculated fraction used for allocation of ECP to this branch, no more than 100% for the sum
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,  -- starting time to show up in this branch's new-doc list
+    FOREIGN KEY (bID) REFERENCES ResearchBranches(bID),
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    PRIMARY KEY (dID, bID)
+);
+-- e.g., INSERT INTO DocBranches (dID,bID,impact,) VALUES (1,2,33) ON DUPLICATE KEY UPDATE impact = VALUES(impact);
+
+CREATE TABLE ModeratedDocs (   -- mod committee doesn't have to fill S_mod if they found no evidence to make a decision; this score (unless it is NULL) should override the one in the main table that is rated by members; another committee can modify it later on
+    dID BIGINT UNSIGNED NOT NULL,
+    comm_ID INT UNSIGNED NOT NULL,
+    S_mod DOUBLE,    -- NULL means no evidence for a decision; otherwise typically a negative score between -1 and 0 depending on the fraudulent extent
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    FOREIGN KEY (comm_ID) REFERENCES Committees(ID),
+    PRIMARY KEY (dID, comm_ID)
+);
+
+CREATE TABLE mwDocs ( -- extra information for m/w-docs, final report submitted by the committee
+    dID BIGINT UNSIGNED UNIQUE NOT NULL,
+    comm_ID INT UNSIGNED NOT NULL,
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    FOREIGN KEY (comm_ID) REFERENCES Committees(ID),
+    INDEX (comm_ID)
+);
+
+CREATE TABLE vDocs ( -- extra information for v-docs
+    dID BIGINT UNSIGNED UNIQUE NOT NULL,
+    comm_ID INT UNSIGNED NOT NULL,
+    deadline DATETIME DEFAULT NOT NULL,
+    eligibility TEXT COLLATE utf8mb4_general_ci, -- requirments on who can be a candidate (ECP,AL,bID,mrole), forming a mysql query string, or a fixed list
+    condition TEXT COLLATE utf8mb4_general_ci, -- requirements on who can vote (ECP,AL,bID,mrole), forming a mysql query string, this committee only, or other selected list of member IDs.
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    FOREIGN KEY (comm_ID) REFERENCES Committees(ID),
+    INDEX (comm_ID)
+);
+
+CREATE TABLE vDocWinners ( -- winner results of a v-doc
+    dID BIGINT UNSIGNED NOT NULL,
+    mID BIGINT UNSIGNED NOT NULL,
+    place VARCHAR(60) COLLATE utf8mb4_general_ci,  -- NULL if only 1 winner, otherwise describing winning place (e.g., 2nd, 3rd, co-winner, etc.)
+    FOREIGN KEY (dID) REFERENCES vDocs(dID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    UNIQUE (dID, mID)
+);
+
+CREATE TABLE vDocCandidates ( -- nominated candidates to be voted on
+    dID BIGINT UNSIGNED NOT NULL,
+    candidate BIGINT UNSIGNED NOT NULL,    -- possible for voters to nominate more candidates
+    FOREIGN KEY (dID) REFERENCES vDocs(dID),
+    FOREIGN KEY (candidate) REFERENCES Members(mID),
+    PRIMARY KEY (dID, candidate)
+);
+
+CREATE TABLE vDocVotes ( -- votes on v-docs
+    dID BIGINT UNSIGNED NOT NULL,
+    voter BIGINT UNSIGNED NOT NULL,
+    candidate BIGINT UNSIGNED NOT NULL,       -- possible to vote for multiple candidates
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,    -- can not pass the deadline
+    FOREIGN KEY (dID) REFERENCES vDocs(dID),
+    FOREIGN KEY (voter) REFERENCES Members(mID),
+    FOREIGN KEY (candidate) REFERENCES Members(mID),
+    PRIMARY KEY (dID, voter, candidate)
+);
+-- each voting participation worth one ECP point (for one v-doc) by default
+
+CREATE TABLE aDocList ( -- list of o/r-doc and their Aj for a given a-doc
+    aID BIGINT UNSIGNED NOT NULL,
+    oID BIGINT UNSIGNED NOT NULL,
+    Aij DOUBLE NOT NULL,      -- each individual average score Aij
+    FOREIGN KEY (aID) REFERENCES Documents(dID),
+    FOREIGN KEY (oID) REFERENCES Documents(dID),
+    PRIMARY KEY (aID, oID)
+);
+
+CREATE TABLE DocALS (   -- achievement level score for each a/o-doc in CURRENT PHASE for a given author
+    mID BIGINT UNSIGNED NOT NULL,
+    dID BIGINT UNSIGNED NOT NULL,
+    Aij DOUBLE NOT NULL,          -- A (i=author, j=doc), Asyn for a-doc
+    ALS DOUBLE NOT NULL,          -- alpha value = 6^Aij - 1 if positive, 1-6^(-3Aij) if negative
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    PRIMARY KEY (mID, dID)
+);
+-- o-doc in aDocList (or grouped in a-doc) should be removed from this table
+
+CREATE TABLE OverallDocALS (   -- achievement level score for each a/o-doc (OVERALL) for a given author, only fill if dID is multi-phased, should not be used in general
+    mID BIGINT UNSIGNED NOT NULL,
+    dID BIGINT UNSIGNED NOT NULL,
+    Aij DOUBLE NOT NULL,          -- A (i=author, j=doc)
+    ALS DOUBLE NOT NULL,          -- alpha value = 6^Aij - 1 if positive, 1-6^(-3Aij) if negative
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    PRIMARY KEY (mID, dID)
+);
+-- o-doc in aDocList (or grouped in a-doc) should be removed from this table
+
+CREATE TABLE BranchALS (   -- achievement level score for each branch in CURRENT PHASE for a given author
+    mID BIGINT UNSIGNED NOT NULL,
+    bID INT UNSIGNED NOT NULL,    -- Aijk, k denotes branches
+    ALS DOUBLE NOT NULL,          -- alpha value = sum_j 6^Aijk - 1 if positive, 1-6^(-3Aijk) if negative
+    FOREIGN KEY (bID) REFERENCES ResearchBranches(bID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    PRIMARY KEY (mID, bID)
+); -- represent influence of the author in each research branch
+
+CREATE TABLE OverallBranchALS (   -- achievement level score for each branch (OVERALL) for a given author, only fill if OverallDocALS is not empty for mID, should not be used in general
+    mID BIGINT UNSIGNED NOT NULL,
+    bID INT UNSIGNED NOT NULL,    -- Aijk, k denotes branches
+    ALS DOUBLE NOT NULL,          -- alpha value = sum_j 6^Aijk - 1 if positive, 1-6^(-3Aijk) if negative
+    FOREIGN KEY (bID) REFERENCES ResearchBranches(bID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    PRIMARY KEY (mID, bID)
+); -- represent influence of the author in each research branch
+
+CREATE TABLE ECPPartials (   -- partial ECP scores (CURRENT PHASE) for each member for a given research branch and doc_type
+    mID BIGINT UNSIGNED NOT NULL,
+    bID INT UNSIGNED NOT NULL,
+    doctype TINYINT UNSIGNED NOT NULL,
+    ECP DOUBLE NOT NULL,
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    FOREIGN KEY (bID) REFERENCES ResearchBranches(bID),
+    FOREIGN KEY (doctype) REFERENCES DocTypes(ID),
+    PRIMARY KEY (mID, bID, doctype)
+);
+
+CREATE TABLE OverallECPPartials (   -- partial ECP scores (OVERALL) for each member for a given research branch and doc_type, should not be used in general
+    mID BIGINT UNSIGNED NOT NULL,
+    bID INT UNSIGNED NOT NULL,
+    doctype TINYINT UNSIGNED NOT NULL,
+    ECP DOUBLE NOT NULL,
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    FOREIGN KEY (bID) REFERENCES ResearchBranches(bID),
+    FOREIGN KEY (doctype) REFERENCES DocTypes(ID),
+    PRIMARY KEY (mID, bID, doctype)
+);
+
+
+-- Comment-related tables
+
+CREATE TABLE AnonymityTypes (
+    ID TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    atname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    f_o DOUBLE NOT NULL,     -- the openness factor for ECP of derived contributions
+    is_active TINYINT(1) NOT NULL default 1,  -- 0 means a decommissioned type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO AnonymityTypes (ID,atname,f_o,is_active) VALUES (0,'DUMMY',0,0);
+INSERT INTO AnonymityTypes (ID,atname,f_o,detail) VALUES (1,'Open',1,'full credit');
+INSERT INTO AnonymityTypes (ID,atname,f_o,detail) VALUES (2,'Open After Semi-Anonymous',0.5,'half credit');
+INSERT INTO AnonymityTypes (ID,atname,f_o,detail) VALUES (3,'Semi-Anonymous',0.5,'half credit');
+INSERT INTO AnonymityTypes (ID,atname,f_o,detail) VALUES (4,'Open After Anonymous',0.25,'quarter credit');
+INSERT INTO AnonymityTypes (ID,atname,f_o,detail) VALUES (5,'Anonymous',0.25,'quarter credit');
+
+CREATE TABLE CommentTypes (
+    ID TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    ctname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,    -- "Creditable Comment"
+    abbr VARCHAR(2) COLLATE ascii_general_ci UNIQUE NOT NULL, -- "i" for invited review, "r" for contributed review, "c" for creditable comment, "u" for uncredited comment
+    detail TEXT COLLATE utf8mb4_general_ci   -- optional detailed description
+);
+INSERT INTO CommentTypes (ID,ctname,abbr) VALUES (0,'DUMMY','DMY');
+INSERT INTO CommentTypes (ID,ctname,abbr) VALUES (1,'Invited Review','i');
+INSERT INTO CommentTypes (ID,ctname,abbr) VALUES (2,'Contributed Review','r');
+INSERT INTO CommentTypes (ID,ctname,abbr) VALUES (3,'Creditable Comment','c');
+INSERT INTO CommentTypes (ID,ctname,abbr) VALUES (4,'Uncredited Comment','u');
+
+CREATE TABLE Comments (           -- submitter can not modify it any more, including uncredited comments
+    cID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    ctype TINYINT UNSIGNED NOT NULL DEFAULT 3,    -- 3=creditable comment; 2=contributed review; 1=invited review; 4=uncredited comment
+    parent_ID BIGINT UNSIGNED NOT NULL DEFAULT 0,    -- parent ID of either another comment or 0 if no parent
+    dID BIGINT UNSIGNED NOT NULL,                    -- Foreign key to the ultimate parent primary Document
+    submitter_ID BIGINT UNSIGNED NOT NULL,     -- Submitter of the comment, 0 if anonymous
+    visibility TINYINT UNSIGNED NOT NULL default 1,   -- 99=visible to submitter/authors only (e.g., back to draft  or unpublished) , 1=visible to all, 2=visible to members, 3=visible to readers, 4=visible to reviewers, 5=visible to moderators, 6=visible to leaders, 100=visible to administrators only
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+    comment_text TEXT COLLATE utf8mb4_general_ci NOT NULL,
+    -- ... more metadata
+--    UNIQUE (dID, ID_alphanum),
+--    UNIQUE (dID, ID_num),
+    FOREIGN KEY (ctype) REFERENCES CommentTypes(ID),
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    FOREIGN KEY (submitter_ID) REFERENCES Members(mID),
+    FOREIGN KEY (parent_ID) REFERENCES Comments(cID), -- Self-referencing for replies
+    INDEX (dID, ctype),
+    INDEX (submitter_ID)
+);
+INSERT INTO Comments (cID,ctype,dID,submitter_ID,visibility,comment_text) VALUES (0,0,0,0,100,'DUMMY');
+-- e.g., INSERT INTO Comments (ctype,parent_ID,dID,submitter_ID,comment_text) VALUES (...);
+-- additional insert for creditable: INSERT INTO CRComments (cID,inviter_id,anonymity,Nth,T)
+
+CREATE TABLE CRComments (      -- extra information for creditable comments / contributed/invited reviews
+    cID BIGINT UNSIGNED PRIMARY KEY,
+    ID_num INT UNSIGNED NOT NULL default 1,       -- sequential # under the same doc dID
+    ID_alphanum VARCHAR(4) COLLATE ascii_general_ci NOT NULL, -- default (CONV(ID_num,10,36)),
+    inviter_id BIGINT UNSIGNED NULL,           -- ID of the inviter if it is an invited review
+    author_list JSON,       -- JSON array of author member_IDs [name,id,significance_factor], null means submitter is the sole author,     -- more complex: {"authors" : [name, id, sigfactor, [list# of affiliations]], "affiliations": [order, name]}
+    anonymity TINYINT UNSIGNED default 1,      -- anonymity level: 1='open', 2='open-after-semi-anonym', 3='semi-anonymous', 4='open-after-anonym', 5='anonymous'
+    passcode VARCHAR(255) COLLATE utf8mb4_general_ci NULL,       -- needed only if anonymity_level=4
+    Nth INT UNSIGNED NOT NULL default 1,   -- this is the N-th comment/review in current phase, set to 0 if phase is changed
+    T INT UNSIGNED NOT NULL default 0,     -- time lapse in the current or old phase in units of minutes
+    N_ratings INT UNSIGNED NOT NULL DEFAULT 0,      -- number of ratings received in the current phase
+    S_ave DOUBLE NOT NULL DEFAULT 0,                -- Average rating score for current phase
+    ECP DOUBLE NOT NULL DEFAULT 0,                  -- ECP of this comment/review
+    -- ... more metadata
+--    UNIQUE (dID, ID_alphanum),
+--    UNIQUE (dID, ID_num),
+    CONSTRAINT CHK_passcode CHECK (anonymity < 4 OR passcode IS NOT NULL),
+    FOREIGN KEY (anonymity) REFERENCES AnonymityTypes (ID)
+--    INDEX (dID, ID_num)
+);
+
+CREATE TRIGGER trg_crcomments
+BEFORE INSERT ON CRComments
+FOR EACH ROW
+BEGIN
+      DECLARE nid, nnth INT UNSIGNED;
+      DECLARE dID1 BIGINT UNSIGNED;
+      DECLARE ctype1 TINYINT UNSIGNED;
+      DECLARE ts0, ts1 DATETIME;
+      SELECT dID, ctype, ts INTO dID1, ctype1, ts1 FROM Comments WHERE cID = NEW.cID;
+      SELECT reset_time INTO ts0 FROM Documents WHERE dID = dID1;
+      UPDATE Documents SET Ntot_invited = Ntot_invited + (ctype1=1), Ntot_contributed = Ntot_contributed + (ctype1=2), Ntot_comments = Ntot_comments + (ctype1=3) WHERE dID = dID1;
+      SELECT COALESCE(MAX(t2.ID_num), 0) + 1 INTO nid FROM Comments AS t1 INNER JOIN CRComments AS t2 ON t1.cID = t2.cID WHERE t1.dID = dID1;
+      SELECT COALESCE(MAX(t2.Nth), 0) + 1 INTO nnth FROM Comments AS t1 INNER JOIN CRComments AS t2 ON t1.cID = t2.cID WHERE t1.dID = dID1 AND t1.ctype = ctype1 AND t1.ts >= ts0;
+      SET NEW.ID_num = nid;
+      SET NEW.ID_alphanum = CONV(nid,10,36);
+      SET NEW.Nth = nnth;
+      SET NEW.T = TIMESTAMPDIFF(MINUTE, ts0, ts1);
+END;
+
+CREATE TABLE CommentDrafts (  -- submitter can continue to modify it, the draft will be deleted once it is published
+    cID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    ctype TINYINT UNSIGNED NOT NULL DEFAULT 3,    -- 3=creditable comment; 2=contributed review; 1=invited review; 4=uncredited comment
+    parent_ID BIGINT UNSIGNED NOT NULL DEFAULT 0,    -- parent ID of either another comment or 0 if no parent
+    dID BIGINT UNSIGNED NOT NULL,                    -- Foreign key to the ultimate parent primary Document
+    submitter_ID BIGINT UNSIGNED NOT NULL,     -- Submitter of the comment, 0 if anonymous
+    inviter_id BIGINT UNSIGNED NULL,           -- ID of the inviter if it is an invited review
+    author_list JSON,       -- JSON array of author member_IDs [name,id,significance_factor], null means submitter is the sole author,     -- more complex: {"authors" : [name, id, sigfactor, [list# of affiliations]], "affiliations": [order, name]}
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+    comment_text TEXT COLLATE utf8mb4_general_ci NOT NULL,
+    anonymity TINYINT UNSIGNED default 1,      -- anonymity level: 1='open', 2='open-after-semi-anonym', 3='semi-anonymous', 4='open-after-anonym', 5='anonymous'
+    passcode VARCHAR(255) COLLATE utf8mb4_general_ci NULL,       -- needed only if anonymity_level=4
+    to_be_moderated TINYINT(1) NOT NULL default 0,    -- set to 1 if anonymous or from untrustable submitter  -- use last timestamp to determine N / T values if approved and moved to the Comments table
+    -- ... more metadata
+    CONSTRAINT CHK_passcode CHECK (anonymity < 4 OR passcode IS NOT NULL),
+    FOREIGN KEY (ctype) REFERENCES CommentTypes(ID),
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    FOREIGN KEY (submitter_ID) REFERENCES Members(mID),
+    FOREIGN KEY (parent_ID) REFERENCES Comments(cID),
+    FOREIGN KEY (anonymity) REFERENCES AnonymityTypes (ID),
+    INDEX (dID),
+    INDEX (submitter_ID)
+);
+
+CREATE TABLE CRCommentPhases (   -- saved past phases and overall numbers
+    cID BIGINT UNSIGNED NOT NULL,
+    nphase TINYINT UNSIGNED NOT NULL,     -- phase#: 0=overall, 1,2,3... = past phases
+    Nth INT UNSIGNED NOT NULL,            -- the N-th comment/review in this phase
+    T INT UNSIGNED NOT NULL,              -- time lapse in this phase in units of minutes
+    N_ratings INT UNSIGNED NOT NULL,      -- number of ratings received in this phase
+    S_ave DOUBLE NOT NULL,                -- Average rating score for this phase
+    ECP DOUBLE NOT NULL,                  -- ECP of this comment/review
+    FOREIGN KEY (cID) REFERENCES CRComments(cID),
+    PRIMARY KEY (cID,nphase)
+);
+
+
+-- Doc/Comment and Authors cross-links
+
+CREATE TABLE DocAuthors (   -- authors with no ID will not be recorded here
+    dID BIGINT UNSIGNED NOT NULL,
+    mID BIGINT UNSIGNED NOT NULL,
+    author_order INT UNSIGNED,                   -- Order of authors in the list
+    duty TINYINT UNSIGNED NOT NULL DEFAULT 100,  -- Significance percentage in contribution normalized to 100% of 1st-class
+    frac DOUBLE NOT NULL default 1,  -- fraction for ECP calculation = duty / sum of all duties (including general classes)
+    author_class TINYINT UNSIGNED,   -- 1='1st-author', 2='2nd-author', 3='3rd-author', 4='general-author', 5='variable-author'
+    contribution VARCHAR(255) COLLATE utf8mb4_general_ci,
+    -- ... additional fields (specific contribution details if needed)
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    FOREIGN KEY (author_class) REFERENCES AuthorClasses (ID),
+    PRIMARY KEY (dID, mID),         -- Ensure no duplicate authors for the same document
+    UNIQUE (dID,author_order),
+    INDEX (mID)
+);
+-- e.g., INSERT INTO DocAuthors (dID,mID,duty,frac) VALUES (1,2,100,0.5) ON DUPLICATE KEY UPDATE duty=VALUES(duty), frac=VALUES(frac);
+
+CREATE TABLE CommentAuthors (   -- authors with no ID will not be recorded here
+    cID BIGINT UNSIGNED NOT NULL,
+    mID BIGINT UNSIGNED NOT NULL,
+    duty TINYINT UNSIGNED NOT NULL DEFAULT 100,  -- Significance percentage in variable scheme (20-100)%
+    frac DOUBLE NOT NULL default 1,     -- fraction for ECP calculation = duty / sum of all duties
+    contribution VARCHAR(255) COLLATE utf8mb4_general_ci,
+    -- ... additional fields (specific contribution details if needed)
+    FOREIGN KEY (cID) REFERENCES CRComments(cID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    PRIMARY KEY (cID, mID),         -- Ensure no duplicate authors for the same comment/review
+    INDEX (mID)
+);
+-- e.g., INSERT INTO CommentAuthors (cID,mID,duty,frac) VALUES (1,2,50,0.2) ON DUPLICATE KEY UPDATE duty=VALUES(duty),frac=VALUES(frac);
+
+
+-- Rating-related tables
+
+CREATE TABLE DocRatings (       -- for rating parent documents
+    rID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    dID BIGINT UNSIGNED NOT NULL,                -- ID of the item being rated (parent doc ID)
+    rater_ID BIGINT UNSIGNED NOT NULL,           -- Rater member_ID
+    num TINYINT UNSIGNED NOT NULL default 1,     -- the n-th rating by the same user on the same doc (maximum 3 times)
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+    score TINYINT NOT NULL,      -- Rating score (-10 to 50 corresponding to -1.0 to 5.0)
+    pscore1 TINYINT,             -- partial score1: scientific soundness score for p-doc 
+    pscore2 TINYINT,             -- partial score2: potential impact score for p-doc 
+    pscore3 TINYINT,             -- partial score3: technical feasibility score for p-doc 
+--    rating_type TINYINT NOT NULL default 1,    -- 1 with no creditable contribution, 2= with creditable comments, 3=with contributed reviews, 4=with invited reivew
+    Nth INT UNSIGNED NOT NULL default 0,  -- the N-th rating in current phase, 0=not calculated yet
+    T INT UNSIGNED NOT NULL default 0,    -- time lapse in the current phase in units of minutes, 0=not calculated yet
+    ECP DOUBLE NOT NULL DEFAULT 0,        -- ECP of this rating
+    -- ... metadata about the rating context (e.g., reason for rating)
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    FOREIGN KEY (rater_ID) REFERENCES Members(mID),
+    UNIQUE (dID, rater_ID, num),
+    INDEX (rater_ID)                             -- Index for user's rating history
+);
+-- e.g., select only the last vote from each member
+-- WITH ranked_Ratings AS (
+--   SELECT m.*, ROW_NUMBER() OVER (PARTITION BY rater_ID ORDER BY num DESC) AS rn
+--   FROM DocRatings AS m WHERE dID = xxxx
+-- )
+-- SELECT * FROM ranked_Ratings WHERE rn = 1;
+-- 
+-- e.g., INSERT INTO DocRatings (dID, rater_ID, num, score, pscore1, pscore2, pscore3, Nth, T) VALUES (...);
+
+CREATE TRIGGER trg_docratings
+AFTER INSERT ON DocRatings
+FOR EACH ROW
+BEGIN
+      DECLARE nrate INT UNSIGNED;
+      UPDATE Documents SET S_ave = (S_ave * Ntot_ratings + New.score) / (Ntot_ratings + 1), Ntot_ratings = (nrate := Ntot_ratings + 1)  WHERE dID = NEW.dID;
+      UPDATE FundingProposals SET S1 = IFNULL((New.pscore1 + S1 * N1) / (N1 + 1), S1), N1 = N1 + (New.pscore1 IS NOT NULL), S2 = IFNULL((New.pscore2 + S2 * N2) / (N2 + 1), S2), N2 = N2 + (New.pscore2 IS NOT NULL), S3 = IFNULL((New.pscore3 + S3 * N3) / (N3 + 1), S3), N3 = N3 + (New.pscore3 IS NOT NULL) WHERE dID = NEW.dID;
+      IF nrate>=5 THEN INSERT INTO UpdateDocList (dID) VALUES (NEW.dID) ON DUPLICATE KEY UPDATE dID=dID;
+      END IF;
+END;
+
+CREATE TRIGGER trg1_docratings
+BEFORE INSERT ON DocRatings
+FOR EACH ROW
+BEGIN
+      DECLARE nnth INT UNSIGNED;
+      DECLARE dID1 BIGINT UNSIGNED;
+      DECLARE ts0 DATETIME;
+      SELECT reset_time, Ntot_ratings INTO ts0, nnth FROM Documents WHERE dID = dID1;
+      SET NEW.Nth = nnth+1;
+      SET NEW.ts = NOW();
+      SET NEW.T = TIMESTAMPDIFF(MINUTE, ts0, NEW.ts);
+END;
+
+CREATE TABLE CommentRatings (            -- for rating comments / reviews
+    rID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    cID BIGINT UNSIGNED NOT NULL,                -- ID of the item being rated (comment_ID)
+    rater_ID BIGINT UNSIGNED NOT NULL,           -- Rater member_ID
+    num TINYINT UNSIGNED NOT NULL default 1,     -- the n-th rating by the same user on the same comment/review (maximum 3 times) or maybe only allow one time
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+    score TINYINT NOT NULL,                  -- Rating score (-10 to 50 corresponding to -1.0 to 5.0)
+--    rating_type TINYINT NOT NULL default 1,    -- 1 with no creditable contribution, 2= with creditable comments, 3=with contributed reviews, 4=with invited reivew
+    Nth INT UNSIGNED NOT NULL default 0,      -- the N-th rating in current phase, 0=not calculated yet
+    T INT UNSIGNED NOT NULL default 0,        -- time lapse in the current phase in units of minutes, 0=not calculated yet
+    ECP DOUBLE NOT NULL DEFAULT 0,               -- ECP of this rating
+    -- ... metadata about the rating context (e.g., reason for rating)
+    FOREIGN KEY (cID) REFERENCES Comments(cID),
+    FOREIGN KEY (rater_ID) REFERENCES Members(mID),
+    UNIQUE (cID, rater_ID, num),
+    INDEX (rater_ID)                             -- Index for user's rating history
+);
+
+CREATE TRIGGER trg_commentratings
+AFTER INSERT ON CommentRatings
+FOR EACH ROW
+BEGIN
+      DECLARE nrate INT UNSIGNED;
+      UPDATE CRComments SET S_ave = (S_ave * N_ratings + New.score) / (N_ratings + 1), N_ratings = (nrate := N_ratings + 1)  WHERE cID = NEW.cID;
+      IF nrate>=5 THEN INSERT INTO UpdateCommentList (cID) VALUES (NEW.cID) ON DUPLICATE KEY UPDATE cID=cID;
+      END IF
+END;
+
+CREATE TRIGGER trg1_commentratings
+BEFORE INSERT ON CommentRatings
+FOR EACH ROW
+BEGIN
+      DECLARE nnth INT UNSIGNED;
+      DECLARE dID1 BIGINT UNSIGNED;
+      DECLARE ts0 DATETIME;
+      SELECT dID INTO dID1 FROM Comments WHERE cID = NEW.cID;
+      SELECT N_ratings INTO nnth FROM CRComments WHERE cID = NEW.cID;
+      SELECT reset_time INTO ts0 FROM Documents WHERE dID = dID1;
+      SET NEW.Nth = nnth+1;
+      SET NEW.ts = NOW();
+      SET NEW.T = TIMESTAMPDIFF(MINUTE, ts0, NEW.ts);
+END;
+
+CREATE TABLE DocRatingPhases (   -- saved past phases and overall numbers
+    rID BIGINT UNSIGNED NOT NULL,
+    nphase TINYINT UNSIGNED NOT NULL,     -- phase#: 0=overall, 1,2,3... = past phases
+    Nth INT UNSIGNED NOT NULL,            -- the N-th rating in this phase
+    T INT UNSIGNED NOT NULL,              -- time lapse in this phase in units of minutes
+    ECP DOUBLE NOT NULL,                  -- ECP of this rating
+    FOREIGN KEY (rID) REFERENCES DocRatings(rID),
+    PRIMARY KEY (rID,nphase)
+);
+
+CREATE TABLE CommentRatingPhases (   -- saved past phases and overall numbers
+    rID BIGINT UNSIGNED NOT NULL,
+    nphase TINYINT UNSIGNED NOT NULL,     -- phase#: 0=overall, 1,2,3... = past phases
+    Nth INT UNSIGNED NOT NULL,            -- the N-th rating in this phase
+    T INT UNSIGNED NOT NULL,              -- time lapse in this phase in units of minutes
+    ECP DOUBLE NOT NULL,                  -- ECP of this rating
+    FOREIGN KEY (rID) REFERENCES CommentRatings(rID),
+    PRIMARY KEY (rID,nphase)
+);
+
+
+CREATE TABLE SrevList ( -- the average score*duty% of the review whose ECP calculations under the same doc are based on
+    dID BIGINT UNSIGNED NOT NULL,
+    mID BIGINT UNSIGNED NOT NULL,
+    srev DOUBLE NOT NULL,      -- <S> * duty% of the member or the AL allocation method
+    invited TINYINT(1) NOT NULL default 0,   -- 1=invited reivew, 0=contributed review, can only do one of the two
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    PRIMARY KEY (dID, mID)
+);
+
+CREATE TABLE SmaxList ( -- max score*duty% of creditable comments whose ECP calculations under the same doc are based on
+    dID BIGINT UNSIGNED NOT NULL,
+    mID BIGINT UNSIGNED NOT NULL,
+    cID BIGINT UNSIGNED NOT NULL,
+    smax DOUBLE NOT NULL,  -- <S>_max * duty% of the member or the AL allocation method
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    FOREIGN KEY (cID) REFERENCES CRComments(cID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    PRIMARY KEY (dID, mID,cID)
+);
+-- e.g. not working well: INSERT INTO Smax (dID,mID,smax) VALUES (1,2,3) ON DUPLICATE KEY UPDATE smax = GREATEST(smax, VALUES(smax));
+-- e.g. INSERT INTO Srev (dID,mID,srev,invited) VALUES (1,2,3,0) ON DUPLICATE KEY UPDATE srev = VALUES(srev), invited = VALUES(invited);
+-- e.g. INSERT INTO Smax (dID,mID,smax) VALUES (1,2,3) ON DUPLICATE KEY UPDATE smax = VALUES(smax);
+  
+
+-- Flag-related tables (including collections)
+
+CREATE TABLE COIRelationships (   -- potential COI (conflict of interest) relationships
+    ID TINYINT UNSIGNED PRIMARY KEY,
+    coiname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    strict_order TINYINT(1) NOT NULL default 0,   -- 1=preserve the order of mID1 and mID2
+    is_active TINYINT(1) NOT NULL default 1,      -- 0 means a decommissioned relationship
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+-- COI checks work mostly in background for funding/rating related activities, visible only to related members, not to general public and other members; if COI later revealed, corresponding ratings, etc., will be removed, reviews/creditable comments will be converted to uncredited comments.
+INSERT INTO COIRelationships (ID,coiname,strict_order,is_active) VALUES (0,'DUMMY',0,0);
+INSERT INTO COIRelationships (ID,coiname,strict_order,detail) VALUES (1,'PhD Advisor',1,'a strict relatioinship');
+INSERT INTO COIRelationships (ID,coiname,strict_order,detail) VALUES (2,'Postdoc Advisor',1,'a strict relatioinship');
+INSERT INTO COIRelationships (ID,coiname,strict_order,detail) VALUES (3,'Supervisor (Other Types)',1,'other than PhD or Postdoc Advisor');
+INSERT INTO COIRelationships (ID,coiname,strict_order,detail) VALUES (4,'Family',0,'spouse/parent/child/sibling or anyone living together');
+INSERT INTO COIRelationships (ID,coiname,strict_order,detail) VALUES (5,'Relative',0,'cousin, uncle, aunt, niece, nephew, grand-*, in-laws');
+INSERT INTO COIRelationships (ID,coiname,strict_order,detail) VALUES (6,'Personal',0,'close friends');
+INSERT INTO COIRelationships (ID,coiname,strict_order,detail) VALUES (7,'Business',0,'partner, financial interest');
+INSERT INTO COIRelationships (ID,coiname,strict_order,detail) VALUES (8,'co-Editor',0,'work for the same journal/publication entity');
+INSERT INTO COIRelationships (ID,coiname,strict_order,detail) VALUES (9,'Colleague',0,'work in the same place (department)');
+INSERT INTO COIRelationships (ID,coiname,strict_order,detail) VALUES (10,'Collaborator',0,'collaboration in research');
+INSERT INTO COIRelationships (ID,coiname,strict_order,detail) VALUES (11,'co-Author',0,'general-class does not count');
+INSERT INTO COIRelationships (ID,coiname,strict_order,detail) VALUES (255,'Other COI Relationship',0,'everything else');
+
+CREATE TABLE COIFlags (      -- COI (conflict of interest) flags
+--    ID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    mID1 BIGINT UNSIGNED NOT NULL,    -- mID1 is xxxx to mID2, typically mID1 < mID2 unless advisor or similar
+    mID2 BIGINT UNSIGNED NOT NULL,
+    relationship TINYINT UNSIGNED NOT NULL,  -- 1-3=advisor, 4=family, 5=relative, 6=personal, 7=business, 8=co-editor, 9=colleague, 10=collaborator, 11=coauthor, 255=other COI relationship
+    is_active TINYINT(1) NOT NULL default 1, -- 0 means an inactive COI if mID1 or mID2 is inactive
+    start_date DATE,  -- NULL means permanent
+    end_date DATE,    -- NULL means no end date
+    FOREIGN KEY (relationship) REFERENCES COIRelationships(ID),
+    FOREIGN KEY (mID1) REFERENCES Members(mID),
+    FOREIGN KEY (mID2) REFERENCES Members(mID),
+    PRIMARY KEY (mID1,mID2,relationship),
+    INDEX (mID1),
+    INDEX (mID2)
+);  -- expired relationship should be deleted (including deceased)
+-- unless relationship=1 or similar that restricts the order, mID1 < mID2 is required to ensure UNIQUE constraint
+-- ON DUPLICATE KEY UPDATE start_date = VALUES(start_date), end_date = VALUES(end_date);
+
+CREATE TABLE MemberRelationships (   -- user-applied relationships between members
+    ID TINYINT UNSIGNED PRIMARY KEY,
+    mrname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    is_active TINYINT(1) NOT NULL default 1,      -- 0 means a decommissioned relationship
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO MemberRelationships (ID,mrname,is_active) VALUES (0,'DUMMY',0);
+INSERT INTO MemberRelationships (ID,mrname,detail) VALUES (1,'Favorites','most admired/respected/loved');
+INSERT INTO MemberRelationships (ID,mrname,detail) VALUES (2,'Friends','close friends for sharing');
+INSERT INTO MemberRelationships (ID,mrname,detail) VALUES (3,'Follow','to follow their work');
+INSERT INTO MemberRelationships (ID,mrname,detail) VALUES (4,'Block','to block their posts');
+
+CREATE TABLE MemberFlags (  -- favorites, friends, follow, block, ...
+    mID1 BIGINT UNSIGNED NOT NULL,    -- the owner
+    mID2 BIGINT UNSIGNED NOT NULL,    -- to be flagged
+    relationship TINYINT UNSIGNED NOT NULL,  -- 1=favorites, 2=friends, 3=follow, 4=block
+    FOREIGN KEY (relationship) REFERENCES MemberRelationships(ID),
+    FOREIGN KEY (mID1) REFERENCES Members(mID),
+    FOREIGN KEY (mID2) REFERENCES Members(mID),
+    PRIMARY KEY (mID1,mID2,relationship),
+    INDEX (relationship)
+);
+
+CREATE TABLE FlagTypes (   -- user-applied tags on documents and comments/reviews
+    ID TINYINT UNSIGNED PRIMARY KEY,
+    ftname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    is_active TINYINT(1) NOT NULL default 1,      -- 0 means a decommissioned flag type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO FlagTypes (ID,ftname,is_active) VALUES (0,'DUMMY',0);
+INSERT INTO FlagTypes (ID,ftname,detail) VALUES (1,'Favorites','my favorites');
+INSERT INTO FlagTypes (ID,ftname,detail) VALUES (2,'To Be Read','waiting list to be read');
+INSERT INTO FlagTypes (ID,ftname,detail) VALUES (3,'Current Focus','related to my current project');
+
+CREATE TABLE FraudTypes (   -- user-applied fraud-type tags on documents and comments/reviews, PUBLIC only
+    ID TINYINT UNSIGNED PRIMARY KEY,
+    ftname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    is_active TINYINT(1) NOT NULL default 1,      -- 0 means a decommissioned flag type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO FraudTypes (ID,ftname,is_active) VALUES (0,'DUMMY',0);
+-- ID=1-99 means detrimental, its visibility can be blocked for users below the role of who flags if the fagger chooses so. If a member flags, can make it invisible to public; if a reader flags, can make it invisible to general members; if a reviewer flags, can make it invisible to readers and below; if a moderator flags, can make it invisible to reviewers and below; if a leader flags, can make it invisible to moderators and below (in practice, more likely to choose to reviewers and below).
+INSERT INTO FraudTypes (ID,ftname,detail) VALUES (1,'Fraudulent','fake, manipulated, etc.');
+INSERT INTO FraudTypes (ID,ftname,detail) VALUES (2,'Plagiaristic','copycat');
+INSERT INTO FraudTypes (ID,ftname,detail) VALUES (3,'Abusive','offensive, insulting language');
+INSERT INTO FraudTypes (ID,ftname,detail) VALUES (99,'Harmful(in Other Ways)','detrimental in ways other than the above explicitly listed');
+-- ID=100 means unvote the above detrimental flags (option available only if 100+ flags exist)
+INSERT INTO FraudTypes (ID,ftname,detail) VALUES (100,'Not Detrimental','veto other detrimental flags');
+-- members can choose only one of the these fraud flags, can modify within two weeks. Option 100 should not appear unless there is at least a fraud tag from 1-99.
+
+CREATE TABLE DocFlags (     -- favorites, to be read, current focus, etc.
+    mID BIGINT UNSIGNED NOT NULL,   -- the owner of the flag
+    dID BIGINT UNSIGNED NOT NULL,   -- to be flagged
+    ftype TINYINT UNSIGNED NOT NULL,  -- 1=favorites, 2=to be read, 3=current focus
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    FOREIGN KEY (ftype) REFERENCES FlagTypes(ID),
+    PRIMARY KEY (mID,dID,ftype),
+    INDEX (ftype)
+);
+
+CREATE TABLE DocFraudFlags (     -- fraud alert !!!
+    mID BIGINT UNSIGNED NOT NULL,   -- the owner of the flag
+    dID BIGINT UNSIGNED NOT NULL,   -- to be flagged
+    ftype TINYINT UNSIGNED NOT NULL,  -- 1-99=detrimental, 100=not detrimental
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    FOREIGN KEY (ftype) REFERENCES FraudTypes(ID),
+    PRIMARY KEY (mID,dID),
+    INDEX (ftype)
+);
+-- ON DUPLICATE KEY UPDATE ftype = VALUES(ftype)
+
+CREATE TABLE CommentFlags (  -- favorites, to be read, current focus, etc.
+    mID BIGINT UNSIGNED NOT NULL,   -- the owner of the flag
+    cID BIGINT UNSIGNED NOT NULL,   -- to be flagged
+    ftype TINYINT UNSIGNED NOT NULL,  -- 1=favorites, 2=to be read, 3=current focus
+    FOREIGN KEY (cID) REFERENCES Comments(cID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    FOREIGN KEY (ftype) REFERENCES FlagTypes(ID),
+    PRIMARY KEY (mID,cID,ftype),
+    INDEX (ftype)
+);
+
+CREATE TABLE CommentFraudFlags (    -- fraud alert !!!
+    mID BIGINT UNSIGNED NOT NULL,   -- the owner of the flag
+    cID BIGINT UNSIGNED NOT NULL,   -- to be flagged
+    ftype TINYINT UNSIGNED NOT NULL,  -- 1-99=detrimental, 100=not detrimental
+    FOREIGN KEY (cID) REFERENCES Comments(cID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    FOREIGN KEY (ftype) REFERENCES FraudTypes(ID),
+    PRIMARY KEY (mID,cID),
+    INDEX (ftype)
+);
+-- ON DUPLICATE KEY UPDATE ftype = VALUES(ftype)
+
+CREATE TABLE Collections (     -- user-named collections for parent documents
+    ID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    mID BIGINT UNSIGNED NOT NULL,    -- the owner of the flag
+    cnum TINYINT UNSIGNED NOT NULL,  -- collection # for this member
+    cname VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL,  -- collection name
+    public TINYINT NOT NULL default 0,   -- 0 = private, 1=share with friends, 2 = go public
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    UNIQUE (mID,cnum),
+    INDEX (cname)
+);
+
+CREATE TABLE CollectionFlags (     -- flag docs to be included in user-named collections
+    coID BIGINT UNSIGNED NOT NULL,    -- collection ID
+    dID BIGINT UNSIGNED NOT NULL,     -- to be flagged
+    FOREIGN KEY (dID) REFERENCES Documents (dID),
+    FOREIGN KEY (coID) REFERENCES Collections (ID),
+    PRIMARY KEY (coID,dID)
+);
+
+CREATE TABLE ShareDocFlags ( -- make flags public, or sharing with others; automatically private if not listed here
+    mID BIGINT UNSIGNED NOT NULL,    -- the owner of the flag
+    ftype TINYINT UNSIGNED NOT NULL, -- doc-flags
+    public TINYINT NOT NULL default 1,    -- 1 = share with friends, 2 = go public
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    FOREIGN KEY (ftype) REFERENCES FlagTypes(ID),
+    PRIMARY KEY (mID,ftype)
+);
+CREATE TABLE ShareCommentFlags ( -- make flags public, or sharing with others; automatically private if not listed here
+    mID BIGINT UNSIGNED NOT NULL,    -- the owner of the flag
+    ftype TINYINT UNSIGNED NOT NULL, -- comment flags
+    public TINYINT NOT NULL default 1,    -- 1 = share with friends, 2 = go public
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    FOREIGN KEY (ftype) REFERENCES FlagTypes(ID),
+    PRIMARY KEY (mID,ftype)
+);
+
+
+-- Member Institution-related tables
+
+CREATE TABLE InstTypes (
+    ID TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    itname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    is_active TINYINT(1) NOT NULL default 1,    -- 0 means a decommissioned type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO InstTypes (ID,itname,is_active) VALUES (0,'DUMMY',0);
+INSERT INTO InstTypes (ID,itname,detail) VALUES (1,'Research Colleges (PhD granting)','Research-oriented');
+INSERT INTO InstTypes (ID,itname,detail) VALUES (2,'Teaching Colleges (non-PhD-granting)','Mostly for undergraduate education');
+INSERT INTO InstTypes (ID,itname,detail) VALUES (3,'K12 & Other Education Institutions','K12 schools, training schools, etc.');
+INSERT INTO InstTypes (ID,itname,detail) VALUES (4,'Government Laboratories','National or State-owned laboratories');
+INSERT INTO InstTypes (ID,itname,detail) VALUES (5,'Government Funding Agencies','national or state funding agencies');
+INSERT INTO InstTypes (ID,itname,detail) VALUES (6,'Private Foundations','prrivate funding orgs');
+INSERT INTO InstTypes (ID,itname,detail) VALUES (7,'Other Non-Profit Organizations','NPOs');
+INSERT INTO InstTypes (ID,itname,detail) VALUES (8,'Industrial Research Laboratories','funded by companies');
+INSERT INTO InstTypes (ID,itname,detail) VALUES (9,'Business Entities','Companies');
+INSERT INTO InstTypes (ID,itname,detail) VALUES (255,'Other Entities','Any organizations interested in research');
+
+CREATE TABLE InstTiers ( -- membership tiers for institutions
+    ID TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    tname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    is_active TINYINT(1) NOT NULL default 1,    -- 0 means a decommissioned type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO InstTiers (ID,tname,is_active) VALUES (0,'DUMMY',0);
+INSERT INTO InstTiers (ID,tname,detail) VALUES (1,'Standard','entry-level (could be free for certain types of orgs or in certain regions)');
+INSERT INTO InstTiers (ID,tname,detail) VALUES (2,'Bronze','low annual fees');
+INSERT INTO InstTiers (ID,tname,detail) VALUES (3,'Silver','medium annual fees');
+INSERT INTO InstTiers (ID,tname,detail) VALUES (4,'Gold','higher annual fees');
+INSERT INTO InstTiers (ID,tname,detail) VALUES (5,'Platinum','even higher annual fees');
+INSERT INTO InstTiers (ID,tname,detail) VALUES (6,'Diamond','highest annual fees');
+INSERT INTO InstTiers (ID,tname,detail) VALUES (255,'Unlimited','Biggest Sponsors');
+
+CREATE TABLE MemberInstitutions (
+    iID INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,  -- unique identifier for each member institution
+    itype TINYINT UNSIGNED NOT NULL,           -- 0=dummy, 1=R-college, 2=T-college, 3=k12&other_edu, 4=national/state labs, 5=government funding agency, 6= private foundation, 7= NPOs, 8=Industrial labs, 9=companies, 255=other
+    iname VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL,       -- "University of Notre Dame"
+    abbr VARCHAR(30) COLLATE utf8mb4_general_ci UNIQUE NOT NULL, -- "UND"
+    address VARCHAR(255) COLLATE utf8mb4_general_ci,             -- mailing address
+    email VARCHAR(254) COLLATE utf8mb4_general_ci UNIQUE,
+    pass VARCHAR(255) COLLATE utf8mb4_general_ci,
+    contact VARCHAR(255) COLLATE utf8mb4_general_ci,
+    homepage VARCHAR(255) COLLATE utf8mb4_general_ci,
+    tier TINYINT UNSIGNED NOT NULL default 1,      -- 0=dummy, 1=standard, 2==bronze, 3=silver, 4=gold, 5=platinum, 6=diamond depending on sponsorship level
+    good TINYINT(1) NOT NULL default 1,                  -- true for good standing (no fees overdue)
+    is_active TINYINT(1) NOT NULL default 1,           -- true for active member
+    detail TEXT COLLATE utf8mb4_general_ci,        -- Optional detailed description
+    start_standard DATETIME DEFAULT CURRENT_TIMESTAMP,
+    start_bronze DATETIME,
+    start_silver DATETIME,
+    start_gold DATETIME,
+    start_platinum DATETIME,
+    start_diamond DATETIME,
+    FOREIGN KEY (itype) REFERENCES InstTypes (ID),
+    FOREIGN KEY (tier) REFERENCES InstTiers (ID),
+    INDEX (iname),
+    INDEX (itype)
+);
+INSERT INTO MemberInstitutions (iID,itype,iname,abbr,tier,good,is_active) VALUES (0,0,'DUMMY','DUMMY',0,0,0);
+-- can log in with iID / abbr / email + password
+
+
+-- Funding related tables
+
+CREATE TABLE FundingTypes (
+    ID TINYINT UNSIGNED PRIMARY KEY,
+    ftname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    doc_type TINYINT UNSIGNED default 0,       -- 0 means not related to any docs
+    is_active TINYINT(1) NOT NULL default 1,   -- 0 means a decommissioned flag type
+    detail TEXT COLLATE utf8mb4_general_ci,
+    FOREIGN KEY (doc_type) REFERENCES DocTypes(ID)
+);
+INSERT INTO FundingTypes (ID,ftname,doc_type,is_active) VALUES (0,'DUMMY',0,0);
+INSERT INTO FundingTypes (ID,ftname,doc_type,detail) VALUES (1,'Original Research (Mainstream)',9,'mainstream p-doc');
+INSERT INTO FundingTypes (ID,ftname,doc_type,detail) VALUES (2,'Original Research (High-Risk)',9,'high-risk high-reward p-doc');
+INSERT INTO FundingTypes (ID,ftname,doc_type,detail) VALUES (3,'Original Research',9,'all p-doc');
+INSERT INTO FundingTypes (ID,ftname,doc_type,detail) VALUES (4,'Facility/Center-Oriented',8,'research centers, user facilities, and collaborative networks (f-doc)');
+INSERT INTO FundingTypes (ID,ftname,doc_type,detail) VALUES (5,'R&D Equipment',10,'q-doc');
+INSERT INTO FundingTypes (ID,ftname,doc_type,detail) VALUES (6,'R&D Technology',10,'q-doc');
+INSERT INTO FundingTypes (ID,ftname,doc_type,detail) VALUES (7,'Exchange/Visitor',11,'s-doc');
+INSERT INTO FundingTypes (ID,ftname,doc_type,detail) VALUES (8,'Meetings/Workshops',11,'conferences, meetings, workshops, schools, s-doc');
+INSERT INTO FundingTypes (ID,ftname,doc_type,detail) VALUES (9,'Service-Oriented',11,'any other service programs, s-doc');
+INSERT INTO FundingTypes (ID,ftname,doc_type,detail) VALUES (254,'Other Funding Opportunities (zy)',254,'zy-doc');
+INSERT INTO FundingTypes (ID,ftname,doc_type,detail) VALUES (255,'Unrelated to Proposals',0,'not-related to any docs');
+
+CREATE TABLE FundingPrograms (
+    fID INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,    -- funding program ID
+    fname VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL,
+    ftype TINYINT UNSIGNED NOT NULL,      -- e.g., 1=p-doc/mainstream, 2=p-doc/highrisk, 3=p-doc, 4=facility/center-oriented(f-doc), 5-6=q-doc, 7-9=s-doc, 254=other, 255=unrelated
+    email VARCHAR(254) COLLATE utf8mb4_general_ci,
+    contact VARCHAR(255) COLLATE utf8mb4_general_ci,
+    homepage VARCHAR(255) COLLATE utf8mb4_general_ci,
+    sponsor_ID INT UNSIGNED NOT NULL,
+    freq TINYINT UNSIGNED default 0,   -- 0=one time, 1=halfyear=biannually, 2=annually, 4=biennially, 10=5yrs, freq/2=year# for the funding call period, 255=irregular
+    deadline DATETIME,      -- null means no application deadline or rolling
+    start_time DATETIME,    -- the earliest possible funding start time
+    duration_min TINYINT UNSIGNED,               -- support duration in number of years
+    duration_max TINYINT UNSIGNED,               -- support duration in number of years
+    budget_min DOUBLE,           -- mininim budget for each project
+    budget_ave DOUBLE,           -- average budget for each project
+    budget_max DOUBLE,           -- maximum budget for each project
+    budget_tot DOUBLE,           -- total budget for all projects
+    currency VARCHAR(60) COLLATE utf8mb4_general_ci NOT NULL default 'US Dollars',
+    totnum INT UNSIGNED,        -- total number of projects to be supported
+    sponsored JSON,        -- JSON array (aID,funding,starttime,duration)
+    is_active TINYINT(1) NOT NULL default 1,  -- if the program is active or not
+    detail TEXT COLLATE utf8mb4_general_ci,
+    -- ... funding criteria, eligibility requirements, etc.
+    FOREIGN KEY (sponsor_ID) REFERENCES MemberInstitutions(iID),
+    FOREIGN KEY (ftype) REFERENCES FundingTypes(ID),
+    INDEX (ftype,fname),
+    INDEX (sponsor_ID)
+);
+
+CREATE TABLE FundingBranches (  -- what research branches the funding program aims at
+    fID INT UNSIGNED NOT NULL,
+    bID INT UNSIGNED NOT NULL,
+    FOREIGN KEY (fID) REFERENCES FundingPrograms(fID),
+    FOREIGN KEY (bID) REFERENCES ResearchBranches(bID),
+    PRIMARY KEY (fID,bID)
+);
+
+CREATE TABLE SourceTypes (
+    ID TINYINT UNSIGNED PRIMARY KEY,
+    stname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    is_active TINYINT(1) NOT NULL default 1,   -- 0 means a decommissioned type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO SourceTypes (ID,stname,is_active) VALUES (0,'DUMMY',0);
+INSERT INTO SourceTypes (ID,stname,detail) VALUES (1,'Single Agency','a single agency for full funding is desired');
+INSERT INTO SourceTypes (ID,stname,detail) VALUES (2,'Multiple Agencies','two or more agencies can cofund');
+INSERT INTO SourceTypes (ID,stname,detail) VALUES (3,'CrowdFunding','crowdfunding only');
+INSERT INTO SourceTypes (ID,stname,detail) VALUES (255,'Any Funding Sources','can be funded from any sources');
+
+CREATE TABLE FundingProposals (  -- extra information for f/p/q/s-doc
+    dID BIGINT UNSIGNED UNIQUE NOT NULL,         -- Link to the 'p-docs' of the main Document
+    start_time DATETIME,            -- desired/realistic start time
+    duration_min TINYINT UNSIGNED NOT NULL,      -- minimum project duration in number of years
+    duration_max TINYINT UNSIGNED,      -- maximum duration in number of years, NULL means a fixed duration
+    extension TINYINT UNSIGNED,   -- additional number of years for no-cost extension
+    budget_min DOUBLE NOT NULL,   -- minimum total budget
+    budget_max DOUBLE,                   -- maximum total budget, NULL means a fixed budget
+    currency VARCHAR(60) COLLATE utf8mb4_general_ci NOT NULL default 'US Dollars',
+    is_nonprofit TINYINT(1) NOT NULL,    -- true if the proposal is from 501(c)(3) for tax purposes, false otherwise
+    sourcetype TINYINT UNSIGNED NOT NULL,   -- 1=single agency, 2=multiple agencies allowed, 3=crowdfunding only, 255=all types of funding/donations are allowed
+    refund TINYINT(1) NOT NULL default 0,   -- true=refund if not receive full funding
+    funding_committed DOUBLE,
+    funding_received DOUBLE,
+    deadline DATETIME,      -- deadline for committing the support
+    pstatus VARCHAR(60) COLLATE utf8mb4_general_ci DEFAULT 'submitted',  -- proposal status, e.g., 'submitted', 'abandoned/inactive', 'partially/fully funded', 'rejected by all'
+    sponsors JSON,    -- JSON array of [sponsor_name,sponsor_type,sponsor_id,amount] committed support from persons or agencies
+    is_active TINYINT(1) NOT NULL default 1,  -- if the project is still active, inactive due to reasons other than finished
+    finished TINYINT(1) NOT NULL default 0,   -- if the project is finished
+    homepage VARCHAR(255) COLLATE utf8mb4_general_ci,
+    progress JSON,    -- JSON array of [datetime, progress/milestone] update of the project
+    results TEXT COLLATE utf8mb4_general_ci,  -- summary of final products/results of the project
+    N1 INT UNSIGNED NOT NULL default 0,  -- number of pscore1
+    N2 INT UNSIGNED NOT NULL default 0,  -- number of pscore2
+    N3 INT UNSIGNED NOT NULL default 0,  -- number of pscore3
+    S1 DOUBLE NOT NULL default 0,        -- average partial score1 = soundness (mainly for high-risk proposals)
+    S2 DOUBLE NOT NULL default 0,        -- average partial score2 = impact
+    S3 DOUBLE NOT NULL default 0,        -- average partial score3 = feasibility
+    -- see the main table Documents for S_ave: Overall score for main-stream proposals
+    -- ... details specific to proposal type (budget breakdown, project duration etc.)
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    FOREIGN KEY (sourcetype) REFERENCES SourceTypes(ID),
+    INDEX (sourcetype)
+);
+
+CREATE TABLE SeekingList ( -- list of funding programs that a proposal is seekimg to apply to
+    dID BIGINT UNSIGNED NOT NULL,
+    fID INT UNSIGNED NOT NULL,
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (fID) REFERENCES FundingPrograms(fID),
+    FOREIGN KEY (dID) REFERENCES FundingProposals(dID),
+    PRIMARY KEY (dID,fID)
+);
+-- an entry will be removed if a decision is made; all other seeking programs from a proposal will be deleted if fully funded;
+
+CREATE TABLE RejectedList ( -- list of funding programs that rejected a proposal
+    dID BIGINT UNSIGNED NOT NULL,
+    fID INT UNSIGNED NOT NULL,
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (fID) REFERENCES FundingPrograms(fID),
+    FOREIGN KEY (dID) REFERENCES FundingProposals(dID),
+    PRIMARY KEY (dID,fID)
+);
+
+CREATE TABLE FundedList ( -- list funded proposals with funding programs
+    fID INT UNSIGNED NOT NULL,
+    dID BIGINT UNSIGNED NOT NULL,
+    committed DOUBLE NOT NULL,
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (fID) REFERENCES FundingPrograms(fID),
+    FOREIGN KEY (dID) REFERENCES FundingProposals(dID),
+    PRIMARY KEY (fID,dID)
+);
+
+
+-- Job/Hiring-related tables
+
+CREATE TABLE JobPostings (
+    jID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    iID INT UNSIGNED NOT NULL,       -- the hiring institution
+    department VARCHAR(255) COLLATE utf8mb4_general_ci,
+    title VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL,
+    jtype VARCHAR(50) COLLATE utf8mb4_general_ci,      -- e.g., 'faculty', 'postdoc', 'scientist'
+    email VARCHAR(254) COLLATE utf8mb4_general_ci,
+    contact VARCHAR(255) COLLATE utf8mb4_general_ci,
+    homepage VARCHAR(255) COLLATE utf8mb4_general_ci,
+    role_min SMALLINT UNSIGNED,   -- requirement on member role level (e.g., revewership+)
+    AL_min VARCHAR(5) COLLATE ascii_general_ci,  -- e.g., > L2.5/3
+    ALS_min DOUBLE,               -- e.g., >100
+    ECP_min DOUBLE,               -- e.g., ECP > 1000 in total, >500 in Phys.NP, moderatorship+
+    requirement TEXT COLLATE utf8mb4_general_ci,  -- more detailed AL/ECP requirements, forming a mysql query string (e.g., minimum ALS and ECP in multiple branches and/or doc-types)
+    deadline DATETIME,
+    detail TEXT COLLATE utf8mb4_general_ci,
+    -- ... required skills, experience, salary range etc.
+    FOREIGN KEY (iID) REFERENCES MemberInstitutions(iID),
+    INDEX (iID),
+    INDEX (jtype)
+);
+
+CREATE TABLE JobBranches (
+    jID BIGINT UNSIGNED NOT NULL,
+    bID INT UNSIGNED NOT NULL,   -- branch ID
+    FOREIGN KEY (jID) REFERENCES JobPostings(jID),
+    FOREIGN KEY (bID) REFERENCES ResearchBranches(bID),
+    PRIMARY KEY (jID, bID)
+);
+
+CREATE TABLE JobCandidates (
+    jID BIGINT UNSIGNED NOT NULL,
+    candidate BIGINT UNSIGNED NOT NULL,    -- candidates that meet the requirements and have applied
+    offered TINYINT(1),      -- NULL=undecided, 0=declined, 1=offered by jID
+    accepted TINYINT(1),     -- NULL=undecided, 0=declined, 1=accepted by candidate
+    FOREIGN KEY (jID) REFERENCES JobPostings(jID),
+    FOREIGN KEY (candidate) REFERENCES Members(mID),
+    PRIMARY KEY (jID, candidate)
+);
+
+
+-- Update-related tables
+
+CREATE TABLE UpdateCommentList (   -- list of creditable comment/review changes (new rating and >=5) that need to be updated at more idle times
+    cID BIGINT UNSIGNED UNIQUE NOT NULL,
+    FOREIGN KEY (cID) REFERENCES CRComments(cID)
+);
+-- before update, remove rows whose parent dID is in UpdateDocList
+-- e.g.,  INSERT INTO UpdateCommentList (cID) VALUES (nnn), (nnn2), (nnn3) ON DUPLICATE KEY UPDATE cID=cID;
+
+CREATE TABLE UpdateDocList (   -- list of doc changes (new rating & >=5 or new phase) that need to be updated at more idle times
+    dID BIGINT UNSIGNED UNIQUE NOT NULL,
+    FOREIGN KEY (dID) REFERENCES FundingProposals(dID)
+);
+-- after each update, remove the corresponding dID row, and add mID's to UpdateMember[AL/ECP]List
+
+CREATE TABLE UpdateMemberALList (   -- list of member IDs for updating their AL at more idle times
+    mID BIGINT UNSIGNED UNIQUE NOT NULL,
+    FOREIGN KEY (mID) REFERENCES Members(mID)
+);
+
+CREATE TABLE UpdateMemberECPList (   -- list of member IDs for updating their ECP at more idle times
+    mID BIGINT UNSIGNED UNIQUE NOT NULL,
+    FOREIGN KEY (mID) REFERENCES Members(mID)
+);
+
+CREATE TABLE UpdateParaTypes (   -- types of parameter changes that need to be updated
+    ID TINYINT UNSIGNED PRIMARY KEY,
+    utname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    is_active TINYINT(1) NOT NULL default 1,   -- 0 means a decommissioned type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO UpdateTypes (ID,utname,is_active) VALUES (0,'DUMMY',0);
+INSERT INTO UpdateTypes (ID,utname,detail) VALUES (1,'all','update all AL and ECP calculations');
+INSERT INTO UpdateTypes (ID,utname,detail) VALUES (2,'AL','update all AL calculations');
+INSERT INTO UpdateTypes (ID,utname,detail) VALUES (3,'AL_a-doc','update AL for a-docs');
+INSERT INTO UpdateTypes (ID,utname,detail) VALUES (4,'AL_one branch','update one branch AL');
+INSERT INTO UpdateTypes (ID,utname,detail) VALUES (10,'ECP','update all ECP calculations');
+INSERT INTO UpdateTypes (ID,utname,detail) VALUES (11,'ECP_docs','update ECP of all docs');
+INSERT INTO UpdateTypes (ID,utname,detail) VALUES (12,'ECP_invited','update ECP of invited reviews');
+INSERT INTO UpdateTypes (ID,utname,detail) VALUES (13,'ECP_contributed','update ECP of contributed reviews');
+INSERT INTO UpdateTypes (ID,utname,detail) VALUES (14,'ECP_comments','update ECP of creditable comments');
+INSERT INTO UpdateTypes (ID,utname,detail) VALUES (15,'ECP_ratings','update all rating ECP calculations');
+INSERT INTO UpdateTypes (ID,utname,detail) VALUES (16,'ECP_one branch','update one branch ECP');
+INSERT INTO UpdateTypes (ID,utname,detail) VALUES (17,'ECP_one doc-type,'update one doc-type ECP');
+INSERT INTO UpdateTypes (ID,utname,detail) VALUES (18,'ECP_branch & doc-type,'update one doc-type ECP in one branch');
+-- many other related to different branches and doc-types
+
+CREATE TABLE UpdateParameterList (   -- list of parameter changes for updating all relevant AL/ECP at more idle times
+    ID TINYINT UNSIGNED NOT NULL,  -- parameter type for the same update steps
+    bID INT UNSIGNED NOT NULL default 0,   -- branch ID, 0=all
+    doctype TINYINT UNSIGNED NOT NULL default 0,  -- doc-type ID, 0=all
+    FOREIGN KEY (ID) REFERENCES UpdateParaTypes(ID),
+    FOREIGN KEY (bID) REFERENCES ResearchBranches(bID),
+    FOREIGN KEY (doctype) REFERENCES DocTypes(ID),
+    PRIMARY KEY (mID, bID, doctype)
+);
+
+
+-- stored procedures and functions
+
+CREATE FUNCTION AL_alloc (s DOUBLE, duty TINYINT UNSIGNED)  -- allocation of AL value according to author's contribution/duty
+RETURNS DOUBLE DETERMINISTIC
+BEGIN
+    DECLARE p,c1,c2,,lnp,del,cap DOUBLE;
+    IF duty = 100 THEN RETURN s;
+    ELSEIF duty < 10 THEN RETURN 0e0;
+    ELSE
+      p = CAST(duty AS DOUBLE)/100e0;
+      lnp = LN(p);
+      c1 = lnp/(p-1e0)-0.5e0;
+      c2 = c1 + 1e0;
+      del = LEAST(0.5e0, lnp*(1e0-1e0/LN(2)));
+      cap = 5e0 + lnp/ LN(2);
+      c3 = cap - del - lnp;
+      c4 = c3 + 2e0 * del;
+      IF s<c1 THEN RETURN p*s;
+      ELSEIF s<c2 THEN RETURN p*lnp/(p-1e0)-0.5e0*p*POW(c2-s,2)+0.5e0*POW(s-c1,2);
+      ELSEIF s<c3 THEN RETURN s+lnp;
+      ELSEIF s<c4 THEN RETURN cap - POW(c4-s,2)/4e0/del;
+      ELSE RETURN cap;
+      END IF;
+    END IF;
+END;
+
+CREATE FUNCTION Fac_fo (ano TINYINT UNSIGNED)   -- openness factor
+RETURNS DOUBLE DETERMINISTIC
+RETURN CASE ano WHEN 1 THEN 1e0 WHEN 2 THEN 0.5e0 WHEN 3 THEN 0.5e0 WHEN 4 THEN 0.25e0 WHEN 5 THEN 0.25e0;
+
+CREATE FUNCTION Fac_fa (s DOUBLE)  -- attention factor
+RETURNS DOUBLE DETERMINISTIC
+RETURN IF(s<0e0, POW(2e0,-3e0*s-2), POW(2e0,s-2e0));
+
+CREATE FUNCTION Fac_febr (nthr INT UNSIGNED, n INT UNSIGNED)  -- rating
+RETURNS DOUBLE DETERMINISTIC
+RETURN IF(n<=nthr, 1e0, 0.5e0*SQRT(CAST(nthr AS DOUBLE)/CAST(n AS DOUBLE)));
+
+CREATE FUNCTION Fac_febc (nthr INT UNSIGNED, n INT UNSIGNED)  -- comment/review
+RETURNS DOUBLE DETERMINISTIC
+RETURN IF(n<=nthr/2, 1e0, IF(n<=nthr, EXP(-POW(CAST(n AS DOUBLE)/CAST(nthr AS DOUBLE)-0.5e0,2)), EXP(-0.25e0)*CAST(nthr AS DOUBLE)/CAST(n AS DOUBLE)));
+
+CREATE FUNCTION Fac_ft (tresp SMALLINT UNSIGNED, t INT UNSIGNED)
+RETURNS DOUBLE DETERMINISTIC
+RETURN IF(t <= tresp*1440, 1e0, IF(t <= tresp*2880, EXP(-0.125e0*POW(CAST(t AS DOUBLE)/CAST(tresp AS DOUBLE)/1440e0-1e0,2)), EXP(-0.125)*SQRT(2880e0*CAST(tresp AS DOUBLE)/CAST(t AS DOUBLE))));
+
+CREATE FUNCTION Fac_fd (rtype TINYINT UNSIGNED, s DOUBLE) -- rating
+RETURNS DOUBLE DETERMINISTIC
+BEGIN
+  IF rtype=1 THEN RETURN 0.4e0*POW(2e0,s-2e0);   -- with invited review
+  ELSEIF rtype=2 THEN RETURN 0.2e0*POW(2e0,s-2e0);  -- with contributed review
+  ELSEIF rtype=3 THEN RETURN 0.1e0*POW(2e0,s-2e0);  -- with creditable comment
+  ELSE RETURN 0.01e0;
+  END IF;
+END;
+
+CREATE FUNCTION Fac_rawreview (invited TINYINT, s DOUBLE) -- for raw ECP of reviews: a(sinh(b(<s>-c))+d)
+RETURNS DOUBLE DETERMINISTIC
+BEGIN
+  DECLARE x DOUBLE;
+  x = EXP(1.6e0*(s-1.5e0));
+  x = (x-1e0/x)*0.5e0 + 0.888e0;
+  RETURN IF(invited, 0.6e0*x, 0.4e0*x);
+END;
+
+CREATE FUNCTION Fac_rawrating (delS DOUBLE) -- raw ECP of a rating
+RETURNS DOUBLE DETERMINISTIC
+RETURN 1e0-2e0/3e0*ABS(delS);
+
+CREATE PROCEDURE UpdateComments1 ()  -- isolate the update table
+BEGIN
+    CREATE TABLE UpdateCommentList1 SELECT UpdateCommentList.cID, dID, ctype FROM UpdateCommentList INNER JOIN Comments ON UpdateCommentList.cID = Comments.cID ORDER BY dID;
+    TRUNCATE TABLE UpdateCommentList;
+    DELETE FROM UpdateCommentList1 WHERE (dID) IN (SELECT dID FROM UpdateDocList);  -- docs will be done later
+    CREATE TABLE UpdateRatingList1 (rID BIGINT UNSIGNED,mID BIGINT UNSIGNED,delS DOUBLE,Nth INT UNSIGNED,T INT UNSIGNED); -- create an empty rating list table
+END;
+
+CREATE PROCEDURE UpdateComments2 ()  -- do the actual update on comment ECP
+BEGIN
+    DECLARE dID0,dID1,rID1,mID1 BIGINT UNSIGNED default 0;
+    DECLARE Tresp1 SMALLINT UNSIGNED;
+    DECLARE S_ave1,Srev1,delS1,Smax1,Sp1,ecp1,fa1,fp1 DOUBLE;
+    DECLARE dtype1,ctype1,rtype1,ano1 TINYINT UNSIGNED;
+    DECLARE invited1, Srate1 TINYINT;
+    DECLARE t1,n1,nth1,nthr1,nthr2,nthr3 INT UNSIGNED;
+    DECLARE done TINYINT DEFAULT FALSE;
+    DECLARE cur1 CURSOR FOR SELECT cID, dID, ctype FROM UpdateCommentList1;
+    DECLARE cur2 CURSOR FOR SELECT rID, mID, delS, Nth, T FROM UpdateRatingList1;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+    OPEN cur1;
+    comm_loop: LOOP
+      FETCH cur1 INTO cID1, dID1, ctype1;
+      IF done THEN LEAVE comm_loop;
+      END IF;
+      IF dID1 != dID0 THEN  -- starting comments under a new doc
+        IF EXISTS (SELECT 1 FROM UpdateRatingList1) THEN  -- update ratings from the last doc
+          OPEN cur2;
+          rating_loop: LOOP
+            FETCH cur2 INTO rID1,mID1,delS1,nth1,t1;
+            IF done THEN LEAVE rating_loop;
+            END IF;
+            SET Srev1 = NULL;
+            SELECT srev,invited INTO Srev1,invited1 FROM SrevList WHERE dID = dID0 AND mID = mID1;
+            SET Smax1 = (SELECT smax FROM SmaxList WHERE dID = dID0 AND mID = mID1 ORDER BY smax DESC LIMIT 1);
+            SET ecp1 = fa1 * Fac_febr(5,nth1) * Fac_ft(Tresp1, t1) * fp1 * Fac_rawrating(delS1);
+            IF ISNULL(Srev1) THEN
+              IF ISNULL(Smax1) THEN SET ecp1 = ecp1 * Fac_fd(4,0); -- rating with no creditable contribution
+              ELSE SET ecp1 = ecp1 * Fac_fd(3, Smax1);  -- rating with creditable comments
+              END IF;
+            ELSEIF invited=1 THEN SET ecp1 = ecp1 * Fac_fd(1, Srev1);  -- rating with invited review
+            ELSE SET ecp1 = ecp1 * Fac_fd(2, Srev1);   -- rating with contributed review
+            END IF;
+            UPDATE CommentRatings SET ECP = ecp1 WHERE rID=rID1; -- update ECP of the rating
+          END LOOP rating_loop;
+          SET done = FALSE;
+          CLOSE cur2;
+        END IF;
+        TRUNCATE TABLE UpdateRatingList1;  -- empty the rating list
+        SET dID0 = dID1;
+        SELECT dtype, Tresp, S_ave INTO dtype1, Tresp1, Sp1 FROM Documents WHERE dID = dID1;
+        SET fa1 = Fac_fa(Sp1);
+        SELECT f_p INTO fp1 FROM DocTypes WHERE ID = dtype1;
+      END IF;
+      SELECT anonymity, Nth, T, S_ave INTO ano1, nth1, t1, S_ave1 FROM CRComments WHERE cID = cID1;
+      CASE ctype1 WHEN 1 THEN SET ecp1 = fa1 * Fac_febc(6, nth1) * Fac_ft(Tresp1, t1) * fp1 * Fac_rawreview(1, S_ave1);  -- invited review
+      WHEN 2 THEN SET ecp1 = fa1 * Fac_febc(10, nth1) * Fac_ft(Tresp1, t1) * fp1 * Fac_rawreview(0, S_ave1);  -- contributed review
+      WHEN 3 THEN SET ecp1 = Fac_fo(ano1) * Fac_febc(50, nth1) * Fac_ft(Tresp1, t1) * fp1 * (S_ave1-0.5e0);  -- creditable comment
+      END CASE;
+      UPDATE CRComments SET ECP = ecp1 WHERE cID=cID1;   -- update ECP of comment/review
+      -- update Srev/Smax first
+      IF ctype1=1 THEN
+        INSERT INTO SrevList (dID,mID,srev,invited) SELECT dID1,mID,AL_alloc(S_ave1,duty),1 FROM CommentAuthors WHERE cID=cID1 ON DUPLICATE KEY UPDATE srev=VALUES(srev), invited=VALUES(invited);
+      ELSEIF ctype1=2 THEN
+        INSERT INTO SrevList (dID,mID,srev,invited) SELECT dID1,mID,AL_alloc(S_ave1,duty),0 FROM CommentAuthors WHERE cID=cID1 ON DUPLICATE KEY UPDATE srev=VALUES(srev), invited=VALUES(invited);
+      ELSEIF ctype1=3 THEN
+        INSERT INTO SmaxList (dID,mID,cID,smax) SELECT dID1,mID,cID,AL_alloc(S_ave1,duty) FROM CommentAuthors WHERE cID=cID1 ON DUPLICATE KEY UPDATE smax=VALUES(smax);
+      END IF;
+      -- save the rating list to update their ECP
+      INSERT INTO UpdateRatingList1 (rID,mID,delS,Nth,T) SELECT rID,rater_ID,CAST(score AS DOUBLE)/10e0-S_ave1,Nth,T FROM CommentRatings WHERE cID = cID1;
+    END LOOP comm_loop;
+    CLOSE cur1;
+    DROP TABLE IF EXISTS UpdateCommentList1;
+    DROP TABLE IF EXISTS UpdateRatingList1;
+END;
+
+CREATE PROCEDURE UpdateComments ()  -- first do update on comments then do docs
+BEGIN
+    CALL UpdateComments1;
+    CALL UpdateComments2;
+END;
+
+-- -------------------------------------------------------------------------------------------
+-- below for future development: collaboration features (that could be charged to member institutions or depend on the tier of the institution membership), similar to overleaf, google doc, etc. for doc-drafts
+-- -------------------------------------------------------------------------------------------
+
+CREATE TABLE DocDrafts (  -- for future development on on-site collaborative research and related activities
+    dID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,    -- unique identifier of a parent document draft
+    dtype TINYINT UNSIGNED NOT NULL,          -- e.g., 'o-docs', 'r-docs', 'p-docs'
+    title TEXT COLLATE utf8mb4_general_ci NOT NULL,
+    abstract TEXT COLLATE utf8mb4_general_ci NOT NULL,
+    notes VARCHAR(255) COLLATE utf8mb4_general_ci,            -- page#, fig#, other brief comments or changes for new revision
+    full_text_url VARCHAR(255) COLLATE utf8mb4_general_ci,   -- Link to local PDF or full text document
+    submitter_ID BIGINT UNSIGNED NOT NULL,                                   -- member ID of the submitter
+    author_list JSON,        -- JSON array of member_IDs [name,id,significance_factor](author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author     -- more complex: {"authors" : [name, id, sigfactor, [list# of affiliations]], "affiliations": [order, name]}
+    submission_time DATETIME DEFAULT CURRENT_TIMESTAMP,   -- deadline for v-doc
+    last_revision_time DATETIME DEFAULT (submission_time),
+    last_update_time DATETIME DEFAULT (submission_time) ON UPDATE CURRENT_TIMESTAMP,
+    datetime_added DATETIME DEFAULT CURRENT_TIMESTAMP,   -- datetime added to database
+    full_text LONGTEXT COLLATE utf8mb4_general_ci,       -- Storing text content for search or retrieval (optional)
+    -- ... more metadata
+    FOREIGN KEY (dtype) REFERENCES DocTypes(ID),
+    FOREIGN KEY (submitter_ID) REFERENCES Members(mID),
+    INDEX (dtype),                            -- Index for document type filtering
+    INDEX (submitter_ID),
+    FULLTEXT INDEX (title, abstract)          -- Fulltext index for title/abstract search
+);
+
+CREATE TABLE CollTypes (   -- collaboration types or sizes
+    ID TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    ctname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
+    size INT UNSIGNED NOT NULL,  -- max number of members allowed
+    is_active TINYINT(1) NOT NULL default 1,  -- 0 means a decommissioned type
+    detail TEXT COLLATE utf8mb4_general_ci
+);
+INSERT INTO CollTypes (ID,ctname,size,is_active) VALUES (0,'DUMMY',0,0);
+INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (1,'Mini',10,'<10 members');
+INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (2,'Small',100,'<10^2 members');
+INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (3,'Medium',1000,'<10^3 members');
+INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (4,'Large',10000,'<10^4 members');
+INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (5,'Huge',100000,'<10^5 members');
+INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (6,'Million',1000000,'<10^6 members');
+INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (255,'Unlimited',4294967295,'no limit on member numbers');
+-- higher tier institutions can host larger collaborations (1 to 1 correspondence)
+
+CREATE TABLE Collaborations (       -- CORE collaborations
+    ID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    colltype TINYINT UNSIGNED NOT NULL, 
+    parent_ID BIGINT UNSIGNED default 0,           -- >0 if it is a sub-collaboration
+    collname VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL,
+    bID INT UNSIGNED NOT NULL,   -- branch ID
+    creator BIGINT UNSIGNED NOT NULL,     -- collaboration creator
+    is_active TINYINT(1) NOT NULL default 1,
+    email VARCHAR(254) COLLATE utf8mb4_general_ci,
+    contact VARCHAR(255) COLLATE utf8mb4_general_ci,
+    task TEXT COLLATE utf8mb4_general_ci,
+    UNIQUE (collname, bID),
+    FOREIGN KEY (colltype) REFERENCES CollTypes (ID),
+    FOREIGN KEY (creator) REFERENCES Members(mID),
+    FOREIGN KEY (bID) REFERENCES ResearchBranches(bID),
+    FOREIGN KEY (parent_ID) REFERENCES Collaborations(ID), -- Self-referencing for hierarchy
+    INDEX (colltype),
+    INDEX (bID)
+);
+INSERT INTO Collaborations (ID,colltype,collname,bID,creator,is_active) VALUES (0,0,'DUMMY',0,0,0);
+
+CREATE TABLE CollaborationMembers (    -- duty is optional
+    coll_ID BIGINT UNSIGNED NOT NULL,
+    mID BIGINT UNSIGNED NOT NULL,
+    duty TINYINT UNSIGNED,  -- Significance/responsibility/duty percentage in contribution normalized to 100% of 1st-class (PI), senior stuff (50%), key stuff (25%), general stuff (10%)
+    position VARCHAR(60) COLLATE utf8mb4_general_ci,    -- 'PI', 'senior', 'member', 'student'
+    admin_role SMALLINT UNSIGNED NOT NULL default 300,  -- 100=viewer, 300=editor (edit doc drafts and add references), 600=admin
+    start_date DATE DEFAULT CURRENT_DATE,
+    end_date DATE,
+    FOREIGN KEY (coll_ID) REFERENCES Collaborations(ID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    FOREIGN KEY (admin_role) REFERENCES AdminTypes (ID),
+    PRIMARY KEY (coll_ID, mID)
+);
+-- duty=100 (PI) and admin should have full control, editor can edit drafts and reference list
+
+CREATE TABLE CollaborationDocs (   -- published documents
+    coll_ID BIGINT UNSIGNED NOT NULL,
+    dID BIGINT UNSIGNED NOT NULL,
+    FOREIGN KEY (coll_ID) REFERENCES Collaborations(ID),
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    PRIMARY KEY (coll_ID, dID)
+);
+
+CREATE TABLE CollaborationDrafts (  -- doc drafts to be published
+    coll_ID BIGINT UNSIGNED NOT NULL,
+    dID BIGINT UNSIGNED NOT NULL,
+    FOREIGN KEY (coll_ID) REFERENCES Collaborations(ID),
+    FOREIGN KEY (dID) REFERENCES DocDrafts(dID),
+    PRIMARY KEY (coll_ID, dID)
+);
+
+CREATE TABLE CollaborationRefs (   -- references
+    coll_ID BIGINT UNSIGNED NOT NULL,
+    dID BIGINT UNSIGNED NOT NULL,
+    FOREIGN KEY (coll_ID) REFERENCES Collaborations(ID),
+    FOREIGN KEY (dID) REFERENCES Documents(dID),
+    PRIMARY KEY (coll_ID, dID)
+);
