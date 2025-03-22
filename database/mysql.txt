@@ -103,16 +103,57 @@ INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Earth Science', 'E
 INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Computer Science', 'Comp');
 INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Engineering and Technology', 'Engr');
 INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Social Science', 'Soc');
-INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Uncategorized', 'Uncat');
+INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Uncategorized', 'Uncat');  -- to be categorized in future, new directions
 INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Cross-Disciplinary', 'Cross');
 INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'Unknown/Undecided', 'Un');
 INSERT INTO ResearchBranches (btype, bname, abbr) VALUES (1, 'All Disciplines', 'All');
 -- Fields within Physics
 INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Nuclear and Particle Physics', 'Phys.NP' FROM ResearchBranches WHERE abbr = 'Phys';
 INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Condensed Matter Physics', 'Phys.CM' FROM ResearchBranches WHERE abbr = 'Phys';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Astrophysics & Astronomy', 'Phys.AA' FROM ResearchBranches WHERE abbr = 'Phys';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Atomic, Molecular, Optical & Quantum Physics', 'Phys.AMOQ' FROM ResearchBranches WHERE abbr = 'Phys';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Miscellaneous Physics', 'Phys.MISC' FROM ResearchBranches WHERE abbr = 'Phys';
 -- Areas within NP
 INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Experimental Nuclear Physics', 'Phys.NP.nucl-ex' FROM ResearchBranches WHERE abbr = 'Phys.NP';
 INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Nuclear Theory', 'Phys.NP.nucl-th' FROM ResearchBranches WHERE abbr = 'Phys.NP';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Experimental Particle Physics', 'Phys.NP.hep-ex' FROM ResearchBranches WHERE abbr = 'Phys.NP';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Particle Theory', 'Phys.NP.hep-th' FROM ResearchBranches WHERE abbr = 'Phys.NP';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'NP Instrumentation & Methods', 'Phys.NP.im' FROM ResearchBranches WHERE abbr = 'Phys.NP';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Accelerator Physics', 'Phys.NP.accel' FROM ResearchBranches WHERE abbr = 'Phys.NP';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'NP Other Areas', 'Phys.NP.other' FROM ResearchBranches WHERE abbr = 'Phys.NP';
+-- Areas within AA
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Cosmology', 'Phys.AA.cosmology' FROM ResearchBranches WHERE abbr = 'Phys.AA';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Galaxies', 'Phys.AA.galaxies' FROM ResearchBranches WHERE abbr = 'Phys.AA';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Stellar Physics & Astronomy', 'Phys.AA.stellar' FROM ResearchBranches WHERE abbr = 'Phys.AA';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Solar Physics', 'Phys.AA.solar' FROM ResearchBranches WHERE abbr = 'Phys.AA';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, '(Exo)Planets & Astrobiology)', 'Phys.AA.planetary' FROM ResearchBranches WHERE abbr = 'Phys.AA';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'High-Energy Astrophysical Processes
+& Phenomena', 'Phys.AA.highenergy' FROM ResearchBranches WHERE abbr = 'Phys.AA';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'AA Instrumentation & Methods', 'Phys.AA.im' FROM ResearchBranches WHERE abbr = 'Phys.AA';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'AA Other Areas', 'Phys.AA.other' FROM ResearchBranches WHERE abbr = 'Phys.AA';
+-- Areas within AMOQ
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Atomic Physics', 'Phys.AMOQ.atomic' FROM ResearchBranches WHERE abbr = 'Phys.AMOQ';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Optics', 'Phys.AMOQ.optics' FROM ResearchBranches WHERE abbr = 'Phys.AMOQ';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Molecular Physics', 'Phys.AMOQ.molecular' FROM ResearchBranches WHERE abbr = 'Phys.AMOQ';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Quantum Physics', 'Phys.AMOQ.quantum' FROM ResearchBranches WHERE abbr = 'Phys.AMOQ';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'AMOQ Other Areas', 'Phys.AMOQ.other' FROM ResearchBranches WHERE abbr = 'Phys.AMOQ';
+-- Areas within CM
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Superconductivity & Superfluidity', 'Phys.CM.sc' FROM ResearchBranches WHERE abbr = 'Phys.CM';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Strongly Correlated Electron Systems', 'Phys.CM.sces' FROM ResearchBranches WHERE abbr = 'Phys.CM';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Soft Matter', 'Phys.CM.soft' FROM ResearchBranches WHERE abbr = 'Phys.CM';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Disordered Systems', 'Phys.CM.disordered' FROM ResearchBranches WHERE abbr = 'Phys.CM';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Mesoscale & Nanoscale Physics', 'Phys.CM.nano' FROM ResearchBranches WHERE abbr = 'Phys.CM';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Statistical Physics', 'Phys.CM.stat' FROM ResearchBranches WHERE abbr = 'Phys.CM';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'CM Other Areas', 'Phys.CM.other' FROM ResearchBranches WHERE abbr = 'Phys.CM';
+-- Areas within MISC
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Biophysics', 'Phys.MISC.biophy' FROM ResearchBranches WHERE abbr = 'Phys.MISC';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Mathematical Physics', 'Phys.MISC.mathphy' FROM ResearchBranches WHERE abbr = 'Phys.MISC';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Chaos, Self-Organizing Systems & Nonlinear Physics', 'Phys.MISC.chaos' FROM ResearchBranches WHERE abbr = 'Phys.MISC';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Fluid Dynamics', 'Phys.MISC.fluid' FROM ResearchBranches WHERE abbr = 'Phys.MISC';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'MISC Other Areas', 'Phys.MISC.other' FROM ResearchBranches WHERE abbr = 'Phys.MISC';
+-- Other examples
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'History & Philosophy of Science', 'Cross.HPS' FROM ResearchBranches WHERE abbr = 'Cross';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Material Science', 'Cross.MS' FROM ResearchBranches WHERE abbr = 'Cross';
 
 CREATE TABLE BranchParameters (  -- parameters that depend on different research branches 
     pname VARCHAR(255) NOT NULL,
@@ -124,7 +165,7 @@ CREATE TABLE BranchParameters (  -- parameters that depend on different research
     PRIMARY KEY (pname, bID, valid)
 );
 -- initial double parameters
--- INSERT INTO DoubleParameters (pname,bID,pvalue) VALUES ('f_n',0,1);   -- default=1, insert only if not 1.
+-- INSERT INTO BranchParameters (pname,bID,pvalue) VALUES ('f_n',0,1);   -- default=1, insert only if not 1.
 
 
 -- Member-related tables
@@ -200,7 +241,7 @@ CREATE TABLE Members (
     INDEX (family_name, first_name)
 );
 INSERT INTO Members (mID,ID_alphanum,family_name,first_name,display_name,publication_name,
-    good,is_active,mrole,admin_role,AL,ECP) VALUES (0,'0','UNKNOWN','UNKNOWN','UNKNOWN','UNKNOWN',0,0,0,0,'',0);
+    good,is_active,mrole,admin_role,AL,ALS,ECP) VALUES (0,'0','UNKNOWN','UNKNOWN','UNKNOWN','UNKNOWN',0,0,0,0,'',0,0);
 -- after each INSERT, UPDATE Members SET ID_alphanum = CONV(mID,10,36) WHERE ID_alphanum IS NULL;
 -- can log in via ORCID, or ID_alphanum (stripped leading 0s and hyphens) / email + password
 -- to use a nice-looking member-ID in php and web display: wordwrap(str_pad(ID_alphanum,12,"0",STR_PAD_LEFT),4,"-",true), in php ID_alphanum = base_convert(mID,10,36)
@@ -310,13 +351,13 @@ CREATE TABLE Committees (       -- CORE committees
     email VARCHAR(254) COLLATE utf8mb4_general_ci,
     contact VARCHAR(255) COLLATE utf8mb4_general_ci,
     task TEXT COLLATE utf8mb4_general_ci,
-    UNIQUE (commname, bID),
+    UNIQUE (commname, commtype),
     FOREIGN KEY (commtype) REFERENCES CommTypes (ID),
     FOREIGN KEY (creator) REFERENCES Members(mID),
     FOREIGN KEY (parent_ID) REFERENCES Committees(ID), -- Self-referencing for hierarchy
     INDEX (commtype)
 );
-INSERT INTO Committees (ID,commtype,commname,bID,creator,is_active) VALUES (0,0,'DUMMY',0,0,0);
+INSERT INTO Committees (ID,commtype,commname,creator,is_active) VALUES (0,0,'DUMMY',0,0);
 
 CREATE TABLE CommitteeBranches (  -- a committee can be related to several branches or no branch at all
     comm_ID INT UNSIGNED NOT NULL,
@@ -418,8 +459,8 @@ CREATE TABLE DocTypeParameters (  -- parameters that depend on different doc typ
     PRIMARY KEY (pname, dtype, valid)
 );
 -- only insert newly modified parameters (initial ones in the table DocTypes)
--- INSERT INTO DoubleParameters (pname,dtype,pvalue,valid) VALUES ('f_p',1,1,NOW());
--- INSERT INTO DoubleParameters (pname,dtype,pvalue,valid) VALUES ('f_type',1,0.1,NOW());
+-- INSERT INTO DocTypeParameters (pname,dtype,pvalue,valid) VALUES ('f_p',1,1,NOW());
+-- INSERT INTO DocTypeParameters (pname,dtype,pvalue,valid) VALUES ('f_type',1,0.1,NOW());
 
 
 -- Document-related tables
@@ -470,11 +511,11 @@ CREATE TABLE ExternalTypes (
     is_active TINYINT(1) NOT NULL default 1,  -- 0 means a decommissioned type
     detail TEXT COLLATE utf8mb4_general_ci
 );
-INSERT INTO DocGoals (ID,etname,is_active) VALUES (0,'DUMMY',0);
-INSERT INTO DocGoals (ID,etname,detail) VALUES (1,'Journal','peer-reviewed journal publications');
-INSERT INTO DocGoals (ID,etname,detail) VALUES (2,'Preprint','various e-preprint services');
-INSERT INTO DocGoals (ID,etname,detail) VALUES (3,'Review/Comment','external review or comment links');
-INSERT INTO DocGoals (ID,etname,detail) VALUES (4,'MultiMedia','multimeida links');
+INSERT INTO ExternalTypes (ID,etname,is_active) VALUES (0,'DUMMY',0);
+INSERT INTO ExternalTypes (ID,etname,detail) VALUES (1,'Journal','peer-reviewed journal publications');
+INSERT INTO ExternalTypes (ID,etname,detail) VALUES (2,'Preprint','various e-preprint services');
+INSERT INTO ExternalTypes (ID,etname,detail) VALUES (3,'Review/Comment','external review or comment links');
+INSERT INTO ExternalTypes (ID,etname,detail) VALUES (4,'MultiMedia','multimeida links');
 -- maybe build a large source type table including all canonical/abbr names of journals, preprint services, and other sources
 
 CREATE TABLE ExternalDocs ( -- external DOIs/links/sources to documents (typically o/r-docs)
@@ -689,6 +730,7 @@ CREATE TABLE Comments (           -- submitter can not modify it any more, inclu
     FOREIGN KEY (ctype) REFERENCES CommentTypes(ID),
     FOREIGN KEY (dID) REFERENCES Documents(dID),
     FOREIGN KEY (submitter_ID) REFERENCES Members(mID),
+    FOREIGN KEY (visibility) REFERENCES VisibilityTypes (ID),
     FOREIGN KEY (parent_ID) REFERENCES Comments(cID), -- Self-referencing for replies
     INDEX (dID, ctype),
     INDEX (submitter_ID)
@@ -1546,8 +1588,8 @@ BEGIN
           END LOOP rating_loop;
           SET done = FALSE;
           CLOSE cur2;
+          TRUNCATE TABLE UpdateRatingList1;  -- empty the rating list
         END IF;
-        TRUNCATE TABLE UpdateRatingList1;  -- empty the rating list
         SET dID0 = dID1;
         SELECT dtype, Tresp, S_ave INTO dtype1, Tresp1, Sp1 FROM Documents WHERE dID = dID1;
         SET fa1 = Fac_fa(Sp1);
