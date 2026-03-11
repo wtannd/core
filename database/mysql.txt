@@ -8,6 +8,7 @@ SET sql_mode='NO_AUTO_VALUE_ON_ZERO';
 SET time_zone = '+00:00';    -- set time zone to UTC
 SET NAMES utf8mb4;
 
+DROP DATABASE IF EXISTS `core`;
 CREATE DATABASE IF NOT EXISTS `core` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 USE `core`;
 
@@ -73,7 +74,7 @@ CREATE TABLE BranchTypes (   -- Discipline.FIELD.area.Topic_Direction
 );
 INSERT INTO BranchTypes (ID,btname,is_active) VALUES (0,'DUMMY',0);
 INSERT INTO BranchTypes (ID,btname,detail) VALUES (1,'Discipline','top level branches; format: TitleCase; special: Cross, All');
-INSERT INTO BranchTypes (ID,btname,detail) VALUES (2,'Fieldre,'2nd level branches; format: ALLCAPS or ACRONYM; special: MISC');
+INSERT INTO BranchTypes (ID,btname,detail) VALUES (2,'Field','2nd level branches; format: ALLCAPS or ACRONYM; special: MISC');
 INSERT INTO BranchTypes (ID,btname,detail) VALUES (3,'Area','3rd level branches; format: all-lowercases; special: other');
 INSERT INTO BranchTypes (ID,btname,detail) VALUES (4,'Topic','4th level branches, format: Title_Case; no special one, all topics have to be specific');
 -- possible extensions include Focus, Question, etc. The new lower-level branches may have multiple parents instead of one.
@@ -222,8 +223,9 @@ CREATE TABLE Members (
     first_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL default '',    -- empty string '' if a member has no first name
     display_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL default (IF(first_name = '', family_name, CONCAT(first_name, ' ', family_name))),
     publication_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL default (IF(first_name = '', family_name, CONCAT(SUBSTRING(first_name,1,1),  '. ', family_name))),
-    email VARCHAR(254) COLLATE utf8mb4_general_ci UNIQUE,
-    pass VARCHAR(255) COLLATE utf8mb4_general_ci,
+    email VARCHAR(254) COLLATE utf8mb4_general_ci UNIQUE,  -- unique email address for each member
+    pass VARCHAR(255),   -- password hash; ORCID authentication only if NULL
+    token VARCHAR(255),  -- for persistent logins; NULL represents an inactive user
     good TINYINT(1) NOT NULL default 1,             -- true for good standing
     is_active TINYINT(1) NOT NULL default 1,	    -- true for active member
     deceased TINYINT(1) NOT NULL default 0,
@@ -426,28 +428,28 @@ CREATE TABLE DocTypes (
 );
 -- if goal=3,4,255, then f_type=0
 INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,is_active) VALUES (0,'DUMMY','DMY',0,0,0,0);
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (1,'Original Research','o',1,1,0.1,'main document type for innovation');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (2,'Review, Expository, and Survey Articles','r',2,0.5,1,'');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (3,'Synthesized Achievements for Evaluation','a',1,0.25,0,'collection of o/r-docs');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (4,'Textbooks, Lectures, and Other Books','b',2,0.25,1,'non-original research');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (5,'Conference/Meeting/School Organization','c',2,0.1,0.25,'conferences, meetings, workshops, summer schools');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (6,'Discussions on Community Issues','d',2,0.5,0.1,'forums in CORE community');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (7,'Pop-Science Essays','e',2,0.1,0.25,'for general audiences');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (8,'Applications for Funding Facility-Oriented Programs','f',3,0.5,0,'Large projects for building new facilities, establishing new centers or collaboration networks');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (9,'Applications for Funding Project-Oriented Original Research','p',3,1,0,'emphasis on high-risk high-reward projects');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (10,'Applications for Funding R&D Quests','q',3,0.5,0,'building high-precision/cutting-edge experimental equipment and reaching the limits of measurements');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (11,'Applications for Funding Service/Support Activities','s',3,0.5,0,'meetings, etc.');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (12,'Applications for Time Allocation at Research Facilities','t',4,0.5,0,'access to user facilities');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (13,'Open Source Scientific Softwares','u',2,0.5,1,'codes for end users; highly rated ones could be funded');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (14,'Open Experimental Equipment','x',2,0.5,1,'encourage sharing of experimental equipment');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (15,'Voting for Election and Awards','v',2,0.1,0.1,'including committee work, nomination, comments, and actual votes');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (16,'White Papers and Other Official Reports from CORE committees','w',2,0.25,0.5,'important for mainstream research');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (17,'Issues and/or Bugs in the CORE System','i',2,0.5,0.1,'for the website and databases of CORE');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (18,'New Suggestions for the CORE System','n',2,0.5,0.1,'request for new features, modifications to improve CORE');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (19,'Moderation Decisions and Investigation Reports','m',2,0.25,0.25,'acknowledge contributions from moderators');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (253,'Other Service Documents','zx',2,0.1,0.1,'to earn ECP in other ways');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (254,'Applications for Other Funding Opportunities','zy',3,0.1,0,'seeking other funding possibilities');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,text) VALUES (255,'Miscellaneous Documents','zz',255,0.1,0,'seeking other benefits and resources');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (1,'Original Research','o',1,1,0.1,'main document type for innovation');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (2,'Review, Expository, and Survey Articles','r',2,0.5,1,'');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (3,'Synthesized Achievements for Evaluation','a',1,0.25,0,'collection of o/r-docs');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (4,'Textbooks, Lectures, and Other Books','b',2,0.25,1,'non-original research');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (5,'Conference/Meeting/School Organization','c',2,0.1,0.25,'conferences, meetings, workshops, summer schools');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (6,'Discussions on Community Issues','d',2,0.5,0.1,'forums in CORE community');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (7,'Pop-Science Essays','e',2,0.1,0.25,'for general audiences');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (8,'Applications for Funding Facility-Oriented Programs','f',3,0.5,0,'Large projects for building new facilities, establishing new centers or collaboration networks');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (9,'Applications for Funding Project-Oriented Original Research','p',3,1,0,'emphasis on high-risk high-reward projects');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (10,'Applications for Funding R&D Quests','q',3,0.5,0,'building high-precision/cutting-edge experimental equipment and reaching the limits of measurements');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (11,'Applications for Funding Service/Support Activities','s',3,0.5,0,'meetings, etc.');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (12,'Applications for Time Allocation at Research Facilities','t',4,0.5,0,'access to user facilities');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (13,'Open Source Scientific Softwares','u',2,0.5,1,'codes for end users; highly rated ones could be funded');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (14,'Open Experimental Equipment','x',2,0.5,1,'encourage sharing of experimental equipment');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (15,'Voting for Election and Awards','v',2,0.1,0.1,'including committee work, nomination, comments, and actual votes');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (16,'White Papers and Other Official Reports from CORE committees','w',2,0.25,0.5,'important for mainstream research');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (17,'Issues and/or Bugs in the CORE System','i',2,0.5,0.1,'for the website and databases of CORE');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (18,'New Suggestions for the CORE System','n',2,0.5,0.1,'request for new features, modifications to improve CORE');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (19,'Moderation Decisions and Investigation Reports','m',2,0.25,0.25,'acknowledge contributions from moderators');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (253,'Other Service Documents','zx',2,0.1,0.1,'to earn ECP in other ways');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (254,'Applications for Other Funding Opportunities','zy',3,0.1,0,'seeking other funding possibilities');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (255,'Miscellaneous Documents','zz',255,0.1,0,'seeking other benefits and resources');
 
 CREATE TABLE DocTypeParameters (  -- parameters that depend on different doc types 
     pname VARCHAR(255) NOT NULL,
@@ -495,12 +497,12 @@ CREATE TABLE Documents (
     -- ... more metadata
     FOREIGN KEY (dtype) REFERENCES DocTypes(ID),
     FOREIGN KEY (submitter_ID) REFERENCES Members(mID),
-    FOREIGN KEY (visibility) REFERENCES VisibilityTypes (ID),
+    FOREIGN KEY (visibility) REFERENCES VisibilityTypes(ID),
     INDEX (dtype),                            -- Index for document type filtering
     INDEX (submitter_ID),
     FULLTEXT INDEX (title, abstract)          -- Fulltext index for title/abstract search
 );
-INSERT INTO Documents (dID,ID_alphanum,dtype,title,abstract,submitter_ID,visibility) VALUES (0,'0',0,'DUMMY','DUMMY',0,100);
+INSERT INTO Documents (dID,ID_alphanum,dtype,title,abstract,submitter_ID,visibility,submission_time) VALUES (0,'0',0,'DUMMY','DUMMY',0,100,'0000-00-00');
 -- update revision_history before insert a new revision: UPDATE Documents SET revision_history = JSON_ARRAY_APPEND(revision_history, '$', JSON_ARRAY(version, last_revision_time, notes, full_text_url));
 -- after each INSERT, UPDATE Documents SET ID_alphanum = CONV(dID,10,36) WHERE ID_alphanum IS NULL;
 -- overall_ columns saved to a separate table (nphase=0), previous phases need to be recalculated according to reset_time
@@ -525,8 +527,8 @@ CREATE TABLE ExternalDocs ( -- external DOIs/links/sources to documents (typical
     src VARCHAR(60) COLLATE utf8mb4_general_ci NOT NULL,    -- source name like PRL, arXiv, etc; could be inferred directly from the doi/url link
     link VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL,  -- doi, url links
     FOREIGN KEY (dID) REFERENCES Documents(dID),
-    FOREIGN KEY (ext_type) ExternalTypes (ID),
-    UNIQUE (dID, ext-type, src)
+    FOREIGN KEY (ext_type) REFERENCES ExternalTypes(ID),
+    UNIQUE (dID, ext_type, src)
 );
 
 
@@ -578,9 +580,9 @@ CREATE TABLE mwDocs ( -- extra information for m/w-docs, final report submitted 
 CREATE TABLE vDocs ( -- extra information for v-docs
     dID BIGINT UNSIGNED UNIQUE NOT NULL,
     comm_ID INT UNSIGNED NOT NULL,
-    deadline DATETIME DEFAULT NOT NULL,
-    eligibility TEXT COLLATE utf8mb4_general_ci, -- requirments on who can be a candidate (ECP,AL,bID,mrole), forming a mysql query string, or a fixed list
-    condition TEXT COLLATE utf8mb4_general_ci, -- requirements on who can vote (ECP,AL,bID,mrole), forming a mysql query string, this committee only, or other selected list of member IDs.
+    deadline DATETIME NOT NULL,
+    eligibility TEXT COLLATE utf8mb4_general_ci, -- requirements on who can be a candidate (ECP,AL,bID,mrole), forming a mysql query string, or a fixed list
+    vote_right TEXT COLLATE utf8mb4_general_ci,  -- requirements on who can vote (ECP,AL,bID,mrole), forming a mysql query string, this committee only, or other selected list of member IDs.
     FOREIGN KEY (dID) REFERENCES Documents(dID),
     FOREIGN KEY (comm_ID) REFERENCES Committees(ID),
     INDEX (comm_ID)
@@ -760,6 +762,7 @@ CREATE TABLE CRComments (      -- extra information for creditable comments / co
 --    INDEX (dID, ID_num)
 );
 
+DELIMITER // -- Temporarily change delimiter to allow ';' inside the procedure body
 CREATE TRIGGER trg_crcomments
 BEFORE INSERT ON CRComments
 FOR EACH ROW
@@ -777,7 +780,8 @@ BEGIN
       SET NEW.ID_alphanum = CONV(nid,10,36);
       SET NEW.Nth = nnth;
       SET NEW.T = TIMESTAMPDIFF(MINUTE, ts0, ts1);
-END;
+END//
+DELIMITER ; -- Revert delimiter back to ';'
 
 CREATE TABLE CommentDrafts (  -- submitter can continue to modify it, the draft will be deleted once it is published
     cID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
@@ -882,16 +886,17 @@ CREATE TABLE DocRatings (       -- for rating parent documents
 -- 
 -- e.g., INSERT INTO DocRatings (dID, rater_ID, num, score, pscore1, pscore2, pscore3, Nth, T) VALUES (...);
 
+DELIMITER // -- Temporarily change delimiter to allow ';' inside the procedure body
 CREATE TRIGGER trg_docratings
 AFTER INSERT ON DocRatings
 FOR EACH ROW
 BEGIN
       DECLARE nrate INT UNSIGNED;
-      UPDATE Documents SET S_ave = (S_ave * Ntot_ratings + New.score) / (Ntot_ratings + 1), Ntot_ratings = (nrate := Ntot_ratings + 1)  WHERE dID = NEW.dID;
+      UPDATE Documents SET S_ave = (S_ave * Ntot_ratings + New.score) / (Ntot_ratings + 1), nrate = Ntot_ratings, Ntot_ratings = (Ntot_ratings + 1)  WHERE dID = NEW.dID;
       UPDATE FundingProposals SET S1 = IFNULL((New.pscore1 + S1 * N1) / (N1 + 1), S1), N1 = N1 + (New.pscore1 IS NOT NULL), S2 = IFNULL((New.pscore2 + S2 * N2) / (N2 + 1), S2), N2 = N2 + (New.pscore2 IS NOT NULL), S3 = IFNULL((New.pscore3 + S3 * N3) / (N3 + 1), S3), N3 = N3 + (New.pscore3 IS NOT NULL) WHERE dID = NEW.dID;
       IF nrate>=5 THEN INSERT INTO UpdateDocList (dID) VALUES (NEW.dID) ON DUPLICATE KEY UPDATE dID=dID;
       END IF;
-END;
+END//
 
 CREATE TRIGGER trg1_docratings
 BEFORE INSERT ON DocRatings
@@ -904,7 +909,8 @@ BEGIN
       SET NEW.Nth = nnth+1;
       SET NEW.ts = NOW();
       SET NEW.T = TIMESTAMPDIFF(MINUTE, ts0, NEW.ts);
-END;
+END//
+DELIMITER ; -- Revert delimiter back to ';'
 
 CREATE TABLE CommentRatings (            -- for rating comments / reviews
     rID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
@@ -924,15 +930,16 @@ CREATE TABLE CommentRatings (            -- for rating comments / reviews
     INDEX (rater_ID)                             -- Index for user's rating history
 );
 
+DELIMITER // -- Temporarily change delimiter to allow ';' inside the procedure body
 CREATE TRIGGER trg_commentratings
 AFTER INSERT ON CommentRatings
 FOR EACH ROW
 BEGIN
       DECLARE nrate INT UNSIGNED;
-      UPDATE CRComments SET S_ave = (S_ave * N_ratings + New.score) / (N_ratings + 1), N_ratings = (nrate := N_ratings + 1)  WHERE cID = NEW.cID;
+      UPDATE CRComments SET S_ave = (S_ave * N_ratings + New.score) / (N_ratings + 1), nrate = Ntot_ratings, N_ratings = (N_ratings + 1)  WHERE cID = NEW.cID;
       IF nrate>=5 THEN INSERT INTO UpdateCommentList (cID) VALUES (NEW.cID) ON DUPLICATE KEY UPDATE cID=cID;
-      END IF
-END;
+      END IF;
+END//
 
 CREATE TRIGGER trg1_commentratings
 BEFORE INSERT ON CommentRatings
@@ -947,7 +954,8 @@ BEGIN
       SET NEW.Nth = nnth+1;
       SET NEW.ts = NOW();
       SET NEW.T = TIMESTAMPDIFF(MINUTE, ts0, NEW.ts);
-END;
+END//
+DELIMITER ; -- Revert delimiter back to ';'
 
 CREATE TABLE DocRatingPhases (   -- saved past phases and overall numbers
     rID BIGINT UNSIGNED NOT NULL,
@@ -1445,20 +1453,20 @@ CREATE TABLE UpdateParaTypes (   -- types of parameter changes that need to be u
     is_active TINYINT(1) NOT NULL default 1,   -- 0 means a decommissioned type
     detail TEXT COLLATE utf8mb4_general_ci
 );
-INSERT INTO UpdateTypes (ID,utname,is_active) VALUES (0,'DUMMY',0);
-INSERT INTO UpdateTypes (ID,utname,detail) VALUES (1,'all','update all AL and ECP calculations');
-INSERT INTO UpdateTypes (ID,utname,detail) VALUES (2,'AL','update all AL calculations');
-INSERT INTO UpdateTypes (ID,utname,detail) VALUES (3,'AL_a-doc','update AL for a-docs');
-INSERT INTO UpdateTypes (ID,utname,detail) VALUES (4,'AL_one branch','update one branch AL');
-INSERT INTO UpdateTypes (ID,utname,detail) VALUES (10,'ECP','update all ECP calculations');
-INSERT INTO UpdateTypes (ID,utname,detail) VALUES (11,'ECP_docs','update ECP of all docs');
-INSERT INTO UpdateTypes (ID,utname,detail) VALUES (12,'ECP_invited','update ECP of invited reviews');
-INSERT INTO UpdateTypes (ID,utname,detail) VALUES (13,'ECP_contributed','update ECP of contributed reviews');
-INSERT INTO UpdateTypes (ID,utname,detail) VALUES (14,'ECP_comments','update ECP of creditable comments');
-INSERT INTO UpdateTypes (ID,utname,detail) VALUES (15,'ECP_ratings','update all rating ECP calculations');
-INSERT INTO UpdateTypes (ID,utname,detail) VALUES (16,'ECP_one branch','update one branch ECP');
-INSERT INTO UpdateTypes (ID,utname,detail) VALUES (17,'ECP_one doc-type,'update one doc-type ECP');
-INSERT INTO UpdateTypes (ID,utname,detail) VALUES (18,'ECP_branch & doc-type,'update one doc-type ECP in one branch');
+INSERT INTO UpdateParaTypes (ID,utname,is_active) VALUES (0,'DUMMY',0);
+INSERT INTO UpdateParaTypes (ID,utname,detail) VALUES (1,'all','update all AL and ECP calculations');
+INSERT INTO UpdateParaTypes (ID,utname,detail) VALUES (2,'AL','update all AL calculations');
+INSERT INTO UpdateParaTypes (ID,utname,detail) VALUES (3,'AL_a-doc','update AL for a-docs');
+INSERT INTO UpdateParaTypes (ID,utname,detail) VALUES (4,'AL_one branch','update one branch AL');
+INSERT INTO UpdateParaTypes (ID,utname,detail) VALUES (10,'ECP','update all ECP calculations');
+INSERT INTO UpdateParaTypes (ID,utname,detail) VALUES (11,'ECP_docs','update ECP of all docs');
+INSERT INTO UpdateParaTypes (ID,utname,detail) VALUES (12,'ECP_invited','update ECP of invited reviews');
+INSERT INTO UpdateParaTypes (ID,utname,detail) VALUES (13,'ECP_contributed','update ECP of contributed reviews');
+INSERT INTO UpdateParaTypes (ID,utname,detail) VALUES (14,'ECP_comments','update ECP of creditable comments');
+INSERT INTO UpdateParaTypes (ID,utname,detail) VALUES (15,'ECP_ratings','update all rating ECP calculations');
+INSERT INTO UpdateParaTypes (ID,utname,detail) VALUES (16,'ECP_one branch','update one branch ECP');
+INSERT INTO UpdateParaTypes (ID,utname,detail) VALUES (17,'ECP_one doc-type','update one doc-type ECP');
+INSERT INTO UpdateParaTypes (ID,utname,detail) VALUES (18,'ECP_branch & doc-type','update one doc-type ECP in one branch');
 -- many other related to different branches and doc-types
 
 CREATE TABLE UpdateParameterList (   -- list of parameter changes for updating all relevant AL/ECP at more idle times
@@ -1468,27 +1476,28 @@ CREATE TABLE UpdateParameterList (   -- list of parameter changes for updating a
     FOREIGN KEY (ID) REFERENCES UpdateParaTypes(ID),
     FOREIGN KEY (bID) REFERENCES ResearchBranches(bID),
     FOREIGN KEY (doctype) REFERENCES DocTypes(ID),
-    PRIMARY KEY (mID, bID, doctype)
+    PRIMARY KEY (ID, bID, doctype)
 );
 
 
 -- stored procedures and functions
 
+DELIMITER // -- Temporarily change delimiter to allow ';' inside the procedure body
 CREATE FUNCTION AL_alloc (s DOUBLE, duty TINYINT UNSIGNED)  -- allocation of AL value according to author's contribution/duty
 RETURNS DOUBLE DETERMINISTIC
 BEGIN
-    DECLARE p,c1,c2,,lnp,del,cap DOUBLE;
+    DECLARE p,c1,c2,c3,c4,lnp,del,cap DOUBLE;
     IF duty = 100 THEN RETURN s;
     ELSEIF duty < 10 THEN RETURN 0e0;
     ELSE
-      p = CAST(duty AS DOUBLE)/100e0;
-      lnp = LN(p);
-      c1 = lnp/(p-1e0)-0.5e0;
-      c2 = c1 + 1e0;
-      del = LEAST(0.5e0, lnp*(1e0-1e0/LN(2)));
-      cap = 5e0 + lnp/ LN(2);
-      c3 = cap - del - lnp;
-      c4 = c3 + 2e0 * del;
+      SET p = CAST(duty AS DOUBLE)/100e0;
+      SET lnp = LN(p);
+      SET c1 = lnp/(p-1e0)-0.5e0;
+      SET c2 = c1 + 1e0;
+      SET del = LEAST(0.5e0, lnp*(1e0-1e0/LN(2)));
+      SET cap = 5e0 + lnp/ LN(2);
+      SET c3 = cap - del - lnp;
+      SET c4 = c3 + 2e0 * del;
       IF s<c1 THEN RETURN p*s;
       ELSEIF s<c2 THEN RETURN p*lnp/(p-1e0)-0.5e0*p*POW(c2-s,2)+0.5e0*POW(s-c1,2);
       ELSEIF s<c3 THEN RETURN s+lnp;
@@ -1496,11 +1505,12 @@ BEGIN
       ELSE RETURN cap;
       END IF;
     END IF;
-END;
+END//
+DELIMITER ; -- Revert delimiter back to ';'
 
 CREATE FUNCTION Fac_fo (ano TINYINT UNSIGNED)   -- openness factor
 RETURNS DOUBLE DETERMINISTIC
-RETURN CASE ano WHEN 1 THEN 1e0 WHEN 2 THEN 0.5e0 WHEN 3 THEN 0.5e0 WHEN 4 THEN 0.25e0 WHEN 5 THEN 0.25e0;
+RETURN CASE ano WHEN 1 THEN 1e0 WHEN 2 THEN 0.5e0 WHEN 3 THEN 0.5e0 WHEN 4 THEN 0.25e0 WHEN 5 THEN 0.25e0 ELSE 0e0 END;
 
 CREATE FUNCTION Fac_fa (s DOUBLE)  -- attention factor
 RETURNS DOUBLE DETERMINISTIC
@@ -1518,6 +1528,7 @@ CREATE FUNCTION Fac_ft (tresp SMALLINT UNSIGNED, t INT UNSIGNED)
 RETURNS DOUBLE DETERMINISTIC
 RETURN IF(t <= tresp*1440, 1e0, IF(t <= tresp*2880, EXP(-0.125e0*POW(CAST(t AS DOUBLE)/CAST(tresp AS DOUBLE)/1440e0-1e0,2)), EXP(-0.125)*SQRT(2880e0*CAST(tresp AS DOUBLE)/CAST(t AS DOUBLE))));
 
+DELIMITER // -- Temporarily change delimiter to allow ';' inside the procedure body
 CREATE FUNCTION Fac_fd (rtype TINYINT UNSIGNED, s DOUBLE) -- rating
 RETURNS DOUBLE DETERMINISTIC
 BEGIN
@@ -1526,32 +1537,34 @@ BEGIN
   ELSEIF rtype=3 THEN RETURN 0.1e0*POW(2e0,s-2e0);  -- with creditable comment
   ELSE RETURN 0.01e0;
   END IF;
-END;
+END//
 
 CREATE FUNCTION Fac_rawreview (invited TINYINT, s DOUBLE) -- for raw ECP of reviews: a(sinh(b(<s>-c))+d)
 RETURNS DOUBLE DETERMINISTIC
 BEGIN
   DECLARE x DOUBLE;
-  x = EXP(1.6e0*(s-1.5e0));
-  x = (x-1e0/x)*0.5e0 + 0.888e0;
+  SET x = EXP(1.6e0*(s-1.5e0));
+  SET x = (x-1e0/x)*0.5e0 + 0.888e0;
   RETURN IF(invited, 0.6e0*x, 0.4e0*x);
-END;
+END//
+DELIMITER ; -- Revert delimiter back to ';'
 
 CREATE FUNCTION Fac_rawrating (delS DOUBLE) -- raw ECP of a rating
 RETURNS DOUBLE DETERMINISTIC
 RETURN 1e0-2e0/3e0*ABS(delS);
 
+DELIMITER // -- Temporarily change delimiter to allow ';' inside the procedure body
 CREATE PROCEDURE UpdateComments1 ()  -- isolate the update table
 BEGIN
     CREATE TABLE UpdateCommentList1 SELECT UpdateCommentList.cID, dID, ctype FROM UpdateCommentList INNER JOIN Comments ON UpdateCommentList.cID = Comments.cID ORDER BY dID;
     TRUNCATE TABLE UpdateCommentList;
     DELETE FROM UpdateCommentList1 WHERE (dID) IN (SELECT dID FROM UpdateDocList);  -- docs will be done later
     CREATE TABLE UpdateRatingList1 (rID BIGINT UNSIGNED,mID BIGINT UNSIGNED,delS DOUBLE,Nth INT UNSIGNED,T INT UNSIGNED); -- create an empty rating list table
-END;
+END//
 
 CREATE PROCEDURE UpdateComments2 ()  -- do the actual update on comment ECP
 BEGIN
-    DECLARE dID0,dID1,rID1,mID1 BIGINT UNSIGNED default 0;
+    DECLARE dID0,dID1,cID1,rID1,mID1 BIGINT UNSIGNED default 0;
     DECLARE Tresp1 SMALLINT UNSIGNED;
     DECLARE S_ave1,Srev1,delS1,Smax1,Sp1,ecp1,fa1,fp1 DOUBLE;
     DECLARE dtype1,ctype1,rtype1,ano1 TINYINT UNSIGNED;
@@ -1581,7 +1594,7 @@ BEGIN
               IF ISNULL(Smax1) THEN SET ecp1 = ecp1 * Fac_fd(4,0); -- rating with no creditable contribution
               ELSE SET ecp1 = ecp1 * Fac_fd(3, Smax1);  -- rating with creditable comments
               END IF;
-            ELSEIF invited=1 THEN SET ecp1 = ecp1 * Fac_fd(1, Srev1);  -- rating with invited review
+            ELSEIF invited1=1 THEN SET ecp1 = ecp1 * Fac_fd(1, Srev1);  -- rating with invited review
             ELSE SET ecp1 = ecp1 * Fac_fd(2, Srev1);   -- rating with contributed review
             END IF;
             UPDATE CommentRatings SET ECP = ecp1 WHERE rID=rID1; -- update ECP of the rating
@@ -1615,13 +1628,14 @@ BEGIN
     CLOSE cur1;
     DROP TABLE IF EXISTS UpdateCommentList1;
     DROP TABLE IF EXISTS UpdateRatingList1;
-END;
+END//
 
 CREATE PROCEDURE UpdateComments ()  -- first do update on comments then do docs
 BEGIN
     CALL UpdateComments1;
     CALL UpdateComments2;
-END;
+END//
+DELIMITER ; -- Revert delimiter back to ';'
 
 -- -------------------------------------------------------------------------------------------
 -- below for future development: collaboration features (that could be charged to member institutions or depend on the tier of the institution membership), similar to overleaf, google doc, etc. for doc-drafts
