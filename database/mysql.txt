@@ -77,7 +77,7 @@ INSERT INTO BranchTypes (ID,btname,detail) VALUES (1,'Discipline','top level bra
 INSERT INTO BranchTypes (ID,btname,detail) VALUES (2,'Field','2nd level branches; format: ALLCAPS or ACRONYM; special: MISC');
 INSERT INTO BranchTypes (ID,btname,detail) VALUES (3,'Area','3rd level branches; format: all-lowercases; special: other');
 INSERT INTO BranchTypes (ID,btname,detail) VALUES (4,'Topic','4th level branches, format: Title_Case; no special one, all topics have to be specific');
--- possible extensions include Focus, Question, etc. The new lower-level branches may have multiple parents instead of one.
+-- possible extensions include Focus, Question, etc. The new lower-level/special branches may have multiple parents instead of one.
 
 CREATE TABLE ResearchBranches (
     bID INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
@@ -171,18 +171,20 @@ CREATE TABLE BranchParameters (  -- parameters that depend on different research
 
 -- Member-related tables
 
-CREATE TABLE RoleTypes (  -- IDs in between major roles can be used for subtypes of a role, e.g., Member0-Member99
-    ID SMALLINT UNSIGNED PRIMARY KEY,
+CREATE TABLE RoleTypes (  -- IDs in between major roles can be used for subtypes of a role, e.g., Member0-Member9
+    ID TINYINT UNSIGNED PRIMARY KEY,
     rtname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
     is_active TINYINT(1) NOT NULL default 1,    -- 0 means a decommissioned type
     detail TEXT COLLATE utf8mb4_general_ci
 );
 INSERT INTO RoleTypes (ID,rtname,is_active) VALUES (0,'DUMMY',0);
-INSERT INTO RoleTypes (ID,rtname,detail) VALUES (100,'Member','entry-level membership');
-INSERT INTO RoleTypes (ID,rtname,detail) VALUES (200,'Reader','eligible to reivew and rate on a topic');
-INSERT INTO RoleTypes (ID,rtname,detail) VALUES (300,'Reviewer','eligible to reivew and rate in an area');
-INSERT INTO RoleTypes (ID,rtname,detail) VALUES (400,'Moderator','eligible to moderate and chair committees in a field');
-INSERT INTO RoleTypes (ID,rtname,detail) VALUES (500,'Leader','eligible to lead and serve as board directors in a discipline');
+INSERT INTO RoleTypes (ID,rtname,detail) VALUES (1,'Guest','Visitor');
+INSERT INTO RoleTypes (ID,rtname,detail) VALUES (10,'Member','entry-level membership');
+INSERT INTO RoleTypes (ID,rtname,detail) VALUES (20,'Rater','eligible to review and rate on a topic');
+INSERT INTO RoleTypes (ID,rtname,detail) VALUES (30,'Reviewer','eligible to review and rate in an area');
+INSERT INTO RoleTypes (ID,rtname,detail) VALUES (40,'Moderator','eligible to moderate and chair committees in a field');
+INSERT INTO RoleTypes (ID,rtname,detail) VALUES (50,'Leader','eligible to lead and serve as board directors in a discipline');
+-- Rater and above must be identified by either affiliation or personal ID to prevent abuse of multiple IDs from a single person
 
 CREATE TABLE AdminTypes (  -- IDs in between major roles can be used for subtypes, e.g., Editor0-Editor99
     ID SMALLINT UNSIGNED PRIMARY KEY,
@@ -211,42 +213,53 @@ CREATE TABLE AuthorClasses (  -- fixed-scheme and variable-scheme, sum of all no
 INSERT INTO AuthorClasses (ID,acname,duty,is_active) VALUES (0,'DUMMY',0,0);
 INSERT INTO AuthorClasses (ID,acname,duty) VALUES (1,'1st',100);   -- 1st-class  100%
 INSERT INTO AuthorClasses (ID,acname,duty) VALUES (2,'2nd',50);    -- 2nd-class  50%
-INSERT INTO AuthorClasses (ID,acname,duty) VALUES (3,'3rd',25);     -- 3rd-class  25%
+INSERT INTO AuthorClasses (ID,acname,duty) VALUES (3,'3rd',25);    -- 3rd-class  25%
 INSERT INTO AuthorClasses (ID,acname,duty) VALUES (4,'gen',10);    -- general class   10%
-INSERT INTO AuthorClasses (ID,acname,duty_min,duty_max,is_fixed) VALUES (5,'v',20,99,0);   -- variable-class  20-99%
+INSERT INTO AuthorClasses (ID,acname,duty,duty_min,duty_max,is_fixed) VALUES (5,'var',75,20,99,0);   -- variable-class  20-99%
+
+CREATE TABLE Institutions ( -- top level institutions (no sub-units like departments should be included)
+    iID INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,  -- unique identifier for each institution
+    iname VARCHAR(255) COLLATE utf8mb4_general_ci UNIQUE NOT NULL   -- "University of Notre Dame (USA)"
+);
+INSERT INTO Institutions (iID,iname) VALUES (1,'Independent');
+INSERT INTO Institutions (iID,iname) VALUES (2,'University of Notre Dame (USA)');
+-- no leading 'the', no sub-units, should end with (country/region) for distinction.
 
 CREATE TABLE Members (
     mID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,          -- Unique identifier for each member
-    ID_alphanum VARCHAR(12) COLLATE ascii_general_ci UNIQUE, -- NOT NULL default (CONV(member_ID,10,36)), -- alphanumerical format of member_ID
+    ID_alphanum VARCHAR(9) COLLATE ascii_general_ci UNIQUE, -- NOT NULL default (CONV(member_ID,10,36)), -- alphanumerical format of member_ID; CORE-ID display format xxx-xxx-xxx
     ORCID CHAR(19) COLLATE ascii_general_ci UNIQUE,     -- ORCID ID as unique identifier
     family_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL,
     first_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL default '',    -- empty string '' if a member has no first name
-    display_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL default (IF(first_name = '', family_name, CONCAT(first_name, ' ', family_name))),
-    publication_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL default (IF(first_name = '', family_name, CONCAT(SUBSTRING(first_name,1,1),  '. ', family_name))),
+    display_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL default (IF(first_name = '', family_name, CONCAT(first_name, ' ', family_name))),    -- for display on the member page
+    pub_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL default (IF(first_name = '', family_name, CONCAT(SUBSTRING(first_name,1,1),  '. ', family_name))),   -- for use in publications
+    iID INT UNSIGNED NOT NULL default 1,  -- primary institution that the member is affiliated with; default='Independent'
     email VARCHAR(254) COLLATE utf8mb4_general_ci UNIQUE,  -- unique email address for each member
     pass VARCHAR(255),   -- password hash; ORCID authentication only if NULL
     token VARCHAR(255),  -- for persistent logins; NULL represents an inactive user
-    good TINYINT(1) NOT NULL default 1,             -- true for good standing
+    is_good TINYINT(1) NOT NULL default 1,          -- true for good standing
     is_active TINYINT(1) NOT NULL default 1,	    -- true for active member
-    deceased TINYINT(1) NOT NULL default 0,
-    mrole SMALLINT UNSIGNED NOT NULL default 100,    -- highest role: 100=member,200=reader,300=reviewer,400=moderator,500=leader
+    is_deceased TINYINT(1) NOT NULL default 0,
+    work_areas VARCHAR(255),       -- semicolon-separated IDs of branches that the member is working on; negative means not to show to the public
+    interest_areas VARCHAR(255),   -- semicolon-separated IDs of branches that the member is interested in and subscribes to; negative means not to show to the public
+    mrole TINYINT UNSIGNED NOT NULL default 10,   -- highest role: 10=member, 20=rater, 30=reviewer, 40=moderator, 50=leader
     admin_role SMALLINT UNSIGNED NOT NULL default 100,  -- 100=viewer, 200=updater, 300=editor, 400=senior editor, 500=chief editor, 600=administrator
     timezone VARCHAR(32) COLLATE utf8mb4_general_ci NOT NULL default '+00:00',  -- "Timezone/Location" format, default 'UTC'
 --  lang VARCHAR(32) COLLATE ascii_general_ci default 'en',
-    start_membership DATETIME DEFAULT CURRENT_TIMESTAMP,
+    start_membership DATETIME DEFAULT CURRENT_TIMESTAMP,    -- start time as a member in CORE
     AL VARCHAR(5) COLLATE ascii_general_ci NOT NULL default '0',   -- Achievement Level, e.g., "L2.5/3", "L-/999" (where 999 is the number difference between A- and A+ docs) without the leading 'L', -- Ln/m <=> alpha > m(6^(n+0.5)-1)
     ALS DOUBLE NOT NULL default 0,     -- achievement level score = alpha = top five + others (A>2.5)
     ECP DOUBLE NOT NULL DEFAULT 10e0,  -- Total Earned Credit Points (initially 10 points)
+    FOREIGN KEY (iID) REFERENCES Institutions (iID),
     FOREIGN KEY (mrole) REFERENCES RoleTypes (ID),
     FOREIGN KEY (admin_role) REFERENCES AdminTypes (ID),
     INDEX (mrole),
     INDEX (family_name, first_name)
 );
-INSERT INTO Members (mID,ID_alphanum,family_name,first_name,display_name,publication_name,
-    good,is_active,mrole,admin_role,AL,ALS,ECP) VALUES (0,'0','UNKNOWN','UNKNOWN','UNKNOWN','UNKNOWN',0,0,0,0,'',0,0);
+INSERT INTO Members (mID,ID_alphanum,family_name,first_name, display_name,pub_name, is_good,is_active, mrole,admin_role, AL,ALS,ECP) VALUES (0,'0','UNKNOWN','UNKNOWN','UNKNOWN','UNKNOWN',0,0,0,0,'',0,0);
 -- after each INSERT, UPDATE Members SET ID_alphanum = CONV(mID,10,36) WHERE ID_alphanum IS NULL;
 -- can log in via ORCID, or ID_alphanum (stripped leading 0s and hyphens) / email + password
--- to use a nice-looking member-ID in php and web display: wordwrap(str_pad(ID_alphanum,12,"0",STR_PAD_LEFT),4,"-",true), in php ID_alphanum = base_convert(mID,10,36)
+-- to use a nice-looking member-ID in php and web display: wordwrap(str_pad(ID_alphanum,9,"0",STR_PAD_LEFT),3,"-",true), in php ID_alphanum = base_convert(mID,10,36)
 
 CREATE TABLE MemberMetaKeys (  -- optional member information
     ID TINYINT UNSIGNED PRIMARY KEY,
@@ -256,7 +269,7 @@ CREATE TABLE MemberMetaKeys (  -- optional member information
 );
 INSERT INTO MemberMetaKeys (ID,mkname,is_active) VALUES (0,'DUMMY',0);
 INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (1,'full_name','Full Name');
-INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (2,'other_names','comma-separated other names');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (2,'other_names','semicolon-separated other names');
 INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (3,'prefix','Name Prefix');
 INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (4,'suffix','Name Suffix');
 INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (5,'positioin','job title');
@@ -264,10 +277,10 @@ INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (6,'affiliation','semicolon
 INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (7,'address','mailing address');
 INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (8,'url1','Professional HomePage');
 INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (9,'url2','Personal HomePage');
-INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (10,'education','semicolon-separated (year, degree, major, institution)');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (10,'education','semicolon-separated (year, degree, major, institution=iID)');
 INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (11,'cv','Link to CV');
 INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (12,'research_statement','Research Statement');
-INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (13,'interest_areas','Comma-separated research branch-IDs that the member is interested (subscribed for updates, private or public for display), no more than 10 IDs');
+INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (13,'other_interests','hobbies, leisure activities');
 INSERT INTO MemberMetaKeys (ID,mkname,detail) VALUES (14,'mstatus','self-claimed member status information (retired, on vacation, no access, etc.)');
 
 CREATE TABLE MemberMeta (  -- optional member information to be filled
@@ -284,13 +297,13 @@ CREATE TABLE MemberMeta (  -- optional member information to be filled
 
 CREATE TABLE MembershipHistory (  -- record starting time of roles above membership>100
     mID BIGINT UNSIGNED NOT NULL,
-    mrole SMALLINT UNSIGNED NOT NULL,
+    mrole TINYINT UNSIGNED NOT NULL,
     ts DATETIME DEFAULT CURRENT_TIMESTAMP,    -- starting time of this role
     FOREIGN KEY (mID) REFERENCES Members(mID),
     FOREIGN KEY (mrole) REFERENCES RoleTypes (ID),
     PRIMARY KEY (mID, mrole)
 );
--- e.g., INSERT INTO MembershipHistory (mID,mrole) VALUES (1,200);
+-- e.g., INSERT INTO MembershipHistory (mID,mrole) VALUES (1,20);
 
 CREATE TABLE ALSHistory ( -- weekly update if necessary
     ID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
@@ -310,10 +323,10 @@ CREATE TABLE ECPHistory ( -- weekly update if necessary
     INDEX (mID)
 );
 
-CREATE TABLE MemberRoles (     --  member list with their current role of readership or above for a given research branch
+CREATE TABLE MemberRoles (     --  member list with their current role of ratership or above for a given research branch
     mID BIGINT UNSIGNED NOT NULL,
     bID INT UNSIGNED NOT NULL,
-    mrole SMALLINT UNSIGNED NOT NULL,
+    mrole TINYINT UNSIGNED NOT NULL,
     ts DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (mID) REFERENCES Members(mID),
     FOREIGN KEY (bID) REFERENCES ResearchBranches(bID),
@@ -387,20 +400,25 @@ CREATE TABLE CommitteeMembers (    -- for non-general classes only, duty=20-100;
 
 -- DocType-related tables (including associated parameters)
 
-CREATE TABLE VisibilityTypes (
+CREATE TABLE VisibilityTypes (  -- for both documents and comments/reviews
     ID TINYINT UNSIGNED PRIMARY KEY,
     vtname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
     is_active TINYINT(1) NOT NULL default 1,  -- 0 means a decommissioned type
     detail TEXT COLLATE utf8mb4_general_ci
 );
-INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (99,'Visible to submitter only / Draft / Unpublished','also other 1st-authors');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (99,'Visible to submitter/authors only','for draft not ready for publication');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (89,'Rejected by moderation','Negative voting decision is made');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (80,'Under moderation','To be voted by raters+');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (60,'Ready to be announced','will be announced automatically after 24 hrs');
 INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (1,'Visible to all','Published and viewable by everybody');
-INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (2,'Visible to members','not shown to the general public');
-INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (3,'Visible to readers+','Readers and above can see');
-INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (4,'Visible to reviewers+','Reviewers and above');
-INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (5,'Visible to moderators+','Moderators and above');
-INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (6,'Visible to leaders+','Leaders and above');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (10,'Visible to members','not shown to the general public');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (20,'Visible to raters+','Raters and above can see');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (30,'Visible to reviewers+','Reviewers and above');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (40,'Visible to moderators+','Moderators and above');
+INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (50,'Visible to leaders+','Leaders and above');
 INSERT INTO VisibilityTypes (ID,vtname,detail) VALUES (100,'Visible to administrators only','System protected');
+-- <60 for announced items with DOIs; 90-99 for private purposes; 80-89 for items under moderation and unannounced that cannot be rated/commented, if approved, it will be set to 60; Announcement will be done through an auto-script after 24 hrs; revision history will be kept only after announcement.
+-- mrole >= visibility to view the announced document
 
 CREATE TABLE DocGoals (
     ID TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
@@ -469,20 +487,27 @@ CREATE TABLE DocTypeParameters (  -- parameters that depend on different doc typ
 
 CREATE TABLE Documents (
     dID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,    -- unique identifier of a parent document
-    ID_alphanum VARCHAR(12) COLLATE ascii_general_ci UNIQUE, -- NOT NULL default (CONV(parent_doc_ID,10,36)), -- alphanumerical format of parent_doc_ID
+    ID_mini INT UNSIGNED,   -- initially NULL, then calculated and assigned right before announcement
+    doi VARCHAR(15) COLLATE ascii_general_ci UNIQUE, -- initially NULL, then ={pubdate}.CONV(ID_mini,10,36) at announcement
+--    ID_alphanum VARCHAR(12) COLLATE ascii_general_ci UNIQUE, -- NOT NULL default (CONV(parent_doc_ID,10,36)), -- alphanumerical format of parent_doc_ID
     dtype TINYINT UNSIGNED NOT NULL,          -- e.g., 'o-docs', 'r-docs', 'p-docs'
     title TEXT COLLATE utf8mb4_general_ci NOT NULL,
     abstract TEXT COLLATE utf8mb4_general_ci NOT NULL,
-    notes VARCHAR(255) COLLATE utf8mb4_general_ci,            -- page#, fig#, other brief comments or changes for new revision
-    full_text_url VARCHAR(255) COLLATE utf8mb4_general_ci,   -- Link to local PDF or full text document
-    submitter_ID BIGINT UNSIGNED NOT NULL,                                   -- member ID of the submitter
-    author_list JSON,        -- JSON array of member_IDs [name,id,significance_factor](author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author     -- more complex: {"authors" : [name, id, sigfactor, [list# of affiliations]], "affiliations": [order, name]}
-    visibility TINYINT UNSIGNED NOT NULL default 1,   -- 99=visible to submitter/authors only (e.g., back to draft  or unpublished) , 1=visible to all, 2=visible to members, 3=visible to readers, 4=visible to reviewers, 5=visible to moderators, 6=visible to leaders, 100=visible to administrators only
-    submission_time DATETIME DEFAULT CURRENT_TIMESTAMP,   -- deadline for v-doc
-    last_revision_time DATETIME DEFAULT (submission_time),
-    last_update_time DATETIME DEFAULT (submission_time) ON UPDATE CURRENT_TIMESTAMP,
+    notes VARCHAR(255) COLLATE utf8mb4_general_ci,     -- page#, fig#, other brief comments or changes for new revision
+    ext_url VARCHAR(255) COLLATE utf8mb4_general_ci,   -- an external URL link is needed for most docs if no attachment
+--    full_text_url VARCHAR(255) COLLATE utf8mb4_general_ci,   -- Link to local PDF or full text document
+    submitter_ID BIGINT UNSIGNED NOT NULL,                   -- member ID of the submitter
+    author_list JSON,        -- JSON array of authors without affiliations: [[author_name=pub_name, mID , significance_factor=duty], ...] (author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author  -- more complex: {"authors" : [[pub_name, mID, duty, [list of order numbers of affiliations]], ...], "affiliations": [[order#, name], ...]}
+    visibility TINYINT UNSIGNED NOT NULL default 60,   -- 99=visible to submitter/authors only (for draft) , 1=visible to all, 10=visible to members, 20=visible to raters+, 30=visible to reviewers+, 40=visible to moderators+, 50=visible to leaders+, 100=visible to administrators only; default to 60=ready to be announced
+    has_file TINYINT UNSIGNED NOT NULL DEFAULT 0,   -- 0=no file attachment, 1=main.pdf, 2=main.pdf+suppl.pdf, 3=main.pdf+suppl.zip
+    datetime_added DATETIME DEFAULT CURRENT_TIMESTAMP,   -- datetime added to database
+    submission_time DATETIME DEFAULT (datetime_added),   -- datetime when it first got public for old doc / current time for new doc / deadline for v-doc
+    pubdate VARCHAR(8) COLLATE ascii_general_ci,         -- YYYYMMDD, YYYYMM, or YYYY derived from submission_time; should never change once assigned and announced so that it is consistent with doi
+    announce_time DATETIME,               -- initially NULL, set the time when announced (passed screening and assigned with doi etc.)
+    last_revision_time DATETIME DEFAULT (datetime_added), -- NULL if no pdf attached
+    last_update_time DATETIME DEFAULT (datetime_added) ON UPDATE CURRENT_TIMESTAMP,
     version TINYINT UNSIGNED NOT NULL default 1,   -- current version# starting with 1, maybe max of 16
-    revision_history JSON NOT NULL default ('[]'), -- (JSON_ARRAY(JSON_ARRAY(version, last_revision_time, notes, full_text_url or abstract for a-doc))),  -- JSON array to track revision history JSON_ARRAY(version, last_revision_time, notes, full_text_url or abstract for a-doc))   
+    revision_history JSON NOT NULL default ('[]'), -- (JSON_ARRAY(JSON_ARRAY(version, last_revision_time, notes))),  -- JSON array to track revision history JSON_ARRAY(version, last_revision_time, notes))   
     Tresp SMALLINT UNSIGNED NOT NULL default 14,   -- responding time for the f_t factor in unit of days (typically 2 weeks for 20 pages or less, additional 1 week per extra 10 pages)
     nphase TINYINT UNSIGNED NOT NULL DEFAULT 1,          -- current phase#
     reset_time DATETIME NOT NULL DEFAULT (submission_time),        -- starting time of this phase
@@ -492,19 +517,18 @@ CREATE TABLE Documents (
     Ntot_ratings INT UNSIGNED NOT NULL default 0,  -- total# of ratings during this phase
     S_ave DOUBLE NOT NULL default 0,     -- average rating (Aj for o-doc; Asyn for a-doc, <S> for others)
     ECP DOUBLE NOT NULL default 0,       -- ECP of this doc
-    datetime_added DATETIME DEFAULT CURRENT_TIMESTAMP,   -- datetime added to database
     full_text LONGTEXT COLLATE utf8mb4_general_ci,       -- Storing text content for search or retrieval (optional)
     -- ... more metadata
     FOREIGN KEY (dtype) REFERENCES DocTypes(ID),
     FOREIGN KEY (submitter_ID) REFERENCES Members(mID),
     FOREIGN KEY (visibility) REFERENCES VisibilityTypes(ID),
+    UNIQUE(pubdate,ID_mini),
     INDEX (dtype),                            -- Index for document type filtering
     INDEX (submitter_ID),
     FULLTEXT INDEX (title, abstract)          -- Fulltext index for title/abstract search
 );
-INSERT INTO Documents (dID,ID_alphanum,dtype,title,abstract,submitter_ID,visibility,submission_time) VALUES (0,'0',0,'DUMMY','DUMMY',0,100,'0000-00-00');
--- update revision_history before insert a new revision: UPDATE Documents SET revision_history = JSON_ARRAY_APPEND(revision_history, '$', JSON_ARRAY(version, last_revision_time, notes, full_text_url));
--- after each INSERT, UPDATE Documents SET ID_alphanum = CONV(dID,10,36) WHERE ID_alphanum IS NULL;
+INSERT INTO Documents (dID,dtype,title,abstract,submitter_ID,visibility,submission_time) VALUES (0,0,'DUMMY','DUMMY',0,100,'0000-00-00');
+-- update revision_history before insert a new revision: UPDATE Documents SET revision_history = JSON_ARRAY_APPEND(revision_history, '$', JSON_ARRAY(version, last_revision_time, notes));
 -- overall_ columns saved to a separate table (nphase=0), previous phases need to be recalculated according to reset_time
 
 CREATE TABLE ExternalTypes (
@@ -517,18 +541,29 @@ INSERT INTO ExternalTypes (ID,etname,is_active) VALUES (0,'DUMMY',0);
 INSERT INTO ExternalTypes (ID,etname,detail) VALUES (1,'Journal','peer-reviewed journal publications');
 INSERT INTO ExternalTypes (ID,etname,detail) VALUES (2,'Preprint','various e-preprint services');
 INSERT INTO ExternalTypes (ID,etname,detail) VALUES (3,'Review/Comment','external review or comment links');
-INSERT INTO ExternalTypes (ID,etname,detail) VALUES (4,'MultiMedia','multimeida links');
--- maybe build a large source type table including all canonical/abbr names of journals, preprint services, and other sources
+INSERT INTO ExternalTypes (ID,etname,detail) VALUES (4,'MultiMedia','multimedia links');
+
+-- build a large source list table including all canonical/abbr names of journals, preprint services, and other sources
+CREATE TABLE ExternalSources (
+    sID INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    ext_type TINYINT UNSIGNED NOT NULL,
+    esname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL, -- source name like PRL, arXiv, etc; could be inferred directly from the doi/url link
+    is_active TINYINT(1) NOT NULL default 1,  -- 0 means a decommissioned source
+    detail TEXT COLLATE utf8mb4_general_ci,
+    FOREIGN KEY (ext_type) REFERENCES ExternalTypes(ID)
+);
+INSERT INTO ExternalSources (sID,ext_type,esname,is_active) VALUES (0,0,'DUMMY',0);
+INSERT INTO ExternalSources (sID,ext_type,esname,detail) VALUES (1,1,'PRL','Physical Review Letters from APS');
+INSERT INTO ExternalSources (sID,ext_type,esname,detail) VALUES (2,2,'arXiv','arXiv.org');
 
 CREATE TABLE ExternalDocs ( -- external DOIs/links/sources to documents (typically o/r-docs)
     ID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     dID BIGINT UNSIGNED NOT NULL,
-    ext_type TINYINT UNSIGNED NOT NULL,
-    src VARCHAR(60) COLLATE utf8mb4_general_ci NOT NULL,    -- source name like PRL, arXiv, etc; could be inferred directly from the doi/url link
-    link VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL,  -- doi, url links
+    sID INT UNSIGNED NOT NULL,
+    link VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL,  -- doi (after https://doi.org/), url links (starting with http)
     FOREIGN KEY (dID) REFERENCES Documents(dID),
-    FOREIGN KEY (ext_type) REFERENCES ExternalTypes(ID),
-    UNIQUE (dID, ext_type, src)
+    FOREIGN KEY (sID) REFERENCES ExternalSources(sID),
+    UNIQUE (dID, sID)
 );
 
 
@@ -723,12 +758,10 @@ CREATE TABLE Comments (           -- submitter can not modify it any more, inclu
     parent_ID BIGINT UNSIGNED NOT NULL DEFAULT 0,    -- parent ID of either another comment or 0 if no parent
     dID BIGINT UNSIGNED NOT NULL,                    -- Foreign key to the ultimate parent primary Document
     submitter_ID BIGINT UNSIGNED NOT NULL,     -- Submitter of the comment, 0 if anonymous
-    visibility TINYINT UNSIGNED NOT NULL default 1,   -- 99=visible to submitter/authors only (e.g., back to draft  or unpublished) , 1=visible to all, 2=visible to members, 3=visible to readers, 4=visible to reviewers, 5=visible to moderators, 6=visible to leaders, 100=visible to administrators only
+    visibility TINYINT UNSIGNED NOT NULL default 60,   -- 99=visible to submitter/authors only (for draft) , 1=visible to all, 10=visible to members, 20=visible to raters+, 30=visible to reviewers+, 40=visible to moderators+, 50=visible to leaders+, 100=visible to administrators only; default to 60=ready to be announced.
     ts DATETIME DEFAULT CURRENT_TIMESTAMP,
     comment_text TEXT COLLATE utf8mb4_general_ci NOT NULL,
     -- ... more metadata
---    UNIQUE (dID, ID_alphanum),
---    UNIQUE (dID, ID_num),
     FOREIGN KEY (ctype) REFERENCES CommentTypes(ID),
     FOREIGN KEY (dID) REFERENCES Documents(dID),
     FOREIGN KEY (submitter_ID) REFERENCES Members(mID),
@@ -746,7 +779,7 @@ CREATE TABLE CRComments (      -- extra information for creditable comments / co
     ID_num INT UNSIGNED NOT NULL default 1,       -- sequential # under the same doc dID
     ID_alphanum VARCHAR(4) COLLATE ascii_general_ci NOT NULL, -- default (CONV(ID_num,10,36)),
     inviter_id BIGINT UNSIGNED NULL,           -- ID of the inviter if it is an invited review
-    author_list JSON,       -- JSON array of author member_IDs [name,id,significance_factor], null means submitter is the sole author,     -- more complex: {"authors" : [name, id, sigfactor, [list# of affiliations]], "affiliations": [order, name]}
+    author_list JSON,        -- JSON array of authors without affiliations: [[author_name=pub_name, mID , significance_factor=duty], ...] (author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author  -- more complex: {"authors" : [[pub_name, mID, duty, [list of order numbers of affiliations]], ...], "affiliations": [[order#, name], ...]}
     anonymity TINYINT UNSIGNED default 1,      -- anonymity level: 1='open', 2='open-after-semi-anonym', 3='semi-anonymous', 4='open-after-anonym', 5='anonymous'
     passcode VARCHAR(255) COLLATE utf8mb4_general_ci NULL,       -- needed only if anonymity_level=4
     Nth INT UNSIGNED NOT NULL default 1,   -- this is the N-th comment/review in current phase, set to 0 if phase is changed
@@ -783,14 +816,14 @@ BEGIN
 END//
 DELIMITER ; -- Revert delimiter back to ';'
 
-CREATE TABLE CommentDrafts (  -- submitter can continue to modify it, the draft will be deleted once it is published
+CREATE TABLE CommentDrafts (  -- submitter can continue to modify it; for creditable comments/reviews; the draft will be deleted once it is published
     cID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     ctype TINYINT UNSIGNED NOT NULL DEFAULT 3,    -- 3=creditable comment; 2=contributed review; 1=invited review; 4=uncredited comment
     parent_ID BIGINT UNSIGNED NOT NULL DEFAULT 0,    -- parent ID of either another comment or 0 if no parent
     dID BIGINT UNSIGNED NOT NULL,                    -- Foreign key to the ultimate parent primary Document
     submitter_ID BIGINT UNSIGNED NOT NULL,     -- Submitter of the comment, 0 if anonymous
     inviter_id BIGINT UNSIGNED NULL,           -- ID of the inviter if it is an invited review
-    author_list JSON,       -- JSON array of author member_IDs [name,id,significance_factor], null means submitter is the sole author,     -- more complex: {"authors" : [name, id, sigfactor, [list# of affiliations]], "affiliations": [order, name]}
+    author_list JSON,        -- JSON array of authors without affiliations: [[author_name=pub_name, mID , significance_factor=duty], ...] (author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author  -- more complex: {"authors" : [[pub_name, mID, duty, [list of order numbers of affiliations]], ...], "affiliations": [[order#, name], ...]}
     ts DATETIME DEFAULT CURRENT_TIMESTAMP,
     comment_text TEXT COLLATE utf8mb4_general_ci NOT NULL,
     anonymity TINYINT UNSIGNED default 1,      -- anonymity level: 1='open', 2='open-after-semi-anonym', 3='semi-anonymous', 4='open-after-anonym', 5='anonymous'
@@ -822,7 +855,7 @@ CREATE TABLE CRCommentPhases (   -- saved past phases and overall numbers
 
 -- Doc/Comment and Authors cross-links
 
-CREATE TABLE DocAuthors (   -- authors with no ID will not be recorded here
+CREATE TABLE DocAuthors (   -- authors with no mID will not be recorded here
     dID BIGINT UNSIGNED NOT NULL,
     mID BIGINT UNSIGNED NOT NULL,
     author_order INT UNSIGNED,                   -- Order of authors in the list
@@ -840,7 +873,7 @@ CREATE TABLE DocAuthors (   -- authors with no ID will not be recorded here
 );
 -- e.g., INSERT INTO DocAuthors (dID,mID,duty,frac) VALUES (1,2,100,0.5) ON DUPLICATE KEY UPDATE duty=VALUES(duty), frac=VALUES(frac);
 
-CREATE TABLE CommentAuthors (   -- authors with no ID will not be recorded here
+CREATE TABLE CommentAuthors (   -- authors with no mID will not be recorded here
     cID BIGINT UNSIGNED NOT NULL,
     mID BIGINT UNSIGNED NOT NULL,
     duty TINYINT UNSIGNED NOT NULL DEFAULT 100,  -- Significance percentage in variable scheme (20-100)%
@@ -853,6 +886,16 @@ CREATE TABLE CommentAuthors (   -- authors with no ID will not be recorded here
     INDEX (mID)
 );
 -- e.g., INSERT INTO CommentAuthors (cID,mID,duty,frac) VALUES (1,2,50,0.2) ON DUPLICATE KEY UPDATE duty=VALUES(duty),frac=VALUES(frac);
+
+CREATE TABLE CommentDraftAuthors (   -- co-authors who can edit/approve CommentDrafts; but only submitter can submit creditable comments/reviews
+    cID BIGINT UNSIGNED NOT NULL,
+    mID BIGINT UNSIGNED NOT NULL,
+    is_approved TINYINT(1) NOT NULL default 0,  -- 1 means the author approved it
+    is_locked TINYINT(1) NOT NULL default 0,  -- 1 means the author's choice is locked no matter any future changes (completely trust the submitter if it is approval; completely refute the item if it is disapproval); 0 means any future update needs the author's re-approval.
+    FOREIGN KEY (cID) REFERENCES CommentDrafts(cID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    PRIMARY KEY (cID, mID)         -- Ensure no duplicate authors for the same item
+);
 
 
 -- Rating-related tables
@@ -918,7 +961,7 @@ CREATE TABLE CommentRatings (            -- for rating comments / reviews
     rater_ID BIGINT UNSIGNED NOT NULL,           -- Rater member_ID
     num TINYINT UNSIGNED NOT NULL default 1,     -- the n-th rating by the same user on the same comment/review (maximum 3 times) or maybe only allow one time
     ts DATETIME DEFAULT CURRENT_TIMESTAMP,
-    score TINYINT NOT NULL,                  -- Rating score (-10 to 50 corresponding to -1.0 to 5.0)
+    score TINYINT NOT NULL,                      -- Rating score (-10 to 50 corresponding to -1.0 to 5.0)
 --    rating_type TINYINT NOT NULL default 1,    -- 1 with no creditable contribution, 2= with creditable comments, 3=with contributed reviews, 4=with invited reivew
     Nth INT UNSIGNED NOT NULL default 0,      -- the N-th rating in current phase, 0=not calculated yet
     T INT UNSIGNED NOT NULL default 0,        -- time lapse in the current phase in units of minutes, 0=not calculated yet
@@ -1086,12 +1129,12 @@ CREATE TABLE FraudTypes (   -- user-applied fraud-type tags on documents and com
     detail TEXT COLLATE utf8mb4_general_ci
 );
 INSERT INTO FraudTypes (ID,ftname,is_active) VALUES (0,'DUMMY',0);
--- ID=1-99 means detrimental, its visibility can be blocked for users below the role of who flags if the fagger chooses so. If a member flags, can make it invisible to public; if a reader flags, can make it invisible to general members; if a reviewer flags, can make it invisible to readers and below; if a moderator flags, can make it invisible to reviewers and below; if a leader flags, can make it invisible to moderators and below (in practice, more likely to choose to reviewers and below).
+-- ID=1-99 means detrimental, its visibility can be blocked for users below the role of who flags if the fagger chooses so. If a member flags, can make it invisible to public; if a rater flags, can make it invisible to general members; if a reviewer flags, can make it invisible to raters and below; if a moderator flags, can make it invisible to reviewers and below; if a leader flags, can make it invisible to moderators and below (in practice, more likely to choose to reviewers and below).
 INSERT INTO FraudTypes (ID,ftname,detail) VALUES (1,'Fraudulent','fake, manipulated, etc.');
 INSERT INTO FraudTypes (ID,ftname,detail) VALUES (2,'Plagiaristic','copycat');
 INSERT INTO FraudTypes (ID,ftname,detail) VALUES (3,'Abusive','offensive, insulting language');
 INSERT INTO FraudTypes (ID,ftname,detail) VALUES (99,'Harmful(in Other Ways)','detrimental in ways other than the above explicitly listed');
--- ID=100 means unvote the above detrimental flags (option available only if 100+ flags exist)
+-- ID=100 means unvote the above detrimental flags (option available only if 1-99 flags exist)
 INSERT INTO FraudTypes (ID,ftname,detail) VALUES (100,'Not Detrimental','veto other detrimental flags');
 -- members can choose only one of the these fraud flags, can modify within two weeks. Option 100 should not appear unless there is at least a fraud tag from 1-99.
 
@@ -1194,9 +1237,10 @@ INSERT INTO InstTypes (ID,itname,detail) VALUES (4,'Government Laboratories','Na
 INSERT INTO InstTypes (ID,itname,detail) VALUES (5,'Government Funding Agencies','national or state funding agencies');
 INSERT INTO InstTypes (ID,itname,detail) VALUES (6,'Private Foundations','prrivate funding orgs');
 INSERT INTO InstTypes (ID,itname,detail) VALUES (7,'Other Non-Profit Organizations','NPOs');
-INSERT INTO InstTypes (ID,itname,detail) VALUES (8,'Industrial Research Laboratories','funded by companies');
-INSERT INTO InstTypes (ID,itname,detail) VALUES (9,'Business Entities','Companies');
-INSERT INTO InstTypes (ID,itname,detail) VALUES (255,'Other Entities','Any organizations interested in research');
+INSERT INTO InstTypes (ID,itname,detail) VALUES (8,'University Departments/Laboratories','sub-unit in a university');
+INSERT INTO InstTypes (ID,itname,detail) VALUES (9,'Industrial Research Laboratories','funded by companies');
+INSERT INTO InstTypes (ID,itname,detail) VALUES (10,'Business Entities','Companies');
+INSERT INTO InstTypes (ID,itname,detail) VALUES (255,'Other Entities','Any other organizations interested in research');
 
 CREATE TABLE InstTiers ( -- membership tiers for institutions
     ID TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
@@ -1215,7 +1259,7 @@ INSERT INTO InstTiers (ID,tname,detail) VALUES (255,'Unlimited','Biggest Sponsor
 
 CREATE TABLE MemberInstitutions (
     iID INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,  -- unique identifier for each member institution
-    itype TINYINT UNSIGNED NOT NULL,           -- 0=dummy, 1=R-college, 2=T-college, 3=k12&other_edu, 4=national/state labs, 5=government funding agency, 6= private foundation, 7= NPOs, 8=Industrial labs, 9=companies, 255=other
+    itype TINYINT UNSIGNED NOT NULL,           -- 0=dummy, 1=R-college, 2=T-college, 3=k12&other_edu, 4=national/state labs, 5=government funding agency, 6= private foundation, 7= NPOs, 8=univ-depts/labs, 9=Industrial labs, 10=companies, 255=other
     iname VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL,       -- "University of Notre Dame"
     abbr VARCHAR(30) COLLATE utf8mb4_general_ci UNIQUE NOT NULL, -- "UND"
     address VARCHAR(255) COLLATE utf8mb4_general_ci,             -- mailing address
@@ -1224,7 +1268,7 @@ CREATE TABLE MemberInstitutions (
     contact VARCHAR(255) COLLATE utf8mb4_general_ci,
     homepage VARCHAR(255) COLLATE utf8mb4_general_ci,
     tier TINYINT UNSIGNED NOT NULL default 1,      -- 0=dummy, 1=standard, 2==bronze, 3=silver, 4=gold, 5=platinum, 6=diamond depending on sponsorship level
-    good TINYINT(1) NOT NULL default 1,                  -- true for good standing (no fees overdue)
+    is_good TINYINT(1) NOT NULL default 1,             -- true for good standing (no fees overdue)
     is_active TINYINT(1) NOT NULL default 1,           -- true for active member
     detail TEXT COLLATE utf8mb4_general_ci,        -- Optional detailed description
     start_standard DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -1238,7 +1282,7 @@ CREATE TABLE MemberInstitutions (
     INDEX (iname),
     INDEX (itype)
 );
-INSERT INTO MemberInstitutions (iID,itype,iname,abbr,tier,good,is_active) VALUES (0,0,'DUMMY','DUMMY',0,0,0);
+INSERT INTO MemberInstitutions (iID,itype,iname,abbr,tier,is_good,is_active) VALUES (0,0,'DUMMY','DUMMY',0,0,0);
 -- can log in with iID / abbr / email + password
 
 
@@ -1637,23 +1681,26 @@ BEGIN
 END//
 DELIMITER ; -- Revert delimiter back to ';'
 
--- -------------------------------------------------------------------------------------------
--- below for future development: collaboration features (that could be charged to member institutions or depend on the tier of the institution membership), similar to overleaf, google doc, etc. for doc-drafts
--- -------------------------------------------------------------------------------------------
 
-CREATE TABLE DocDrafts (  -- for future development on on-site collaborative research and related activities
+-- For temperatory document drafts
+
+CREATE TABLE DocDrafts (  -- document drafts that can also be used for future development on on-site collaborative research and related activities
     dID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,    -- unique identifier of a parent document draft
     dtype TINYINT UNSIGNED NOT NULL,          -- e.g., 'o-docs', 'r-docs', 'p-docs'
     title TEXT COLLATE utf8mb4_general_ci NOT NULL,
     abstract TEXT COLLATE utf8mb4_general_ci NOT NULL,
-    notes VARCHAR(255) COLLATE utf8mb4_general_ci,            -- page#, fig#, other brief comments or changes for new revision
-    full_text_url VARCHAR(255) COLLATE utf8mb4_general_ci,   -- Link to local PDF or full text document
-    submitter_ID BIGINT UNSIGNED NOT NULL,                                   -- member ID of the submitter
-    author_list JSON,        -- JSON array of member_IDs [name,id,significance_factor](author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author     -- more complex: {"authors" : [name, id, sigfactor, [list# of affiliations]], "affiliations": [order, name]}
-    submission_time DATETIME DEFAULT CURRENT_TIMESTAMP,   -- deadline for v-doc
-    last_revision_time DATETIME DEFAULT (submission_time),
-    last_update_time DATETIME DEFAULT (submission_time) ON UPDATE CURRENT_TIMESTAMP,
+    notes VARCHAR(255) COLLATE utf8mb4_general_ci,     -- page#, fig#, other brief comments or changes for new revision
+    ext_url VARCHAR(255) COLLATE utf8mb4_general_ci,   -- an external URL link is needed for most docs if no attachment
+--    full_text_url VARCHAR(255) COLLATE utf8mb4_general_ci,   -- Link to local PDF or full text document
+    submitter_ID BIGINT UNSIGNED NOT NULL,                   -- member ID of the submitter
+    author_list JSON,        -- JSON array of authors without affiliations: [[author_name=pub_name, mID , significance_factor=duty], ...] (author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author  -- more complex: {"authors" : [[pub_name, mID, duty, [list of order numbers of affiliations]], ...], "affiliations": [[order#, name], ...]}
+    link_list JSON,          -- JSON array of external links [[sID,link],...]
+    has_file TINYINT UNSIGNED NOT NULL DEFAULT 0,   -- 0=no file attachment, 1=main.pdf, 2=main.pdf+suppl.pdf, 3=main.pdf+suppl.zip
     datetime_added DATETIME DEFAULT CURRENT_TIMESTAMP,   -- datetime added to database
+    submission_time DATETIME DEFAULT (datetime_added),   -- datetime when it first got public for old doc / current time for new doc / deadline for v-doc
+    pubdate VARCHAR(8) COLLATE ascii_general_ci,         -- YYYYMMDD, YYYYMM, or YYYY derived from submission_time; should never change once assigned and announced
+    last_revision_time DATETIME DEFAULT (datetime_added),  -- NULL if no pdf attached
+    last_update_time DATETIME DEFAULT (datetime_added) ON UPDATE CURRENT_TIMESTAMP,
     full_text LONGTEXT COLLATE utf8mb4_general_ci,       -- Storing text content for search or retrieval (optional)
     -- ... more metadata
     FOREIGN KEY (dtype) REFERENCES DocTypes(ID),
@@ -1663,6 +1710,22 @@ CREATE TABLE DocDrafts (  -- for future development on on-site collaborative res
     FULLTEXT INDEX (title, abstract)          -- Fulltext index for title/abstract search
 );
 
+CREATE TABLE DocDraftAuthors (   -- co-authors who can edit/view/approve DocDrafts; but only submitter can submit documents
+    dID BIGINT UNSIGNED NOT NULL,
+    mID BIGINT UNSIGNED NOT NULL,
+    is_editor TINYINT(1) NOT NULL default 1,  -- 0 means viewer only
+    is_approved TINYINT(1) NOT NULL default 0,  -- 1 means the author approved it
+    is_locked TINYINT(1) NOT NULL default 0,  -- 1 means the author's choice is locked no matter any future changes (completely trust the submitter if it is approval; completely refute the doc if it is disapproval); 0 means any future update needs the author's re-approval.
+    FOREIGN KEY (dID) REFERENCES DocDrafts(dID),
+    FOREIGN KEY (mID) REFERENCES Members(mID),
+    PRIMARY KEY (dID, mID)         -- Ensure no duplicate authors for the same document
+);
+
+
+-- -------------------------------------------------------------------------------------------
+-- below for future development: collaboration features (that could be charged to member institutions or depend on the tier of the institution membership), similar to overleaf, google doc, etc. for doc-drafts
+-- -------------------------------------------------------------------------------------------
+
 CREATE TABLE CollTypes (   -- collaboration types or sizes
     ID TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     ctname VARCHAR(60) COLLATE ascii_general_ci UNIQUE NOT NULL,
@@ -1671,12 +1734,14 @@ CREATE TABLE CollTypes (   -- collaboration types or sizes
     detail TEXT COLLATE utf8mb4_general_ci
 );
 INSERT INTO CollTypes (ID,ctname,size,is_active) VALUES (0,'DUMMY',0,0);
-INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (1,'Mini',10,'<10 members');
-INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (2,'Small',100,'<10^2 members');
-INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (3,'Medium',1000,'<10^3 members');
-INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (4,'Large',10000,'<10^4 members');
-INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (5,'Huge',100000,'<10^5 members');
-INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (6,'Million',1000000,'<10^6 members');
+INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (1,'Trio',3,'up to 3 members');
+INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (2,'Mini',10,'up to 10 members');
+INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (3,'Small',30,'up to 30 members');
+INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (4,'Modest',100,'up to 100 members');
+INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (5,'Medium',300,'up to 300 members');
+INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (6,'Large',1000,'up to 1000 members');
+INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (7,'Huge',3000,'up to 3000 members');
+INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (8,'Gigantic',10000,'up to 10000 members');
 INSERT INTO CollTypes (ID,ctname,size,detail) VALUES (255,'Unlimited',4294967295,'no limit on member numbers');
 -- higher tier institutions can host larger collaborations (1 to 1 correspondence)
 
