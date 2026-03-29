@@ -1,0 +1,4 @@
+*.log
+config/config.php
+storage/uploads/*/
+.env

@@ -1,0 +1,844 @@
+:root {
+    --brand-dark: #2C5E4E;
+    --brand-light: #687D75;
+    --border-subtle: #eee;
+    --text-main: #2b2b2b;
+    --text-muted: #888;
+    --bg-color: #f8f9fa;
+    --surface-white: #ffffff;
+    --font-ui: 'Inter', system-ui, sans-serif;
+    --font-academic: 'Lora', 'Georgia', serif;
+    --max-content-width: 1600px;
+}
+
+/* ====================================
+   Global Base Styles
+   ==================================== */
+
+body {
+    font-family: var(--font-ui);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    margin: 0;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    box-sizing: border-box;
+}
+
+main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem 0;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+    font-family: var(--font-academic);
+}
+
+hr {
+    margin: 2rem 0;
+    border: 0;
+    border-top: 1px solid #eee;
+}
+
+/* ====================================
+   Containers
+   ==================================== */
+
+.auth-container, .profile-container, .upload-container, .document-viewer {
+    background: var(--surface-white);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    border: 1px solid #eaeaea;
+    border-radius: 8px;
+    padding: 2rem;
+    width: 95%;
+    box-sizing: border-box;
+}
+
+.auth-container { max-width: 500px; }
+.profile-container { max-width: 800px; margin: 1rem auto; }
+.upload-container, .document-viewer { max-width: var(--max-content-width); margin: 0.5rem auto; }
+
+/* ====================================
+   Forms & Inputs
+   ==================================== */
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 0.95rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: var(--brand-dark);
+    box-shadow: 0 0 0 3px rgba(44, 94, 78, 0.1);
+}
+
+.form-control {
+    background-color: #f8f9fa;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    color: var(--text-muted);
+}
+
+.checkbox-group input {
+    width: auto;
+    margin: 0;
+}
+
+.checkbox-group label {
+    font-size: 0.85rem;
+    margin-bottom: 0;
+    cursor: pointer;
+}
+
+.form-submit {
+    margin-top: 2.5rem;
+    display: flex;
+    gap: 1rem;
+    border-top: 1px solid #eee;
+    padding-top: 1.5rem;
+}
+
+/* ====================================
+   Buttons
+   ==================================== */
+
+.btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+
+.btn-login {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.btn-primary {
+    background-color: var(--brand-dark);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #1e4539;
+}
+
+.btn-secondary {
+    background-color: #f4f6f8;
+    color: var(--text-main);
+    border: 1px solid var(--border-subtle);
+}
+
+.btn-secondary:hover {
+    background-color: #e2e8f0;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: #ffffff;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+}
+
+.btn-orcid {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: white;
+    border: 1px solid #d3d3d3;
+    color: #333;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background 0.2s;
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.btn-orcid:hover {
+    background: #f8f9fa;
+}
+
+.btn-orcid svg {
+    width: 24px;
+    height: 24px;
+}
+
+.btn-group { display: flex; gap: 0.5rem; }
+
+.btn-mini {
+    padding: 0.5rem 1rem;
+    border: 1px solid #ddd;
+    background: #fff;
+    color: #333;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+.btn-mini:hover {
+    background: #f8f9fa;
+    border-color: var(--brand-light);
+    color: var(--brand-dark);
+}
+
+.btn-small {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+}
+
+.btn-back { display: inline-block; margin-bottom: 1rem; text-decoration: none; color: #007bff; }
+.btn-disabled { background-color: #ccc !important; cursor: not-allowed; }
+
+/* ====================================
+   Alerts
+   ==================================== */
+
+.alert {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 0.95rem;
+}
+
+.alert-danger {
+    background-color: #fdf2f2;
+    color: #c9302c;
+}
+
+.alert-info {
+    background-color: #f0f7f4;
+    color: var(--brand-dark);
+}
+
+/* ====================================
+   Header & Footer (partials/header.php, footer.php)
+   ==================================== */
+
+.site-header {
+    height: 60px;
+    background: #fff;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.site-footer {
+    height: 24px;
+    background: #fff;
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    margin-top: auto;
+}
+
+.footer-nav { display: flex; gap: 20px; }
+.footer-link { text-decoration: none; color: #555; font-size: 0.9rem; }
+.footer-link:hover { color: #000; }
+.footer-copyright { color: var(--text-muted); font-size: 0.8rem; }
+
+.header-container, .footer-container {
+    width: 95%;
+    max-width: var(--max-content-width);
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-left, .header-right { display: flex; align-items: center; gap: 20px; }
+
+.logo-link { display: flex; align-items: center; text-decoration: none; gap: 12px; }
+
+.site-title {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.brand-name {
+    font-size: 1.25rem;
+    font-weight: 650;
+    color: var(--brand-dark);
+    letter-spacing: -0.2px;
+}
+
+.brand-suffix {
+    font-size: 1.25rem;
+    font-weight: 650;
+    text-transform: uppercase;
+}
+
+.bracket {
+    color: #c4cdd5;
+    font-weight: 450;
+}
+
+.core-text {
+    color: var(--brand-light);
+    letter-spacing: 1.2px;
+}
+
+.triple-e {
+    color: #586D65;
+    letter-spacing: normal;
+    text-shadow: 1px 0.5px 0 var(--brand-light), 2px 1px 0 #a1a9a6;
+    display: inline-block;
+}
+
+.search-input {
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    max-width: 250px;
+    transition: width 0.3s ease;
+}
+
+.auth-nav {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.nav-link {
+    text-decoration: none;
+    color: #333;
+    font-size: 0.95rem;
+    transition: color 0.2s;
+}
+
+.nav-link:hover { color: var(--brand-dark); }
+.nav-sep { color: #ccc; }
+
+/* ====================================
+   User Dropdown in Header (partials/header.php)
+   ==================================== */
+
+.user-dropdown { position: relative; display: inline-block; }
+.dropdown-toggle {
+    background: transparent; border: none; color: var(--brand-dark);
+    font-family: inherit; font-size: 1rem; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; gap: 0.5rem; transition: color 0.2s ease;
+}
+.dropdown-toggle:hover { color: var(--brand-light); }
+.caret { font-size: 0.65em; color: var(--text-muted); }
+.dropdown-menu {
+    display: none; position: absolute; right: 0; top: 100%;
+    background-color: #fff; min-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border: 1px solid var(--border-subtle); border-radius: 6px; z-index: 1000;
+    margin-top: 0.5rem; overflow: hidden;
+}
+.user-dropdown:hover .dropdown-menu { display: block; }
+
+/* Smooth invisible bridge so the hover doesn't break when moving mouse down */
+.user-dropdown::after {
+    content: ''; position: absolute; height: 1rem;
+    width: 100%; bottom: -1rem; left: 0;
+}
+
+.dropdown-item {
+    color: #333; padding: 0.75rem 1.25rem; text-decoration: none; display: block; font-size: 0.9rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+.dropdown-item:hover { background-color: #f8f9fa; color: var(--brand-dark); }
+.dropdown-divider { height: 1px; background-color: var(--border-subtle); margin: 0; }
+
+.dropdown-item.text-danger { color: #d9534f; }
+.dropdown-item.text-danger:hover { background-color: #fdf2f2; color: #c9302c; }
+
+/* Optional styling to differentiate view-switching links */
+.dropdown-item.view-switch { font-weight: 500; }
+
+/* ====================================
+   Dashboard Styles (home/index.php)
+   ==================================== */
+
+.dashboard-wrapper { max-width: var(--max-content-width); margin: 2rem auto; padding: 0 2rem; width: 100%; }
+.intro-block { line-height: 1.6; color: #444; font-size: 1.1rem; margin-bottom: 2.5rem; }
+.search-browse-block {
+    display: flex; gap: 1rem; align-items: center; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    padding: 1rem; border-radius: 8px; border: 1px solid #eee; margin-bottom: 2rem; flex-wrap: wrap;
+}
+.search-browse-block select {
+    padding: 0.6rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.95rem; min-width: 150px;
+}
+
+/* Member Research Areas on Dashboard */
+.user-areas-section { margin-bottom: 3rem; }
+.area-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+.area-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: #fdfdfd;
+    border: 1px solid #eee;
+    border-radius: 6px;
+}
+.area-abbr {
+    font-weight: 600;
+    color: var(--brand-dark);
+    font-size: 0.75rem;
+}
+
+.recent-feed { margin-top: 3rem; }
+.recent-feed h2 {
+    border-bottom: 2px solid var(--brand-dark);
+    display: inline-block;
+    padding-bottom: 5px;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+/* ====================================
+   Document Feed Styles (partials/document_feed.php)
+   ==================================== */
+
+.doc-list { list-style: none; padding: 0; }
+.doc-item {
+    padding: 1.25rem;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    transition: all 0.2s;
+}
+.doc-item:hover {
+    background: #fafafa;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.doc-feed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.4rem;
+    font-size: 0.9rem;
+}
+
+.doc-feed-id {
+    color: var(--text-muted);
+}
+.doc-feed-id a {
+    color: var(--brand-dark);
+    text-decoration: none;
+    font-weight: 600;
+}
+.doc-feed-id a:hover {
+    text-decoration: underline;
+}
+
+.doc-feed-info {
+    color: #666;
+    margin-left: 0.25rem;
+}
+.feed-pdf-link {
+    color: #007bff;
+    text-decoration: none;
+}
+.feed-pdf-link:hover {
+    text-decoration: underline;
+}
+
+.doc-feed-date {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-left: 1rem;
+}
+
+.doc-feed-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.35rem;
+    font-family: var(--font-academic);
+    line-height: 1.4;
+}
+
+.doc-feed-authors {
+    font-size: 0.9rem;
+    color: #555;
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.doc-feed-abstract {
+    font-size: 0.9rem;
+    color: #666;
+    line-height: 1.5;
+    font-family: var(--font-academic);
+    margin-top: 0.25rem;
+}
+
+.btn-toggle-authors,
+.btn-toggle-abstract {
+    background: none;
+    border: none;
+    color: #007bff;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0;
+    font-family: inherit;
+}
+.btn-toggle-authors:hover,
+.btn-toggle-abstract:hover {
+    text-decoration: underline;
+}
+
+/* ====================================
+   Document Upload Styles (repository/upload.php)
+   ==================================== */
+
+.author-row {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 80px auto;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+    background: #f9f9f9;
+    padding: 10px;
+    border-radius: 4px;
+}
+.remove-author {
+    background: #ff4444;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+#authors-container {
+    margin-bottom: 20px;
+}
+.duty-summary {
+    font-weight: bold;
+    margin-top: 10px;
+    color: #555;
+}
+.file-section {
+    background: #f0f7ff;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+.submit-group {
+    display: flex;
+    gap: 20px;
+    margin-top: 2rem;
+}
+.btn-add { "background-color: #17a2b8; color: white; width: auto;" }
+.btn-draft { background-color: #6c757d; color: white; }
+.btn-submit { background-color: #28a745; color: white; }
+
+.branch-row {
+    display: grid;
+    grid-template-columns: 30px 2fr 120px 60px;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+    background: #f9f9f9;
+    padding: 10px;
+    border-radius: 4px;
+}
+.branch-summary {
+    font-weight: bold;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+/* ====================================
+   Member Public Profile Styles (member/profile.php)
+   ==================================== */
+
+.profile-header { text-align: center; border-bottom: 1px solid #f0f0f0; background: linear-gradient(to bottom, #fdfdfd, #ffffff); padding-bottom: 2rem; margin-bottom 2rem; }
+.profile-header h1 {
+    margin: 0 0 0.75rem;
+    font-size: 2.25rem;
+    color: #1a1a1a;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+.institution-subtitle {
+    font-size: 1.1rem;
+    color: #666;
+    margin-top: -0.5rem;
+    margin-bottom: 1rem;
+}
+.profile-badges {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 1rem;
+}
+.profile-content {
+/*    padding: 2.5rem; */
+}
+
+.id-badge {
+    display: inline-block; background-color: #E8F3F1; color: #2C5E4E;
+    padding: 0.4rem 1rem; border-radius: 20px; font-family: monospace;
+    font-weight: 600; font-size: 0.95rem; border: 1px solid #d4e8e4; letter-spacing: 0.05em;
+}
+.id-badge-orcid {
+    background-color: #f0fdf4;
+    color: #333;
+    border-color: #d1e7dd;
+    text-decoration: none;
+}
+
+.status-alerts { margin-bottom: 2rem; }
+.status-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    margin-right: 10px;
+}
+.status-inactive { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+.status-deceased { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+.info-group {
+    margin-bottom: 1.5rem;
+}
+.info-label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #888;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.05em;
+}
+.info-value {
+    font-size: 1.05rem;
+    color: #333;
+    line-height: 1.5;
+}
+
+.research-info { };
+.pill {
+    display: inline-block; background: #f0f4f2; color: #2C5E4E;
+    padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem;
+    margin-right: 5px; margin-bottom: 5px; border: 1px solid #e0e8e4; text-decoration: none;
+}
+.pill-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 0.5rem; }
+
+.meta-section {
+    border-top: 1px solid #f0f0f0;
+    padding-top: 2.5rem;
+    margin-top: 1rem;
+}
+.meta-section h2 {
+    font-size: 1.25rem;
+    color: #1a1a1a;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+.meta-item {
+    margin-bottom: 1.5rem;
+}
+.meta-item .info-value {
+    white-space: pre-wrap;
+}
+
+.link-academic {
+    color: #2C5E4E;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+}
+.link-academic:hover { border-bottom-color: #2C5E4E; }
+
+.edit-profile-btn { float: right; color: #555; background: #fff; border: 1px solid #ddd; padding: 0.5rem 1rem; border-radius: 4px;
+    text-decoration: none; font-size: 0.9rem; transition: all 0.2s;
+}
+.edit-profile-btn:hover { background: #f8f9fa; border-color: var(--brand-light); color: var(--brand-dark); }
+
+/* ====================================
+   Styles for Registration and Edit_Profile Views (partials/profile_details_form.php)
+   ==================================== */
+
+/* Accordions (Details/Summary) */
+details {
+    background: var(--surface-white);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+summary {
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--brand-dark);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+details > summary + div { margin-top: 1rem; }
+
+/* Details of Research Areas in profile_details_form.php */
+.research-area-list { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: #fff; }
+.area-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
+.area-row:last-child { border-bottom: none; }
+.area-info { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 5px; }
+.area-info label { margin-bottom: 0; }
+.area-privacy { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; color: #666; }
+
+/* ====================================
+   Document Viewer (repository/view_doc.php)
+   ==================================== */
+
+.meta-info {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 1rem;
+}
+.author-section { margin-bottom: 2rem; }
+.author-names { margin-bottom: 0.5rem; font-size: 1.1rem; }
+.affiliation-list { list-style: none; padding: 0; font-size: 0.9rem; color: #555; }
+.abstract-section { margin-bottom: 2.5rem; line-height: 1.6; }
+.pdf-frame { border: 1px solid #ddd; border-radius: 4px; background: #f4f4f4; }
+.suppl-download { margin-top: 10px; display: block; padding: 10px; background: #e9ecef; border-radius: 4px; text-decoration: none; color: #495057; font-weight: bold; width: fit-content; }
+
+/* ====================================
+   DocDraft styles (repository/view_docdraft.php)
+   ==================================== */
+
+.draft-tag { background: #ffc107; color: #000; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; margin-bottom: 10px; display: inline-block; }
+.approval-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+.approval-table th, .approval-table td { padding: 10px; border: 1px solid #eee; text-align: left; }
+.status-approved { color: green; font-weight: bold; }
+.status-pending { color: orange; font-weight: bold; }
+.action-zone { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #dee2e6; }
+
+/* ====================================
+   Responsive Adjustments
+   ==================================== */
+
+@media (max-width: 768px) {
+    .site-header, .site-footer { height: auto; padding: 1rem 0; }
+    .header-container, .footer-container { flex-direction: column; gap: 1rem; }
+    .header-left, .header-right {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .search-form {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .search-input, .search-input:focus {
+        width: 100%;
+        max-width: 300px;
+    }
+
+    .footer-nav {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+    }
+
+    main {
+        padding: 1rem 0;
+    }
+
+    .search-browse-block { flex-direction: column; align-items: stretch; }
+    .search-browse-block select { width: 100%; }
+    .btn-group { justify-content: space-between; }
+    .btn-mini { flex: 1; text-align: center; }
+    
+    .profile-header { padding: 2rem 1rem; }
+    .profile-content { padding: 1.5rem; }
+    .profile-header h1 { font-size: 1.75rem; }
+
+}
+
+@media (max-width: 480px) {
+    .auth-container {
+        padding: 1.5rem;
+    }
+
+    .site-title {
+        font-size: 1.1rem;
+    }
+    
+    .nav-link, .welcome-text {
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .document-viewer {
+        width: 95%;
+        padding: 1.5rem;
+        margin: 1rem auto;
+    }
+    .pdf-frame {
+        height: 500px;
+    }
+}
