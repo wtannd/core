@@ -429,6 +429,29 @@ hr {
     color: var(--brand-dark);
     font-size: 0.75rem;
 }
+.area-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+.area-search-form {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.area-search-input {
+    width: 90px;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+.area-search-input:focus {
+    outline: none;
+    border-color: var(--brand-dark);
+    box-shadow: 0 0 0 2px rgba(44, 94, 78, 0.1);
+}
 
 .recent-feed { margin-top: 3rem; }
 .recent-feed h2 {
@@ -595,6 +618,170 @@ hr {
     font-weight: bold;
     color: #555;
     font-size: 0.95rem;
+}
+
+/* ====================================
+   Search & Feed Results Styles
+   ==================================== */
+
+.search-results-page {
+    max-width: var(--max-content-width);
+    margin: 2rem auto;
+    padding: 0 1rem;
+    width: 95%;
+    box-sizing: border-box;
+}
+.search-results-page h2 {
+    border-bottom: 2px solid var(--brand-dark);
+    display: inline-block;
+    padding-bottom: 5px;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+.filter-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    background: #fff;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #eee;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.filter-group label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.filter-group select,
+.filter-group input {
+    padding: 0.5rem 0.6rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    min-width: 140px;
+}
+.filter-group-search {
+    flex: 1;
+    min-width: 180px;
+}
+.filter-group-search input {
+    min-width: 160px;
+    width: 100%;
+}
+.filter-group-from,
+.filter-group-to {
+    min-width: 130px;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+.no-results {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 3rem 0;
+    font-size: 1.05rem;
+}
+
+/* Pagination */
+.paginate {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 2rem;
+    padding: 1rem 0;
+}
+.paginate-link {
+    display: inline-block;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-decoration: none;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    transition: all 0.15s;
+}
+.paginate-link:hover:not(.disabled):not(.current) {
+    background: var(--brand-dark);
+    color: #fff;
+    border-color: var(--brand-dark);
+}
+.paginate-link.current {
+    background: var(--brand-dark);
+    color: #fff;
+    border-color: var(--brand-dark);
+    font-weight: 600;
+}
+.paginate-link.disabled {
+    color: #ccc;
+    border-color: #eee;
+    cursor: not-allowed;
+}
+.paginate-ellipsis {
+    padding: 0.4rem 0.25rem;
+    color: var(--text-muted);
+}
+
+/* Member Search Results */
+.member-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.member-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+.member-item:hover {
+    background: #fafafa;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+.member-name {
+    font-weight: 600;
+    color: var(--brand-dark);
+    text-decoration: none;
+    flex-shrink: 0;
+}
+.member-name:hover {
+    text-decoration: underline;
+}
+.member-core-id {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--brand-light);
+    background: #f0f4f2;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+.member-institution {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* ====================================

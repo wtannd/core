@@ -491,4 +491,46 @@ class Member
         $stmt = $this->db->prepare("UPDATE Members SET ID_alphanum = UPPER(CONV(:mID1, 10, 36)) WHERE mID = :mID2");
         $stmt->execute(['mID1' => $mID, 'mID2' => $mID]);
     }
+
+    /**
+     * Search members by name or pub_name.
+     * 
+     * @return array ['results' => array, 'total' => int]
+     */
+    public function searchMembers(string $query, int $limit = 20, int $offset = 0): array
+    {
+        $query = trim($query);
+        $result = ['results' => [], 'total' => 0];
+        if ($query === '') return $result;
+
+        $like = '%' . $query . '%';
+
+        // Count total
+        $countSql = "SELECT COUNT(*) FROM Members 
+                     WHERE is_active = 1 AND is_good = 1
+                       AND (display_name LIKE :q1 OR family_name LIKE :q2 OR first_name LIKE :q3 OR pub_name LIKE :q4)";
+        $stmt = $this->db->prepare($countSql);
+        $stmt->execute(['q1' => $like, 'q2' => $like, 'q3' => $like, 'q4' => $like]);
+        $total = (int)$stmt->fetchColumn();
+
+        // Fetch results
+        $sql = "SELECT m.mID, m.display_name, m.pub_name, m.ID_alphanum, i.iname
+                FROM Members m
+                LEFT JOIN Institutions i ON m.iID = i.iID
+                WHERE m.is_active = 1 AND m.is_good = 1
+                  AND (m.display_name LIKE :q1 OR m.family_name LIKE :q2 OR m.first_name LIKE :q3 OR m.pub_name LIKE :q4)
+                ORDER BY m.display_name ASC
+                LIMIT :limit OFFSET :offset";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':q1', $like);
+        $stmt->bindValue(':q2', $like);
+        $stmt->bindValue(':q3', $like);
+        $stmt->bindValue(':q4', $like);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return ['results' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'total' => $total];
+    }
 }

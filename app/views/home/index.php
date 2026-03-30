@@ -28,8 +28,8 @@ $isLoggedIn = isset($_SESSION['mID']);
                 <?php endif; ?>
             </div>
 
-            <div class="search-browse-block">
-                <select name="dtype">
+            <form action="/browse" method="GET" class="search-browse-block">
+                <select name="type">
                     <?php foreach ($docTypes as $type): ?>
                         <option value="<?php echo $type['ID']; ?>" <?php echo $type['ID'] == 1 ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($type['dtname']); ?>
@@ -47,26 +47,28 @@ $isLoggedIn = isset($_SESSION['mID']);
                 </select>
 
                 <div class="btn-group">
-                    <button class="btn-mini">New</button>
-                    <button class="btn-mini">Recent</button>
-                    <button class="btn-mini">Search</button>
+                    <button type="submit" name="range" value="day" class="btn-mini">New</button>
+                    <button type="submit" name="range" value="week" class="btn-mini">Recent</button>
+                    <button type="submit" class="btn-mini">Browse</button>
                 </div>
-            </div>
+            </form>
 
             <?php if ($isLoggedIn && (!empty($userWorkAreas) || !empty($userInterestAreas))): ?>
                 <div class="user-areas-section">
                     <?php if (!empty($userWorkAreas)): ?>
                         <h3>Your Work Areas</h3>
                         <div class="area-grid">
-                            <?php foreach ($userWorkAreas as $area): 
-                                $abbr = explode(' ', $area)[0];
-                            ?>
+                            <?php foreach ($userWorkAreas as $area): ?>
                                 <div class="area-card">
-                                    <span class="area-abbr" title="<?php echo htmlspecialchars($area); ?>"><?php echo htmlspecialchars($abbr); ?></span>
-                                    <div class="btn-group">
-                                        <button class="btn-mini btn-small">New</button>
-                                        <button class="btn-mini btn-small">Recent</button>
-                                        <button class="btn-mini btn-small">Search</button>
+                                    <span class="area-abbr" title="<?php echo htmlspecialchars($area['label']); ?>"><?php echo htmlspecialchars($area['abbr']); ?></span>
+                                    <div class="area-card-actions">
+                                        <a href="/browse?branch=<?php echo $area['bID']; ?>&range=day" class="btn-mini btn-small">New</a>
+                                        <a href="/browse?branch=<?php echo $area['bID']; ?>&range=week" class="btn-mini btn-small">Recent</a>
+                                        <form action="/match" method="GET" class="area-search-form">
+                                            <input type="hidden" name="branch" value="<?php echo $area['bID']; ?>">
+                                            <input type="text" name="q" placeholder="Search..." class="area-search-input">
+                                            <button type="submit" class="btn-mini btn-small">Search</button>
+                                        </form>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -76,15 +78,17 @@ $isLoggedIn = isset($_SESSION['mID']);
                     <?php if (!empty($userInterestAreas)): ?>
                         <h3 style="margin-top: 2rem;">Your Interest Areas</h3>
                         <div class="area-grid">
-                            <?php foreach ($userInterestAreas as $area): 
-                                $abbr = explode(' ', $area)[0];
-                            ?>
+                            <?php foreach ($userInterestAreas as $area): ?>
                                 <div class="area-card">
-                                    <span class="area-abbr" title="<?php echo htmlspecialchars($area); ?>"><?php echo htmlspecialchars($abbr); ?></span>
-                                    <div class="btn-group">
-                                        <button class="btn-mini btn-small">New</button>
-                                        <button class="btn-mini btn-small">Recent</button>
-                                        <button class="btn-mini btn-small">Search</button>
+                                    <span class="area-abbr" title="<?php echo htmlspecialchars($area['label']); ?>"><?php echo htmlspecialchars($area['abbr']); ?></span>
+                                    <div class="area-card-actions">
+                                        <a href="/browse?branch=<?php echo $area['bID']; ?>&range=day" class="btn-mini btn-small">New</a>
+                                        <a href="/browse?branch=<?php echo $area['bID']; ?>&range=week" class="btn-mini btn-small">Recent</a>
+                                        <form action="/match" method="GET" class="area-search-form">
+                                            <input type="hidden" name="branch" value="<?php echo $area['bID']; ?>">
+                                            <input type="text" name="q" placeholder="Search..." class="area-search-input">
+                                            <button type="submit" class="btn-mini btn-small">Search</button>
+                                        </form>
                                     </div>
                                 </div>
                             <?php endforeach; ?>

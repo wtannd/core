@@ -235,5 +235,28 @@ class MemberController
         // Pass sanitized data to the view
         include rtrim(VIEWS_PATH, '/') . '/member/profile.php';
     }
+
+    /**
+     * Search members by name.
+     * GET /members?q=smith&page=N
+     */
+    public function search(): void
+    {
+        $query = trim($_GET['q'] ?? '');
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 20;
+        $offset = ($page - 1) * $perPage;
+
+        $result = $this->memberModel->searchMembers($query, $perPage, $offset);
+        $members = $result['results'];
+        $totalResults = $result['total'];
+        $totalPages = max(1, (int)ceil($totalResults / $perPage));
+
+        $buildPageUrl = function (int $p) use ($query) {
+            return '/members?q=' . urlencode($query) . '&page=' . $p;
+        };
+
+        include rtrim(VIEWS_PATH, '/') . '/member/search_results.php';
+    }
 }
 

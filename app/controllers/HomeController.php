@@ -46,11 +46,39 @@ class HomeController
         if (isset($_SESSION['mID'])) {
             $user = $this->memberModel->findById((int)$_SESSION['mID']);
             if ($user) {
-                $userWorkAreas = $user['work_areas_display'] ?? [];
-                $userInterestAreas = $user['interest_areas_display'] ?? [];
+                $userWorkAreas = $this->parseAreasForDisplay($user['work_areas'] ?? '', $branches);
+                $userInterestAreas = $this->parseAreasForDisplay($user['interest_areas'] ?? '', $branches);
             }
         }
 
         include rtrim(VIEWS_PATH, '/') . '/home/index.php';
+    }
+
+    /**
+     * Parse semicolon-separated area IDs into structured display data.
+     * 
+     * @return array [['bID' => int, 'label' => string], ...]
+     */
+    private function parseAreasForDisplay(string $areasStr, array $branches): array
+    {
+        if (empty($areasStr)) return [];
+
+        $branchMap = [];
+        foreach ($branches as $b) {
+            $branchMap[(int)$b['bID']] = $b;
+        }
+
+        $result = [];
+        foreach (explode(';', $areasStr) as $part) {
+            $id = abs((int)trim($part));
+            if ($id === 0 || !isset($branchMap[$id])) continue;
+            $b = $branchMap[$id];
+            $result[] = [
+                'bID'   => $id,
+                'label' => $b['abbr'] . ' (' . $b['bname'] . ')',
+                'abbr'  => $b['abbr'],
+            ];
+        }
+        return $result;
     }
 }

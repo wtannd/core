@@ -161,6 +161,23 @@ switch ($requestUri) {
         }
         break;
 
+    case '/members':
+        (new \app\controllers\MemberController())->search();
+        break;
+
+    // --- Search & Feed ---
+    case '/search':
+        (new \app\controllers\FeedController())->search();
+        break;
+
+    case '/match':
+        (new \app\controllers\FeedController())->match();
+        break;
+
+    case '/browse':
+        (new \app\controllers\FeedController())->browse();
+        break;
+
     // --- Utilities ---
     case '/stream':
         $type = $_GET['type'] ?? 'doc';
