@@ -546,18 +546,18 @@ INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (4,'Textbook
 INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (5,'Conference/Meeting/School Organization','c',2,0.1,0.25,'conferences, meetings, workshops, summer schools');
 INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (6,'Discussions on Community Issues','d',2,0.5,0.1,'forums in CORE community');
 INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (7,'Pop-Science Essays','e',2,0.1,0.25,'for general audiences');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (8,'Applications for Funding Facility-Oriented Programs','f',3,0.5,0,'Large projects for building new facilities, establishing new centers or collaboration networks');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (9,'Applications for Funding Project-Oriented Original Research','p',3,1,0,'emphasis on high-risk high-reward projects');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (10,'Applications for Funding R&D Quests','q',3,0.5,0,'building high-precision/cutting-edge experimental equipment and reaching the limits of measurements');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (11,'Applications for Funding Service/Support Activities','s',3,0.5,0,'meetings, etc.');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (12,'Applications for Time Allocation at Research Facilities','t',4,0.5,0,'access to user facilities');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (8,'Funding Requests for Facility-Oriented Programs','f',3,0.5,0,'Large projects for building new facilities, establishing new centers or collaboration networks');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (9,'Funding Requests for Project-Oriented Research','p',3,1,0,'emphasis on high-risk high-reward projects');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (10,'Funding Requests for Equipment R&D','q',3,0.5,0,'building high-precision/cutting-edge experimental equipment and reaching the limits of measurements');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (11,'Funding Requestts for Service/Support Activities','s',3,0.5,0,'meetings, etc.');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (12,'Time Allocation Requests at Research Facilities','t',4,0.5,0,'access to user facilities');
 INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (13,'Open Source Scientific Softwares','u',2,0.5,1,'codes for end users; highly rated ones could be funded');
 INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (14,'Open Experimental Equipment','x',2,0.5,1,'encourage sharing of experimental equipment');
 INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (15,'Voting for Election and Awards','v',2,0.1,0.1,'including committee work, nomination, comments, and actual votes');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (16,'White Papers and Other Official Reports from CORE committees','w',2,0.25,0.5,'important for mainstream research');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (16,'White Papers and Other Official Reports','w',2,0.25,0.5,'important for mainstream research from CORE and other community committees');
 INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (17,'Issues and/or Bugs in the CORE System','i',2,0.5,0.1,'for the website and databases of CORE');
 INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (18,'New Suggestions for the CORE System','n',2,0.5,0.1,'request for new features, modifications to improve CORE');
-INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (19,'Moderation Decisions and Investigation Reports','m',2,0.25,0.25,'acknowledge contributions from moderators');
+INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (19,'Moderation and Investigation Reports','m',2,0.25,0.25,'acknowledge contributions from moderators');
 INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (252,'Applications for Other Funding Opportunities','zw',3,0.1,0,'seeking other funding possibilities');
 INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (253,'Other Service Documents','zx',2,0.1,0.1,'to earn ECP in other ways');
 INSERT INTO DocTypes (ID,dtname,abbr,goal,f_p,f_type,detail) VALUES (254,'Miscellaneous Documents','zy',254,0.1,0,'seeking other benefits and resources');
@@ -1872,7 +1872,8 @@ CREATE TABLE DocDrafts (  -- document drafts that can also be used for future de
     submitter_ID BIGINT UNSIGNED NOT NULL,             -- member ID of the submitter
     author_list JSON,        -- JSON array of authors without affiliations: [[author_name=pub_name, mID , significance_factor=duty], ...] (author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author  -- more complex: {"authors" : [[pub_name, mID, duty, [list of order numbers of affiliations]], ...], "affiliations": [[order#, name], ...]}
     link_list JSON,          -- JSON array of external links [[sID,esname,link],...]
-    branch_list JSON,        -- JSON array of research branches [{"bID":int,"num":int,"impact":int},...]
+    branch_list JSON,        -- JSON array of research branches [{"bID":int,"num":int,"impact":int},...] up to 3 branches
+    tID INT UNSIGNED,        -- topic ID assigned if desired
     has_file TINYINT UNSIGNED NOT NULL DEFAULT 0,   -- 0=no file attachment, 1=main.pdf, 2=main.pdf+suppl.pdf, 3=main.pdf+suppl.zip
     datetime_added DATETIME DEFAULT CURRENT_TIMESTAMP,   -- datetime added to database
     submission_time DATETIME DEFAULT (datetime_added),   -- datetime when it first got public for old doc / current time for new doc / deadline for v-doc
@@ -1883,6 +1884,7 @@ CREATE TABLE DocDrafts (  -- document drafts that can also be used for future de
     -- ... more metadata
     FOREIGN KEY (dtype) REFERENCES DocTypes(ID),
     FOREIGN KEY (submitter_ID) REFERENCES Members(mID),
+    FOREIGN KEY (tID) REFERENCES ResearchTopics(tID),
     INDEX (submitter_ID,dtype)
 --    FULLTEXT INDEX (title, abstract)          -- Fulltext index for title/abstract search
 );

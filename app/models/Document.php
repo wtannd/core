@@ -308,6 +308,74 @@ class Document
     }
 
     /**
+     * Fetch research branches linked to a published document.
+     * 
+     * @return array [['bID'=>int, 'abbr'=>string, 'bname'=>string, 'num'=>int, 'impact'=>int], ...]
+     */
+    public function getDocBranches(int $dID): array
+    {
+        $sql = "SELECT db.bID, rb.abbr, rb.bname, db.num, db.impact
+                FROM DocBranches db
+                INNER JOIN ResearchBranches rb ON db.bID = rb.bID
+                WHERE db.dID = :dID
+                ORDER BY db.num ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['dID' => $dID]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Fetch topic linked to a published document.
+     * 
+     * @return array|false ['tID'=>int, 'abbr'=>string, 'tname'=>string] or false
+     */
+    public function getDocTopic(int $dID): array|false
+    {
+        $sql = "SELECT dt.tID, rt.abbr, rt.tname
+                FROM DocTopics dt
+                INNER JOIN ResearchTopics rt ON dt.tID = rt.tID
+                WHERE dt.dID = :dID
+                LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['dID' => $dID]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ?: false;
+    }
+
+    /**
+     * Fetch topic for a draft by tID.
+     * 
+     * @return array|false ['tID'=>int, 'abbr'=>string, 'tname'=>string] or false
+     */
+    public function getTopicById(int $tID): array|false
+    {
+        $sql = "SELECT tID, abbr, tname FROM ResearchTopics WHERE tID = :tID LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['tID' => $tID]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ?: false;
+    }
+
+    /**
+     * Fetch branches by an array of bIDs.
+     * 
+     * @return array Keyed by bID: [bID => ['bID'=>int, 'abbr'=>string, 'bname'=>string], ...]
+     */
+    public function getBranchesByIds(array $bIDs): array
+    {
+        if (empty($bIDs)) return [];
+        $placeholders = implode(',', array_fill(0, count($bIDs), '?'));
+        $sql = "SELECT bID, abbr, bname FROM ResearchBranches WHERE bID IN ($placeholders)";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(array_values($bIDs));
+        $result = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $b) {
+            $result[(int)$b['bID']] = $b;
+        }
+        return $result;
+    }
+
+    /**
      * Build shared WHERE clause, JOINs, and params for document filter conditions.
      * 
      * Supported filter keys: type, branch, topic, range (day/week/month/all), from, to

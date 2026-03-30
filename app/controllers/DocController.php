@@ -93,9 +93,11 @@ class DocController
         $extLinks = $this->documentModel->getExternalLinks((int)$id);
 
         $docData = [
-            'document' => $doc,
-            'authors'  => json_decode($doc['author_list'], true) ?? [],
-            'extLinks' => $extLinks
+            'document'  => $doc,
+            'authors'   => json_decode($doc['author_list'], true) ?? [],
+            'extLinks'  => $extLinks,
+            'branches'  => $this->documentModel->getDocBranches((int)$doc['dID']),
+            'topic'     => $this->documentModel->getDocTopic((int)$doc['dID']),
         ];
 
         include rtrim(VIEWS_PATH, '/') . '/repository/view_doc.php';
@@ -118,9 +120,11 @@ class DocController
         $extLinks = $this->documentModel->getExternalLinks((int)$doc['dID']);
 
         $docData = [
-            'document' => $doc,
-            'authors'  => json_decode($doc['author_list'], true) ?? [],
-            'extLinks' => $extLinks
+            'document'  => $doc,
+            'authors'   => json_decode($doc['author_list'], true) ?? [],
+            'extLinks'  => $extLinks,
+            'branches'  => $this->documentModel->getDocBranches((int)$doc['dID']),
+            'topic'     => $this->documentModel->getDocTopic((int)$doc['dID']),
         ];
 
         include rtrim(VIEWS_PATH, '/') . '/repository/view_doc.php';
@@ -161,10 +165,43 @@ class DocController
             exit;
         }
 
+        // Parse branches from branch_list JSON
+        $draftBranches = [];
+        $branchList = json_decode($doc['branch_list'] ?? '[]', true) ?? [];
+        if (!empty($branchList)) {
+            $branchIds = array_column($branchList, 'bID');
+            $branchMap = $this->documentModel->getBranchesByIds($branchIds);
+            foreach ($branchList as $bl) {
+                $bid = (int)$bl['bID'];
+                if (isset($branchMap[$bid])) {
+                    $draftBranches[] = [
+                        'bID'    => $bid,
+                        'abbr'   => $branchMap[$bid]['abbr'],
+                        'bname'  => $branchMap[$bid]['bname'],
+                        'num'    => (int)$bl['num'],
+                        'impact' => (int)$bl['impact'],
+                    ];
+                }
+            }
+            usort($draftBranches, fn($a, $b) => $a['num'] <=> $b['num']);
+        }
+
+        // Fetch topic from tID
+        $draftTopic = null;
+        if (!empty($doc['tID'])) {
+            $draftTopic = $this->documentModel->getTopicById((int)$doc['tID']);
+        }
+
+        // Parse external links from link_list JSON
+        $extLinks = json_decode($doc['link_list'] ?? '[]', true) ?? [];
+
         $docData = [
-            'document' => $doc,
-            'draftAuthors' => $this->documentModel->getDraftAuthors((int)$id),
-            'isFullyApproved' => $this->documentModel->isDraftFullyApproved((int)$id)
+            'document'       => $doc,
+            'draftAuthors'   => $this->documentModel->getDraftAuthors((int)$id),
+            'isFullyApproved'=> $this->documentModel->isDraftFullyApproved((int)$id),
+            'branches'       => $draftBranches,
+            'topic'          => $draftTopic,
+            'extLinks'       => $extLinks,
         ];
 
         include rtrim(VIEWS_PATH, '/') . '/repository/view_docdraft.php';

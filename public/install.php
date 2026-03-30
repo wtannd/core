@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Step 3: Create Admin User
         $hash = password_hash($adminPass, PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare("INSERT INTO Members (email, password_hash, admin_role, mrole, is_active) VALUES (?, ?, 1, 'Admin', 1)");
+        $stmt = $pdo->prepare("INSERT INTO Members (mID, email, password_hash, admin_role, mrole, family_name) VALUES (1, ?, ?, 999, 99, 'Admin')");
         $stmt->execute([$adminEmail, $hash]);
 
         // Step 4: Generate config.php
