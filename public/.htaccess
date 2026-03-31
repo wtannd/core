@@ -1,0 +1,10 @@
+RewriteEngine On
+RewriteBase /
+
+# If the requested filename is not a directory
+RewriteCond %{REQUEST_FILENAME} !-d
+# If the requested filename is not a regular file
+RewriteCond %{REQUEST_FILENAME} !-f
+
+# Send all other requests to index.php
+RewriteRule ^(.*)$ index.php [L,QSA]
