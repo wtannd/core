@@ -76,7 +76,7 @@ class Document
             'dtype'        => (int)($data['dtype'] ?? 1)
         ];
 
-        $optionalFields = ['notes', 'ext_url', 'author_list', 'submission_time', 'pubdate', 'full_text', 'main_pages', 'main_figs', 'main_tabs'];
+        $optionalFields = ['notes', 'ext_url', 'author_list', 'submission_time', 'pubdate', 'full_text', 'main_pages', 'main_figs', 'main_tabs', 'main_size', 'suppl_size'];
         foreach ($optionalFields as $f) {
             if (isset($data[$f]) && $data[$f] !== '') {
                 $fields[] = $f;
@@ -305,6 +305,16 @@ class Document
                 'frac'   => $impact / 100.0
             ]);
         }
+    }
+
+    /**
+     * Save topic for a document (DocTopics table).
+     */
+    public function saveTopic(int $dID, int $tID): void
+    {
+        $sql = "INSERT INTO DocTopics (dID, tID) VALUES (:dID, :tID)";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['dID' => $dID, 'tID' => $tID]);
     }
 
     /**

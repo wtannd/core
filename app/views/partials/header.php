@@ -3,6 +3,7 @@
  * Global Header Partial
  */
 $isLoggedIn = isset($_SESSION['mID']);
+$isAdmin = isset($_SESSION['admin_role']) && (int)$_SESSION['admin_role'] >= ADMIN_ROLE_MIN;
 ?>
 <header class="site-header">
     <div class="header-container">
@@ -36,7 +37,7 @@ $isLoggedIn = isset($_SESSION['mID']);
 							<a href="/upload" class="dropdown-item">Upload Document</a>
 							<a href="/profile/edit" class="dropdown-item">Edit Profile</a>
 							
-							<?php if (isset($_SESSION['admin_role']) && (int)$_SESSION['admin_role'] > 0): ?>
+							<?php if ($isAdmin): ?>
 								<div class="dropdown-divider"></div>
 								<a href="/admin/dashboard" class="dropdown-item view-switch">Admin Dashboard</a>
 							<?php endif; ?>

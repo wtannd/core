@@ -50,7 +50,7 @@ hr {
    Containers
    ==================================== */
 
-.auth-container, .profile-container, .upload-container, .document-viewer {
+.auth-container, .profile-container, .upload-container, .document-viewer, .search-results-page, .feed-container {
     background: var(--surface-white);
     box-shadow: 0 4px 12px rgba(0,0,0,0.04);
     border: 1px solid #eaeaea;
@@ -62,7 +62,7 @@ hr {
 
 .auth-container { max-width: 500px; }
 .profile-container { max-width: 800px; margin: 1rem auto; }
-.upload-container, .document-viewer { max-width: var(--max-content-width); margin: 0.5rem auto; }
+.upload-container, .document-viewer, .search-results-page, .feed-container { max-width: var(--max-content-width); margin: 0.5rem auto; }
 
 /* ====================================
    Forms & Inputs
@@ -623,7 +623,7 @@ hr {
 /* ====================================
    Search & Feed Results Styles
    ==================================== */
-
+/*
 .search-results-page {
     max-width: var(--max-content-width);
     margin: 2rem auto;
@@ -631,6 +631,7 @@ hr {
     width: 95%;
     box-sizing: border-box;
 }
+*/
 .search-results-page h2 {
     border-bottom: 2px solid var(--brand-dark);
     display: inline-block;

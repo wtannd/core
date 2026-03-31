@@ -67,11 +67,13 @@ class DocController
 
     /**
      * Display the document feed.
+     * GET /feed?limit=20
      */
     public function feed(): void
     {
         $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
-        $documents = $this->documentModel->getRecentDocuments((int)$mRole);
+        $limit = max(1, min(100, (int)($_GET['limit'] ?? 20)));
+        $documents = $this->documentModel->getRecentDocuments(1, $limit, (int)$mRole);
         include rtrim(VIEWS_PATH, '/') . '/repository/feed_page.php';
     }
 
@@ -313,6 +315,11 @@ class DocController
                 $this->documentModel->saveBranches($newDID, $draftBranches);
             }
 
+            // Save topic from draft tID
+            if (!empty($draft['tID'])) {
+                $this->documentModel->saveTopic($newDID, (int)$draft['tID']);
+            }
+
             // Move files from docdrafts/ to YYYY/MM/DD/
             $path = $this->getPathFromPubdate($pubdate);
             $targetDir = rtrim(UPLOAD_PATH, '/') . '/' . $path;
@@ -450,14 +457,6 @@ class DocController
     }
 
     /**
-     * Get available external sources.
-     */
-    public function getAvailableSources(): array
-    {
-        return $this->documentModel->getAvailableSources();
-    }
-
-    /**
      * Show the upload form.
      */
     public function showUpload(): void
@@ -465,7 +464,7 @@ class DocController
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
-        $availableSources = $this->getAvailableSources();
+        $availableSources = $this->documentModel->getAvailableSources();
         $institutions = (new \app\models\lookups\Institution())->getAllInstitutions();
         $researchBranches = (new \app\models\lookups\ResearchBranch())->getAllBranches();
         $docTypes = (new \app\models\lookups\DocType())->getAllDocTypes();

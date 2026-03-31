@@ -178,6 +178,10 @@ switch ($requestUri) {
         (new \app\controllers\FeedController())->browse();
         break;
 
+    case '/feed':
+        (new \app\controllers\DocController())->feed();
+        break;
+
     // --- Utilities ---
     case '/stream':
         $type = $_GET['type'] ?? 'doc';
