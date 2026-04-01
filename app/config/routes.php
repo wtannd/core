@@ -85,13 +85,70 @@ switch ($requestUri) {
             $result = $docController->processUpload($_POST, $_FILES);
             if ($result['success']) {
                 $_SESSION['success_message'] = $result['message'];
-                header('Location: /');
+                $redirectTo = isset($result['dID']) ? ($result['action'] ?? 'draft') : 'home';
+                if ($redirectTo === 'submit' && isset($result['dID'])) {
+                    header('Location: /document?id=' . $result['dID']);
+                } elseif (isset($result['dID'])) {
+                    header('Location: /docdraft?id=' . $result['dID']);
+                } else {
+                    header('Location: /');
+                }
+            } else {
+                // Check if document was saved despite file error
+                if (!empty($result['dID'])) {
+                    $_SESSION['error_message'] = $result['message'];
+                    if (($result['action'] ?? '') === 'submit') {
+                        header('Location: /revise_doc?id=' . $result['dID']);
+                    } else {
+                        header('Location: /edit_draft?id=' . $result['dID']);
+                    }
+                } else {
+                    $errors = [$result['message']];
+                    $docController->showUpload($errors);
+                }
+            }
+        } else {
+            $docController->showUpload([]);
+        }
+        break;
+
+    case '/edit_draft':
+        if (!$isLoggedIn) {
+            header('Location: /login');
+            exit;
+        }
+        $docController = new \app\controllers\DocController();
+        if ($requestMethod === 'POST') {
+            $result = $docController->processEdit($_POST, $_FILES);
+            if ($result['success']) {
+                $_SESSION['success_message'] = $result['message'];
+                header('Location: /docdraft?id=' . $result['dID']);
             } else {
                 $errors = [$result['message']];
-                $docController->showUpload($errors);
+                $docController->editDraft($_POST['dID'] ?? '', $errors);
             }
+        } else {
+            $docController->editDraft($_GET['id'] ?? '');
+        }
+        break;
+
+    case '/revise_doc':
+        if (!$isLoggedIn) {
+            header('Location: /login');
+            exit;
+        }
+        $docController = new \app\controllers\DocController();
+        if ($requestMethod === 'POST') {
+            $result = $docController->processEdit($_POST, $_FILES);
+            if ($result['success']) {
+                $_SESSION['success_message'] = $result['message'];
+                header('Location: /document?id=' . $result['dID']);
             } else {
-                $docController->showUpload([]);
+                $errors = [$result['message']];
+                $docController->reviseDoc($_POST['dID'] ?? '', $errors);
+            }
+        } else {
+            $docController->reviseDoc($_GET['id'] ?? '');
         }
         break;
 

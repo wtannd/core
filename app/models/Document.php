@@ -126,13 +126,13 @@ class Document
      */
     public function getExternalLinks(int $dID): array
     {
-        $sql = "SELECT es.esname, ed.link 
+        $sql = "SELECT ed.sID, es.esname, ed.link 
                 FROM ExternalDocs ed
                 INNER JOIN ExternalSources es ON ed.sID = es.sID
                 WHERE ed.dID = :dID";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['dID' => $dID]);
-        return $stmt->fetchAll(PDO::FETCH_NUM); // Fetch as indexed array [esname, url]
+        return $stmt->fetchAll(PDO::FETCH_NUM); // Fetch as indexed array [sID, esname, url]
     }
 
     /**
@@ -537,5 +537,136 @@ class Document
         $stmt->execute();
 
         return ['results' => $stmt->fetchAll(), 'total' => $total];
+    }
+
+    /**
+     * Update an existing draft.
+     */
+    public function updateDraft(int $dID, array $data): void
+    {
+        $fields = ['title', 'abstract', 'has_file', 'dtype'];
+        $params = [
+            'dID'        => $dID,
+            'title'      => $data['title'],
+            'abstract'   => $data['abstract'],
+            'has_file'   => (int)$data['has_file'],
+            'dtype'      => (int)($data['dtype'] ?? 1)
+        ];
+
+        $optionalFields = ['notes', 'author_list', 'submission_time', 'pubdate', 'full_text', 'link_list', 'branch_list', 'tID'];
+        foreach ($optionalFields as $f) {
+            if (array_key_exists($f, $data)) {
+                $fields[] = $f;
+                $params[$f] = $data[$f] === '' ? null : $data[$f];
+            }
+        }
+
+        $setClauses = array_map(fn($f) => "$f = :$f", $fields);
+        $sql = "UPDATE DocDrafts SET " . implode(', ', $setClauses) . " WHERE dID = :dID";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+    }
+
+    /**
+     * Revise a published document.
+     *
+     * @return int The new version number
+     */
+    public function reviseDocument(int $dID, array $data, bool $filesChanged): int
+    {
+        // Fetch current version info
+        $stmt = $this->db->prepare("SELECT version, revision_history FROM Documents WHERE dID = :dID");
+        $stmt->execute(['dID' => $dID]);
+        $current = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $oldVersion = (int)($current['version'] ?? 1);
+        $newVersion = $filesChanged ? $oldVersion + 1 : $oldVersion;
+        $revisionHistory = json_decode($current['revision_history'] ?? '[]', true) ?? [];
+
+        // Append revision entry
+        $revisionHistory[] = [
+            'version' => $oldVersion,
+            'date'    => date('Y-m-d H:i:s'),
+            'notes'   => $data['revision_notes'] ?? ''
+        ];
+
+        // Build UPDATE
+        $fields = ['title', 'abstract', 'has_file', 'dtype', 'version', 'revision_history', 'last_revision_time'];
+        $params = [
+            'dID'               => $dID,
+            'title'             => $data['title'],
+            'abstract'          => $data['abstract'],
+            'has_file'          => (int)$data['has_file'],
+            'dtype'             => (int)($data['dtype'] ?? 1),
+            'version'           => $newVersion,
+            'revision_history'  => json_encode($revisionHistory),
+            'last_revision_time' => date('Y-m-d H:i:s')
+        ];
+
+        $optionalFields = ['notes', 'author_list', 'full_text', 'main_pages', 'main_figs', 'main_tabs'];
+        foreach ($optionalFields as $f) {
+            if (array_key_exists($f, $data)) {
+                $fields[] = $f;
+                $params[$f] = $data[$f] === '' ? null : $data[$f];
+            }
+        }
+
+        $setClauses = array_map(fn($f) => "$f = :$f", $fields);
+        $sql = "UPDATE Documents SET " . implode(', ', $setClauses) . " WHERE dID = :dID";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return $newVersion;
+    }
+
+    /**
+     * Delete all external links for a document.
+     */
+    public function deleteExternalDocs(int $dID): void
+    {
+        $stmt = $this->db->prepare("DELETE FROM ExternalDocs WHERE dID = :dID");
+        $stmt->execute(['dID' => $dID]);
+    }
+
+    /**
+     * Replace external links for a document (delete old, insert new).
+     */
+    public function updateExternalDocs(int $dID, array $links): void
+    {
+        $this->deleteExternalDocs($dID);
+
+        if (empty($links)) return;
+
+        $sql = "INSERT INTO ExternalDocs (dID, sID, esname, link) VALUES (:dID, :sID, :esname, :link)";
+        $stmt = $this->db->prepare($sql);
+
+        foreach ($links as $link) {
+            if (isset($link[0], $link[2])) {
+                $stmt->execute([
+                    'dID'    => $dID,
+                    'sID'    => (int)$link[0],
+                    'esname' => $link[1],
+                    'link'   => $link[2]
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Delete all branch associations for a document.
+     */
+    public function deleteDocBranches(int $dID): void
+    {
+        $stmt = $this->db->prepare("DELETE FROM DocBranches WHERE dID = :dID");
+        $stmt->execute(['dID' => $dID]);
+    }
+
+    /**
+     * Delete topic association for a document.
+     */
+    public function deleteDocTopic(int $dID): void
+    {
+        $stmt = $this->db->prepare("DELETE FROM DocTopics WHERE dID = :dID");
+        $stmt->execute(['dID' => $dID]);
     }
 }

@@ -115,13 +115,15 @@ class DocController
 
         $dID = (int)$doc['dID'];
         $extLinks = $this->documentModel->getExternalLinks($dID);
+        $mID = (int)($_SESSION['mID'] ?? 0);
 
         $docData = [
-            'document'  => $doc,
-            'authors'   => json_decode($doc['author_list'], true) ?? [],
-            'extLinks'  => $extLinks,
-            'branches'  => $this->documentModel->getDocBranches($dID),
-            'topic'     => $this->documentModel->getDocTopic($dID),
+            'document'    => $doc,
+            'authors'     => json_decode($doc['author_list'], true) ?? [],
+            'extLinks'    => $extLinks,
+            'branches'    => $this->documentModel->getDocBranches($dID),
+            'topic'       => $this->documentModel->getDocTopic($dID),
+            'isSubmitter' => $mID > 0 && (int)$doc['submitter_ID'] === $mID,
         ];
 
         include rtrim(VIEWS_PATH, '/') . '/repository/view_doc.php';
@@ -451,18 +453,175 @@ class DocController
     }
 
     /**
-     * Show the upload form.
+     * Show the upload/edit form. Mode-aware: 'upload', 'edit_draft', 'revise_doc'.
      */
     public function showUpload(?array $errors = null): void
+    {
+        $this->renderForm('upload', 0, null, $errors);
+    }
+
+    /**
+     * Show the edit draft form.
+     * GET /edit_draft?id=X
+     */
+    public function editDraft(string $id, ?array $errors = null): void
+    {
+        if (!isset($_SESSION['mID'])) {
+            header('Location: /login');
+            exit;
+        }
+
+        $mID = (int)$_SESSION['mID'];
+        $dID = (int)$id;
+        $draft = $this->documentModel->getDraft($dID, $mID);
+
+        if (!$draft) {
+            http_response_code(403);
+            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            exit;
+        }
+
+        // Parse author_list for pre-population
+        $authorList = json_decode($draft['author_list'] ?? '{}', true) ?? [];
+
+        // Parse branches from branch_list JSON
+        $branches = [];
+        $branchList = json_decode($draft['branch_list'] ?? '[]', true) ?? [];
+        if (!empty($branchList)) {
+            $branchIds = array_column($branchList, 'bID');
+            $branchMap = $this->documentModel->getBranchesByIds($branchIds);
+            foreach ($branchList as $bl) {
+                $bid = (int)$bl['bID'];
+                if (isset($branchMap[$bid])) {
+                    $branches[] = [
+                        'bID'    => $bid,
+                        'abbr'   => $branchMap[$bid]['abbr'],
+                        'bname'  => $branchMap[$bid]['bname'],
+                        'num'    => (int)$bl['num'],
+                        'impact' => (int)$bl['impact'],
+                    ];
+                }
+            }
+        }
+
+        // Parse external links from link_list JSON
+        $extLinks = json_decode($draft['link_list'] ?? '[]', true) ?? [];
+
+        $docData = [
+            'dID'           => $dID,
+            'dtype'         => $draft['dtype'],
+            'title'         => $draft['title'],
+            'abstract'      => $draft['abstract'],
+            'notes'         => $draft['notes'] ?? '',
+            'full_text'     => $draft['full_text'] ?? '',
+            'has_file'      => $draft['has_file'],
+            'tID'           => $draft['tID'],
+            'author_list'   => $authorList,
+            'branches'      => $branches,
+            'ext_links'     => $extLinks,
+            'pubdate'       => $draft['pubdate'] ?? '',
+            'submission_time' => $draft['submission_time'] ?? '',
+        ];
+
+        $this->renderForm('edit_draft', $dID, $docData, $errors);
+    }
+
+    /**
+     * Show the revise document form.
+     * GET /revise_doc?id=X
+     */
+    public function reviseDoc(string $id, ?array $errors = null): void
+    {
+        if (!isset($_SESSION['mID'])) {
+            header('Location: /login');
+            exit;
+        }
+
+        $mID = (int)$_SESSION['mID'];
+        $mRole = (int)($_SESSION['mrole'] ?? GUEST_ROLE);
+        $dID = (int)$id;
+        $doc = $this->documentModel->getDocument($dID, $mRole);
+
+        if (!$doc || (int)$doc['submitter_ID'] !== $mID) {
+            http_response_code(403);
+            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            exit;
+        }
+
+        // Parse author_list
+        $authorList = json_decode($doc['author_list'] ?? '{}', true) ?? [];
+
+        // Load branches
+        $branches = $this->documentModel->getDocBranches($dID);
+
+        // Load external links (now returns [sID, esname, link])
+        $extLinks = $this->documentModel->getExternalLinks($dID);
+
+        // Load topic
+        $topic = $this->documentModel->getDocTopic($dID);
+
+        $docData = [
+            'dID'           => $dID,
+            'dtype'         => $doc['dtype'],
+            'title'         => $doc['title'],
+            'abstract'      => $doc['abstract'],
+            'notes'         => $doc['notes'] ?? '',
+            'full_text'     => $doc['full_text'] ?? '',
+            'has_file'      => $doc['has_file'],
+            'tID'           => $topic ? $topic['tID'] : null,
+            'author_list'   => $authorList,
+            'branches'      => $branches,
+            'ext_links'     => $extLinks,
+            'pubdate'       => $doc['pubdate'] ?? '',
+            'submission_time' => $doc['submission_time'] ?? '',
+            'version'       => (int)($doc['version'] ?? 1),
+            'main_pages'    => $doc['main_pages'] ?? '',
+            'main_figs'     => $doc['main_figs'] ?? '',
+            'main_tabs'     => $doc['main_tabs'] ?? '',
+        ];
+
+        $this->renderForm('revise_doc', $dID, $docData, $errors);
+    }
+
+    /**
+     * Shared form renderer for upload, edit_draft, revise_doc.
+     */
+    private function renderForm(string $mode, int $dID, ?array $docData = null, ?array $errors = null): void
     {
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
+
         $availableSources = $this->documentModel->getAvailableSources();
         $institutions = (new Institution())->getAllInstitutions();
         $researchBranches = (new ResearchBranch())->getAllBranches();
         $researchTopics = (new ResearchTopic())->getAllTopics();
         $docTypes = (new DocType())->getAllDocTypes();
+
+        // Mode-specific variables
+        $pageTitle = match ($mode) {
+            'edit_draft' => 'Edit Draft',
+            'revise_doc' => 'Revise Document',
+            default      => 'Upload New Document (ePrint)'
+        };
+
+        $actionUrl = match ($mode) {
+            'edit_draft' => '/edit_draft',
+            'revise_doc' => '/revise_doc',
+            default      => '/upload'
+        };
+
+        $cancelUrl = match ($mode) {
+            'edit_draft' => $dID > 0 ? "/docdraft?id=$dID" : '/',
+            'revise_doc' => $dID > 0 ? "/document?id=$dID" : '/',
+            default      => '/'
+        };
+
+        $submitLabel = match ($mode) {
+            'edit_draft' => 'Update Draft',
+            'revise_doc' => 'Update Document',
+            default      => 'Submit Document'
+        };
 
         include rtrim(VIEWS_PATH, '/') . '/repository/upload.php';
     }
@@ -623,6 +782,8 @@ class DocController
         if (isset($postData['main_figs']) && $postData['main_figs'] !== '') { $docData['main_figs'] = (int)$postData['main_figs']; }
         if (isset($postData['main_tabs']) && $postData['main_tabs'] !== '') { $docData['main_tabs'] = (int)$postData['main_tabs']; }
 
+        // Phase 1: DB insert (critical)
+        $dID = 0;
         try {
             if ($action === 'draft') {
                 $dID = $this->documentModel->saveDraft($docData);
@@ -650,21 +811,258 @@ class DocController
                     $this->documentModel->saveTopic($dID, $tID);
                 }
             }
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
+        }
 
+        // Phase 2: File operations (non-critical — document already saved)
+        try {
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0750, true);
             }
 
+            $fileErrors = [];
+
             if ($hasFile >= 1) {
-                move_uploaded_file($fileData['main_file']['tmp_name'], "$uploadDir/{$dID}.pdf");
+                if (!move_uploaded_file($fileData['main_file']['tmp_name'], "$uploadDir/{$dID}.pdf")) {
+                    $fileErrors[] = 'Main PDF upload failed.';
+                }
             }
             if ($hasFile === 2) {
-                move_uploaded_file($fileData['supplemental_file']['tmp_name'], "$uploadDir/{$dID}_suppl.pdf");
+                if (!move_uploaded_file($fileData['supplemental_file']['tmp_name'], "$uploadDir/{$dID}_suppl.pdf")) {
+                    $fileErrors[] = 'Supplemental PDF upload failed.';
+                }
             } elseif ($hasFile === 3) {
-                move_uploaded_file($fileData['supplemental_file']['tmp_name'], "$uploadDir/{$dID}_suppl.zip");
+                if (!move_uploaded_file($fileData['supplemental_file']['tmp_name'], "$uploadDir/{$dID}_suppl.zip")) {
+                    $fileErrors[] = 'Supplemental ZIP upload failed.';
+                }
             }
 
-            return ['success' => true, 'message' => "Document " . ($action === 'draft' ? "saved as draft" : "submitted") . " successfully!"];
+            if (!empty($fileErrors)) {
+                return ['success' => false, 'message' => implode(' ', $fileErrors), 'dID' => $dID, 'action' => $action];
+            }
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'File error: ' . $e->getMessage(), 'dID' => $dID, 'action' => $action];
+        }
+
+        return ['success' => true, 'message' => "Document " . ($action === 'draft' ? "saved as draft" : "submitted") . " successfully!", 'dID' => $dID, 'action' => $action];
+    }
+
+    /**
+     * Process edit_draft or revise_doc submission.
+     */
+    public function processEdit(array $postData, array $fileData): array
+    {
+        if (!isset($_SESSION['mID'])) {
+            return ['success' => false, 'message' => 'Not authenticated.'];
+        }
+
+        $mID = (int)$_SESSION['mID'];
+        $mode = $postData['form_mode'] ?? 'edit_draft';
+        $dID = (int)($postData['dID'] ?? 0);
+
+        if ($dID <= 0) {
+            return ['success' => false, 'message' => 'Invalid document ID.'];
+        }
+
+        // Auth check
+        if ($mode === 'edit_draft') {
+            $draft = $this->documentModel->getDraft($dID, $mID);
+            if (!$draft) {
+                return ['success' => false, 'message' => 'Draft not found or access denied.'];
+            }
+        } else {
+            $mRole = (int)($_SESSION['mrole'] ?? GUEST_ROLE);
+            $doc = $this->documentModel->getDocument($dID, $mRole);
+            if (!$doc || (int)$doc['submitter_ID'] !== $mID) {
+                return ['success' => false, 'message' => 'Document not found or access denied.'];
+            }
+        }
+
+        $action = $postData['action'] ?? ($mode === 'revise_doc' ? 'update' : 'draft');
+
+        // File handling
+        $hasFile = 0;
+        $isMainUploaded = isset($fileData['main_file']) && $fileData['main_file']['error'] === UPLOAD_ERR_OK;
+        $isSupplUploaded = isset($fileData['supplemental_file']) && $fileData['supplemental_file']['error'] === UPLOAD_ERR_OK;
+        $filesChanged = $isMainUploaded || $isSupplUploaded;
+
+        // If no new file uploaded, keep existing has_file value
+        if (!$isMainUploaded && !$isSupplUploaded) {
+            if ($mode === 'edit_draft') {
+                $hasFile = (int)$draft['has_file'];
+            } else {
+                $hasFile = (int)$doc['has_file'];
+            }
+        }
+
+        $fullText = $postData['full_text'] ?? '';
+        $tID = (int)($postData['tID'] ?? 0);
+
+        // Size validation
+        if ($isMainUploaded && $fileData['main_file']['size'] > MAX_UPLOAD_SIZE) {
+            return ['success' => false, 'message' => 'File exceeds the maximum allowed size of ' . (MAX_UPLOAD_SIZE / (1024 * 1024)) . 'MB.'];
+        }
+        if ($isSupplUploaded && $fileData['supplemental_file']['size'] > MAX_UPLOAD_SIZE) {
+            return ['success' => false, 'message' => 'File exceeds the maximum allowed size of ' . (MAX_UPLOAD_SIZE / (1024 * 1024)) . 'MB.'];
+        }
+
+        if ($hasFile > 0 || $filesChanged) {
+            $fullText = '';
+        }
+
+        // MIME validation
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+
+        if ($isMainUploaded) {
+            $mainMime = $finfo->file($fileData['main_file']['tmp_name']);
+            if ($mainMime !== 'application/pdf') {
+                return ['success' => false, 'message' => 'Security Error: Main document must be a valid PDF.'];
+            }
+            $hasFile = 1;
+        }
+
+        if ($isSupplUploaded) {
+            $supplMime = $finfo->file($fileData['supplemental_file']['tmp_name']);
+            $ext = strtolower(pathinfo($fileData['supplemental_file']['name'], PATHINFO_EXTENSION));
+
+            if ($ext === 'pdf') {
+                if ($supplMime !== 'application/pdf') {
+                    return ['success' => false, 'message' => 'Security Error: Supplemental PDF is invalid.'];
+                }
+                $hasFile = 2;
+            } elseif ($ext === 'zip') {
+                if ($supplMime !== 'application/zip' && $supplMime !== 'application/x-zip-compressed') {
+                    return ['success' => false, 'message' => 'Security Error: Supplemental ZIP is invalid.'];
+                }
+                $hasFile = 3;
+            }
+        }
+
+        // Process link list
+        $linkListJson = $postData['link_list_json'] ?? '';
+        $linkListArray = json_decode($linkListJson, true) ?? [];
+        $cleanedLinks = [];
+
+        foreach ($linkListArray as $link) {
+            if (isset($link[2])) {
+                $cleanedUrl = str_ireplace('https://doi.org/', '', $link[2]);
+                $cleanedUrl = trim($cleanedUrl);
+                $cleanedLinks[] = [(int)$link[0], trim($link[1]), $cleanedUrl];
+            }
+        }
+
+        // Parse branch data
+        $branches = json_decode($postData['branch_list_json'] ?? '[]', true) ?? [];
+        $cleanedBranches = [];
+        foreach ($branches as $b) {
+            if (isset($b['bID'], $b['num'], $b['impact']) && (int)$b['bID'] > 0) {
+                $cleanedBranches[] = [
+                    'bID'    => (int)$b['bID'],
+                    'num'    => (int)$b['num'],
+                    'impact' => (int)$b['impact']
+                ];
+            }
+        }
+
+        try {
+            if ($mode === 'edit_draft') {
+                $docData = [
+                    'title'           => $postData['title'] ?? '',
+                    'abstract'        => $postData['abstract'] ?? '',
+                    'author_list'     => $postData['author_list_json'] ?? '',
+                    'has_file'        => $hasFile,
+                    'dtype'           => (int)($postData['dtype'] ?? 1),
+                    'notes'           => $postData['notes'] ?? '',
+                    'full_text'       => $fullText,
+                    'tID'             => $tID > 0 ? $tID : null,
+                    'link_list'       => json_encode($cleanedLinks),
+                    'branch_list'     => !empty($cleanedBranches) ? json_encode($cleanedBranches) : '',
+                ];
+
+                $this->documentModel->updateDraft($dID, $docData);
+                $this->documentModel->resetDraftApprovals($dID);
+
+                $uploadDir = rtrim(UPLOAD_PATH, '/') . '/docdrafts';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0750, true);
+                }
+
+                if ($hasFile >= 1 && $isMainUploaded) {
+                    move_uploaded_file($fileData['main_file']['tmp_name'], "$uploadDir/{$dID}.pdf");
+                }
+                if ($hasFile === 2 && $isSupplUploaded) {
+                    move_uploaded_file($fileData['supplemental_file']['tmp_name'], "$uploadDir/{$dID}_suppl.pdf");
+                } elseif ($hasFile === 3 && $isSupplUploaded) {
+                    move_uploaded_file($fileData['supplemental_file']['tmp_name'], "$uploadDir/{$dID}_suppl.zip");
+                }
+
+                return ['success' => true, 'message' => 'Draft updated successfully!', 'dID' => $dID];
+            }
+
+            // revise_doc mode
+            $docData = [
+                'title'           => $postData['title'] ?? '',
+                'abstract'        => $postData['abstract'] ?? '',
+                'author_list'     => $postData['author_list_json'] ?? '',
+                'has_file'        => $hasFile,
+                'dtype'           => (int)($postData['dtype'] ?? 1),
+                'notes'           => $postData['notes'] ?? '',
+                'full_text'       => $fullText,
+                'revision_notes'  => $postData['revision_notes'] ?? '',
+                'main_pages'      => $postData['main_pages'] ?? '',
+                'main_figs'       => $postData['main_figs'] ?? '',
+                'main_tabs'       => $postData['main_tabs'] ?? '',
+            ];
+
+            $newVersion = $this->documentModel->reviseDocument($dID, $docData, $filesChanged);
+
+            // Update external links
+            $this->documentModel->updateExternalDocs($dID, $cleanedLinks);
+
+            // Update branches
+            $this->documentModel->deleteDocBranches($dID);
+            if (!empty($cleanedBranches)) {
+                $this->documentModel->saveBranches($dID, $cleanedBranches);
+            }
+
+            // Update topic
+            $this->documentModel->deleteDocTopic($dID);
+            if ($tID > 0) {
+                $this->documentModel->saveTopic($dID, $tID);
+            }
+
+            // Handle file storage
+            $pubdate = $doc['pubdate'] ?? '';
+            $path = $this->getPathFromPubdate($pubdate);
+            $uploadDir = rtrim(UPLOAD_PATH, '/') . '/' . $path;
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0750, true);
+            }
+
+            if ($filesChanged) {
+                // Archive old main file if replacing
+                if ($isMainUploaded && (int)$doc['has_file'] >= 1) {
+                    $oldFile = "$uploadDir/{$dID}.pdf";
+                    if (file_exists($oldFile)) {
+                        $archiveDir = "$uploadDir/v" . ($newVersion - 1);
+                        if (!is_dir($archiveDir)) mkdir($archiveDir, 0750, true);
+                        rename($oldFile, "$archiveDir/{$dID}.pdf");
+                    }
+                }
+
+                if ($hasFile >= 1 && $isMainUploaded) {
+                    move_uploaded_file($fileData['main_file']['tmp_name'], "$uploadDir/{$dID}.pdf");
+                }
+                if ($hasFile === 2 && $isSupplUploaded) {
+                    move_uploaded_file($fileData['supplemental_file']['tmp_name'], "$uploadDir/{$dID}_suppl.pdf");
+                } elseif ($hasFile === 3 && $isSupplUploaded) {
+                    move_uploaded_file($fileData['supplemental_file']['tmp_name'], "$uploadDir/{$dID}_suppl.zip");
+                }
+            }
+
+            return ['success' => true, 'message' => 'Document revised successfully! (v' . $newVersion . ')', 'dID' => $dID];
 
         } catch (Exception $e) {
             return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];

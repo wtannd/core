@@ -194,8 +194,8 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
                             <summary>External Links</summary>
                             <div>
                                 <?php foreach ($extLinks as $link):
-                                    $sourceName = $link[0];
-                                    $url = $link[1];
+                                    $sourceName = $link[1];
+                                    $url = $link[2];
                                     $href = (strpos($url, 'http') === 0) ? $url : 'https://doi.org/' . $url;
                                 ?>
                                     <a href="<?php echo htmlspecialchars($href); ?>" target="_blank" rel="noopener noreferrer" class="doc-ext-link">
@@ -210,6 +210,12 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
 
                 </div>
             </div>
+
+            <?php if (!empty($docData['isSubmitter'])): ?>
+            <div style="margin: 1rem 0; display: flex; gap: 0.5rem;">
+                <a href="/revise_doc?id=<?php echo $doc['dID']; ?>" class="btn btn-draft" style="width: auto; padding: 0.5rem 1rem;">Revise Document</a>
+            </div>
+            <?php endif; ?>
 
             <!-- Tabs -->
             <div class="doc-tabs">

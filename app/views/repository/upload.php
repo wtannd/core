@@ -17,8 +17,8 @@
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
 
     <main>
-        <div class="upload-container">
-            <h1>Upload New Document (ePrint)</h1>
+        <div class="doc-container">
+            <h1><?php echo htmlspecialchars($pageTitle); ?></h1>
 
             <?php if (!empty($errors)): ?>
                 <div class="alert alert-danger">
@@ -30,52 +30,94 @@
                 </div>
             <?php endif; ?>
 
-            <form action="/upload" method="POST" enctype="multipart/form-data" id="upload-form">
+            <?php if (isset($_SESSION['error_message'])): ?>
+                <div class="alert alert-danger">
+                    <?php echo htmlspecialchars($_SESSION['error_message']); ?>
+                    <?php unset($_SESSION['error_message']); ?>
+                </div>
+            <?php endif; ?>
+
+            <?php
+                // Set defaults for upload mode
+                $mode = $mode ?? 'upload';
+                $dID = $dID ?? 0;
+                $actionUrl = $actionUrl ?? '/upload';
+                $cancelUrl = $cancelUrl ?? '/';
+                $submitLabel = $submitLabel ?? 'Submit Document';
+                $docData = $docData ?? null;
+                $isRevise = ($mode === 'revise_doc');
+                $isEditDraft = ($mode === 'edit_draft');
+
+                // Pre-populate values from docData or $_POST
+                $valTitle = $_POST['title'] ?? ($docData['title'] ?? '');
+                $valAbstract = $_POST['abstract'] ?? ($docData['abstract'] ?? '');
+                $valNotes = $_POST['notes'] ?? ($docData['notes'] ?? '');
+                $valFullText = $_POST['full_text'] ?? ($docData['full_text'] ?? '');
+                $valDtype = $_POST['dtype'] ?? ($docData['dtype'] ?? 1);
+                $valTID = $_POST['tID'] ?? ($docData['tID'] ?? 0);
+                $valIsOld = $_POST['is_old'] ?? ($docData && !empty($docData['pubdate']) ? '1' : '0');
+                $valMainPages = $_POST['main_pages'] ?? ($docData['main_pages'] ?? '');
+                $valMainFigs = $_POST['main_figs'] ?? ($docData['main_figs'] ?? '');
+                $valMainTabs = $_POST['main_tabs'] ?? ($docData['main_tabs'] ?? '');
+
+                // JS data for pre-populating dynamic rows
+                $jsAuthorList = $docData ? json_encode($docData['author_list'] ?? []) : 'null';
+                $jsBranches = $docData ? json_encode($docData['branches'] ?? []) : 'null';
+                $jsExtLinks = $docData ? json_encode($docData['ext_links'] ?? []) : 'null';
+            ?>
+
+            <form action="<?php echo $actionUrl; ?>" method="POST" enctype="multipart/form-data" id="upload-form">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                 <input type="hidden" name="author_list_json" id="author_list_json">
                 <input type="hidden" name="link_list_json" id="link_list_json">
                 <input type="hidden" name="branch_list_json" id="branch_list_json">
+                <input type="hidden" name="form_mode" value="<?php echo $mode; ?>">
+                <?php if ($dID > 0): ?>
+                <input type="hidden" name="dID" value="<?php echo $dID; ?>">
+                <?php endif; ?>
 
+                <?php if (!$isRevise): ?>
                 <div class="form-group">
-                    <label>Submission Type:</label>
-                    <label style="display:inline-block; margin-right: 15px;">
-                        <input type="radio" name="is_old" value="0" <?php echo ($_POST['is_old'] ?? '0') === '0' ? 'checked' : ''; ?> onchange="toggleOldDate()"> New Submission
-                    </label>
-                    <label style="display:inline-block;">
-                        <input type="radio" name="is_old" value="1" <?php echo ($_POST['is_old'] ?? '0') === '1' ? 'checked' : ''; ?> onchange="toggleOldDate()"> Old/Published Document
-                    </label>
+                    <div class="submission-type-toggle">
+                        <button type="button" class="submission-type-btn <?php echo $valIsOld === '0' ? 'active' : ''; ?>" data-value="0" onclick="toggleSubmissionType(this)">New Submission</button>
+                        <button type="button" class="submission-type-btn <?php echo $valIsOld === '1' ? 'active' : ''; ?>" data-value="1" onclick="toggleSubmissionType(this)">Published/Old Document</button>
+                    </div>
+                    <input type="hidden" name="is_old" id="is_old" value="<?php echo htmlspecialchars($valIsOld); ?>">
                 </div>
+                <?php endif; ?>
 
                 <div class="form-group" id="old-date-group" style="display: none;">
-                    <div style="margin-bottom: 1rem;">
-                        <label>Date Published in Journal or Posted as ePrint:</label>
-                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                            <input type="number" name="pub_year" id="pub_year" min="1000" max="9999" placeholder="YYYY" style="width: 80px;" value="<?php echo htmlspecialchars($_POST['pub_year'] ?? ''); ?>">
-                            <span>/</span>
-                            <input type="number" name="pub_month" id="pub_month" min="1" max="12" placeholder="MM" style="width: 60px;" value="<?php echo htmlspecialchars($_POST['pub_month'] ?? ''); ?>">
-                            <span>/</span>
-                            <input type="number" name="pub_day" id="pub_day" min="1" max="31" placeholder="DD" style="width: 60px;" value="<?php echo htmlspecialchars($_POST['pub_day'] ?? ''); ?>">
+                    <div class="date-row">
+                        <div>
+                            <label>Date Published in Journal or Posted as ePrint:</label>
+                            <div class="date-inline-group">
+                                <input type="number" name="pub_year" id="pub_year" min="1000" max="9999" placeholder="YYYY" value="<?php echo htmlspecialchars($_POST['pub_year'] ?? ''); ?>">
+                                <span>/</span>
+                                <input type="number" name="pub_month" id="pub_month" min="1" max="12" placeholder="MM" class="short" value="<?php echo htmlspecialchars($_POST['pub_month'] ?? ''); ?>">
+                                <span>/</span>
+                                <input type="number" name="pub_day" id="pub_day" min="1" max="31" placeholder="DD" class="short" value="<?php echo htmlspecialchars($_POST['pub_day'] ?? ''); ?>">
+                            </div>
+                            <small>Year required. Month/day optional.</small>
                         </div>
-                        <small>Year is required. Month and day are optional.</small>
-                    </div>
-                    <div>
-                        <label>Date Received in Journal:</label>
-                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                            <input type="number" name="recv_year" id="recv_year" min="1000" max="9999" placeholder="YYYY" style="width: 80px;" value="<?php echo htmlspecialchars($_POST['recv_year'] ?? ''); ?>">
-                            <span>/</span>
-                            <input type="number" name="recv_month" id="recv_month" min="1" max="12" placeholder="MM" style="width: 60px;" value="<?php echo htmlspecialchars($_POST['recv_month'] ?? ''); ?>">
-                            <span>/</span>
-                            <input type="number" name="recv_day" id="recv_day" min="1" max="31" placeholder="DD" style="width: 60px;" value="<?php echo htmlspecialchars($_POST['recv_day'] ?? ''); ?>">
+                        <div>
+                            <label>Date Received in Journal (Optional):</label>
+                            <div class="date-inline-group">
+                                <input type="number" name="recv_year" id="recv_year" min="1000" max="9999" placeholder="YYYY" value="<?php echo htmlspecialchars($_POST['recv_year'] ?? ''); ?>">
+                                <span>/</span>
+                                <input type="number" name="recv_month" id="recv_month" min="1" max="12" placeholder="MM" class="short" value="<?php echo htmlspecialchars($_POST['recv_month'] ?? ''); ?>">
+                                <span>/</span>
+                                <input type="number" name="recv_day" id="recv_day" min="1" max="31" placeholder="DD" class="short" value="<?php echo htmlspecialchars($_POST['recv_day'] ?? ''); ?>">
+                            </div>
+                            <small>If omitted, Date Published is used.</small>
                         </div>
-                        <small>All fields optional. If omitted, Date Published is used.</small>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="dtype">Document Type:</label>
+                    <label for="dtype"><h3>Document Type:</h3></label>
                     <select name="dtype" id="dtype" class="form-control" required>
                         <?php foreach ($docTypes as $type): ?>
-                            <option value="<?= $type['ID'] ?>" <?= (int)$type['ID'] === 1 ? 'selected' : '' ?>>
+                            <option value="<?= $type['ID'] ?>" <?= (int)$type['ID'] === (int)$valDtype ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($type['dtname']) ?>
                             </option>
                         <?php endforeach; ?>
@@ -84,16 +126,26 @@
 
                 <div class="form-group">
                     <label for="title">Document Title:</label>
-                    <input type="text" id="title" name="title" required value="<?php echo htmlspecialchars($_POST['title'] ?? ''); ?>">
+                    <input type="text" id="title" name="title" required value="<?php echo htmlspecialchars($valTitle); ?>">
                 </div>
 
                 <div class="form-group">
                     <label for="abstract">Abstract:</label>
-                    <textarea id="abstract" name="abstract" rows="6" required style="width: 100%; padding: 0.5rem;"><?php echo htmlspecialchars($_POST['abstract'] ?? ''); ?></textarea>
+                    <textarea id="abstract" name="abstract" rows="6" required><?php echo htmlspecialchars($valAbstract); ?></textarea>
                 </div>
 
                 <div class="form-group">
                     <label for="notes">Notes:</label>
+                    <input type="text" id="notes" name="notes" value="<?php echo htmlspecialchars($valNotes); ?>">
+                </div>
+
+                <div class="form-group">
+                    <label for="abstract"><h3>Abstract:</h3></label>
+                    <textarea id="abstract" name="abstract" rows="6" required><?php echo htmlspecialchars($_POST['abstract'] ?? ''); ?></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="notes"><h3>Notes:</h3></label>
                     <input type="text" id="notes" name="notes" value="<?php echo htmlspecialchars($_POST['notes'] ?? ''); ?>">
                 </div>
 
@@ -108,43 +160,40 @@
                 <hr>
 
                 <h3>Authors &amp; Contributions</h3>
-                <div style="background: #f0f4f8; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.9rem; color: #333;">
-                    <strong>Duty Assignment Rules:</strong> Each author is assigned a duty percentage reflecting their contribution level.
-                    <ul style="margin: 0.4rem 0 0 1.2rem; padding: 0;">
-                        <li><strong>1st author:</strong> 100% &nbsp;|&nbsp; <strong>2nd author:</strong> 50% &nbsp;|&nbsp; <strong>3rd author:</strong> 25%</li>
-                        <li><strong>Other classified authors:</strong> 20% &ndash; 99% each</li>
-                        <li><strong>General contributor:</strong> 10% each (unclassified contribution)</li>
+                <div class="duty-rules-box">
+                    <strong>Duty Assignment Rules:</strong> Each author is assigned a duty percentage reflecting their contribution/responsibility level.
+                    <ul>
+                        <li><strong>1st-class:</strong> 100% &nbsp;|&nbsp; <strong>other-classified:</strong> 20% &ndash; 99% &nbsp;|&nbsp; <strong>general-unclassified:</strong> 10% each</li>
+                        <li>1st-class authors have full responsibility and control of the document</li>
                         <li>The total of all classified duties must not exceed <strong>875%</strong>.</li>
                     </ul>
                 </div>
 
-                <div class="batch-add-ui" style="margin-bottom: 1rem;">
-                    <textarea id="batch-core-ids" rows="2" class="form-control" placeholder="Paste [,;\n\r]-Separated CORE-IDs here (e.g., 12A-45B-78C, 65B32A)"></textarea>
-                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center;">
-                        <input type="text" id="batch-aff-ids" placeholder="Aff. IDs (e.g. 1,2)" style="width: 150px; padding: 0.4rem;">
-                        <button type="button" id="btn-lookup-authors" class="btn btn-add">Lookup &amp; Add Authors by CORE-ID</button>
-                    </div>
+                <div class="batch-add-row">
+                    <textarea id="batch-core-ids" rows="1" class="form-control" placeholder="CORE-IDs (e.g., 12A-45B-78C, 65B32A)"></textarea>
+                    <input type="text" id="batch-aff-ids" placeholder="Aff. IDs (e.g. 1,2)">
+                    <button type="button" id="btn-lookup-authors" class="btn btn-add">Lookup &amp; Add</button>
                 </div>
 
-                <div id="authors-container" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem;">
+                <div id="authors-container">
                     <!-- Rows generated by JS -->
                 </div>
 
-                <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                    <input type="number" id="manual-insert-pos" min="1" placeholder="Position" style="width: 80px; padding: 0.4rem;">
-                    <button type="button" id="btn-add-manual" class="btn btn-secondary" style="width: auto;">+ Add Author Manually by Name</button>
-                    <button type="button" id="btn-add-myself" class="btn btn-secondary" style="width: auto;">+ Add Myself as Author</button>
+                <div class="author-add-bar">
+                    <input type="number" id="manual-insert-pos" min="1" placeholder="Pos." class="author-pos-input">
+                    <button type="button" id="btn-add-manual" class="btn btn-secondary">+ Add Manually</button>
+                    <button type="button" id="btn-add-myself" class="btn btn-secondary">+ Add Myself</button>
                 </div>
-                <div class="duty-summary" id="duty-summary" style="margin-top: 10px;">Total Duty: 0%</div>
+                <div class="duty-summary" id="duty-summary">Total Duty: 0%</div>
 
                 <hr>
 
                 <h3>Research Branches</h3>
-                <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">Assign 1 to 3 research branches. The total impact must equal 100%.</p>
+                <p class="section-desc">Assign 1 to 3 research branches. The total impact must equal 100%.</p>
                 <div id="branches-container">
                     <!-- Dynamic branch rows -->
                 </div>
-                <div style="margin-top: 0.75rem; display: flex; align-items: center; gap: 1rem;">
+                <div class="branch-controls">
                     <button type="button" class="btn btn-add" id="btn-add-branch" onclick="addBranchRow()">+ Add Branch</button>
                     <span class="branch-summary" id="branch-summary">Total Impact: 100%</span>
                 </div>
@@ -152,11 +201,11 @@
                 <hr>
 
                 <div class="form-group">
-                    <label for="tID">Research Topic (optional):</label>
+                    <label for="tID"><h3>Research Topic (optional):</h3></label>
                     <select name="tID" id="tID" class="form-control">
                         <option value="0">-- None --</option>
                         <?php foreach ($researchTopics as $t): ?>
-                            <option value="<?php echo $t['tID']; ?>" <?php echo ($_POST['tID'] ?? '0') == $t['tID'] ? 'selected' : ''; ?>>
+                            <option value="<?php echo $t['tID']; ?>" <?php echo (int)$t['tID'] === (int)$valTID ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($t['abbr'] . ' — ' . $t['tname']); ?>
                             </option>
                         <?php endforeach; ?>
@@ -175,22 +224,29 @@
 
                 <div class="file-section">
                     <h3>Attach Files</h3>
+                    <?php if ($isEditDraft || $isRevise): ?>
+                    <div style="margin-bottom: 0.75rem; font-size: 0.82rem; color: #555;">
+                        Current file: <strong><?php echo ($docData['has_file'] ?? 0) >= 1 ? 'Main PDF attached' : 'None'; ?>
+                        <?php if (($docData['has_file'] ?? 0) === 2): ?> + Supplemental PDF<?php elseif (($docData['has_file'] ?? 0) === 3): ?> + Supplemental ZIP<?php endif; ?></strong>
+                        — upload new files below to replace.
+                    </div>
+                    <?php endif; ?>
                     <div class="form-group">
                         <label for="main_file">Main Document (PDF):</label>
                         <input type="file" id="main_file" name="main_file" accept=".pdf" onchange="toggleFullText()">
                         
-                        <div class="metrics-group" style="display: flex; gap: 1rem; margin-top: 1rem; background: #f8f9fa; padding: 1rem; border-radius: 6px; border: 1px solid #eee;">
-                            <div style="flex: 1;">
-                                <label for="main_pages" style="font-size: 0.9rem;">Pages (Main):</label>
-                                <input type="number" name="main_pages" id="main_pages" min="1" class="form-control" value="<?php echo htmlspecialchars($_POST['main_pages'] ?? ''); ?>">
+                        <div class="metrics-group">
+                            <div>
+                                <label for="main_pages">Pages (Main):</label>
+                                <input type="number" name="main_pages" id="main_pages" min="1" class="form-control" value="<?php echo htmlspecialchars((string)$valMainPages); ?>">
                             </div>
-                            <div style="flex: 1;">
-                                <label for="main_figs" style="font-size: 0.9rem;">Figures:</label>
-                                <input type="number" name="main_figs" id="main_figs" min="0" class="form-control" value="<?php echo htmlspecialchars($_POST['main_figs'] ?? ''); ?>">
+                            <div>
+                                <label for="main_figs">Figures:</label>
+                                <input type="number" name="main_figs" id="main_figs" min="0" class="form-control" value="<?php echo htmlspecialchars((string)$valMainFigs); ?>">
                             </div>
-                            <div style="flex: 1;">
-                                <label for="main_tabs" style="font-size: 0.9rem;">Tables:</label>
-                                <input type="number" name="main_tabs" id="main_tabs" min="0" class="form-control" value="<?php echo htmlspecialchars($_POST['main_tabs'] ?? ''); ?>">
+                            <div>
+                                <label for="main_tabs">Tables:</label>
+                                <input type="number" name="main_tabs" id="main_tabs" min="0" class="form-control" value="<?php echo htmlspecialchars((string)$valMainTabs); ?>">
                             </div>
                         </div>
                     </div>
@@ -202,12 +258,27 @@
 
                 <div class="form-group" id="full-text-group" style="display: none;">
                     <label for="full_text">Full Text (if no file attached):</label>
-                    <textarea id="full_text" name="full_text" rows="10" style="width: 100%; padding: 0.5rem;"><?php echo htmlspecialchars($_POST['full_text'] ?? ''); ?></textarea>
+                    <textarea id="full_text" name="full_text" rows="8"><?php echo htmlspecialchars($valFullText); ?></textarea>
                 </div>
 
+                <?php if ($isRevise): ?>
+                <div class="form-group">
+                    <label for="revision_notes"><h3>Revision Notes:</h3></label>
+                    <textarea id="revision_notes" name="revision_notes" rows="3" placeholder="Describe what changed in this revision..."><?php echo htmlspecialchars($_POST['revision_notes'] ?? ''); ?></textarea>
+                </div>
+                <?php endif; ?>
+
                 <div class="submit-group">
-                    <button type="submit" name="action" value="draft" class="btn btn-draft">Save as Draft</button>
-                    <button type="submit" name="action" value="submit" class="btn btn-submit" onclick="return validateDuty()">Submit Document</button>
+                    <?php if ($mode === 'upload'): ?>
+                        <button type="submit" name="action" value="draft" class="btn btn-draft">Save as Draft</button>
+                        <button type="submit" name="action" value="submit" class="btn btn-submit" onclick="return validateDuty()">Submit Document</button>
+                    <?php elseif ($mode === 'edit_draft'): ?>
+                        <button type="submit" name="action" value="draft" class="btn btn-draft">Update Draft</button>
+                        <a href="<?php echo $cancelUrl; ?>" class="btn btn-secondary">Cancel</a>
+                    <?php elseif ($mode === 'revise_doc'): ?>
+                        <button type="submit" name="action" value="update" class="btn btn-submit">Update Document</button>
+                        <a href="<?php echo $cancelUrl; ?>" class="btn btn-secondary">Cancel</a>
+                    <?php endif; ?>
                 </div>
             </form>
         </div>
@@ -237,8 +308,18 @@
         document.getElementById('main_file').addEventListener('change', validateFileSize);
         document.getElementById('supplemental_file').addEventListener('change', validateFileSize);
 
+        function toggleSubmissionType(btn) {
+            const val = btn.dataset.value;
+            document.getElementById('is_old').value = val;
+            btn.closest('.submission-type-toggle').querySelectorAll('.submission-type-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const isOld = val === '1';
+            document.getElementById('old-date-group').style.display = isOld ? 'block' : 'none';
+            document.getElementById('pub_year').required = isOld;
+        }
+
         function toggleOldDate() {
-            const isOld = document.querySelector('input[name="is_old"]:checked').value === '1';
+            const isOld = document.getElementById('is_old').value === '1';
             document.getElementById('old-date-group').style.display = isOld ? 'block' : 'none';
             document.getElementById('pub_year').required = isOld;
         }
@@ -252,7 +333,6 @@
 
         // Initialize visibility
         toggleFullText();
-        toggleOldDate();
 
         // --- Authors Logic ---
         const authorsContainer = document.getElementById('authors-container');
@@ -260,25 +340,18 @@
         function createAuthorRow(author = {pub_name: '', mID: '', core_id: '', is_manual: true}) {
             const row = document.createElement('div');
             row.className = 'author-row';
-            row.style.display = 'grid';
-            row.style.gridTemplateColumns = 'auto 1.5fr 1fr 80px 80px auto';
-            row.style.gap = '10px';
-            row.style.alignItems = 'center';
-            row.style.background = '#f9f9f9';
-            row.style.padding = '10px';
-            row.style.borderRadius = '4px';
 
             row.innerHTML = `
-                <div class="move-btns" style="display: flex; flex-direction: column; gap: 2px;">
-                    <button type="button" class="btn-up" style="padding: 0 5px; font-size: 0.8rem;">↑</button>
-                    <button type="button" class="btn-down" style="padding: 0 5px; font-size: 0.8rem;">↓</button>
+                <div class="move-btns">
+                    <button type="button" class="btn-up">↑</button>
+                    <button type="button" class="btn-down">↓</button>
                 </div>
                 <input type="text" class="auth-pub-name" placeholder="Publication Name" required value="${author.pub_name}" ${author.is_manual ? '' : 'readonly'}>
-                <input type="text" class="auth-core-id" placeholder="CORE-ID" value="${author.core_id}" readonly ${author.is_manual ? 'disabled' : ''} style="background: #eee;">
+                <input type="text" class="auth-core-id" placeholder="CORE-ID" value="${author.core_id}" readonly ${author.is_manual ? 'disabled' : ''}>
                 <input type="hidden" class="auth-mid" value="${author.mID}">
                 <input type="number" class="auth-duty duty-input" placeholder="Duty" required min="10" max="100" value="100">
                 <input type="text" class="auth-aff-refs" placeholder="Aff. IDs" value="">
-                <button type="button" class="btn-remove remove-author" style="background: #ff4444; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">X</button>
+                <button type="button" class="btn-remove remove-author">X</button>
             `;
 
             row.querySelector('.duty-input').addEventListener('change', enforceDutyRules);
@@ -463,9 +536,39 @@
             insertAuthorAtPosition(row);
         };
 
-        // Initialize with Submitter
+        // Pre-populated data for edit/revise modes
+        const EDIT_AUTHORS = <?php echo $jsAuthorList; ?>;
+        const EDIT_BRANCHES = <?php echo $jsBranches; ?>;
+        const EDIT_LINKS = <?php echo $jsExtLinks; ?>;
+
+        // Initialize with Submitter or pre-populated data
         document.addEventListener('DOMContentLoaded', () => {
-            if (USER_DATA.mID) {
+            // Authors
+            if (EDIT_AUTHORS && EDIT_AUTHORS.authors && EDIT_AUTHORS.authors.length > 0) {
+                // Pre-populate affiliations
+                const affContainer = document.getElementById('affiliations-container');
+                if (EDIT_AUTHORS.affiliations) {
+                    EDIT_AUTHORS.affiliations.forEach(aff => {
+                        addAffiliationRow(aff[1]);
+                    });
+                }
+                // Pre-populate authors
+                EDIT_AUTHORS.authors.forEach(a => {
+                    const row = createAuthorRow({
+                        pub_name: a[0] || '',
+                        mID: a[1] || '',
+                        core_id: '',
+                        is_manual: !a[1]
+                    });
+                    // Set duty and aff-refs
+                    row.querySelector('.auth-duty').value = a[2] || 100;
+                    if (a[3] && a[3].length > 0) {
+                        row.querySelector('.auth-aff-refs').value = a[3].join(',');
+                    }
+                    authorsContainer.appendChild(row);
+                });
+                updateDutySummary();
+            } else if (USER_DATA.mID) {
                 const row = createAuthorRow({
                     pub_name: USER_DATA.display_name,
                     mID: USER_DATA.mID,
@@ -475,6 +578,30 @@
                 authorsContainer.appendChild(row);
                 autoDistributeDuties();
             }
+
+            // Branches
+            if (EDIT_BRANCHES && EDIT_BRANCHES.length > 0) {
+                branchesContainer.innerHTML = '';
+                EDIT_BRANCHES.forEach(b => {
+                    branchesContainer.appendChild(createBranchRow(b.bID, b.impact));
+                });
+                renumberBranches();
+                updateBranchSummary();
+            }
+
+            // Links
+            if (EDIT_LINKS && EDIT_LINKS.length > 0) {
+                EDIT_LINKS.forEach(l => {
+                    addLinkRow(l[0] || 0, l[2] || '', l[1] || '');
+                });
+            }
+
+            // Show old-date group if needed
+            const isOldHidden = document.getElementById('is_old');
+            if (isOldHidden && isOldHidden.value === '1') {
+                document.getElementById('old-date-group').style.display = 'block';
+                document.getElementById('pub_year').required = true;
+            }
         });
 
         // --- Affiliations & Links --- (Maintain existing helper functions)
@@ -482,8 +609,7 @@
             const container = document.getElementById('affiliations-container');
             const index = container.children.length + 1;
             const row = document.createElement('div');
-            row.className = 'author-row';
-            row.style.gridTemplateColumns = '30px 1fr auto';
+            row.className = 'author-row affiliation-row';
             row.innerHTML = `
                 <span>${index}.</span>
                 <input type="text" class="aff-name" placeholder="Affiliation Name" required value="${name}">
@@ -502,8 +628,7 @@
         function addLinkRow(sid = '', url = '', esname = '') {
             const container = document.getElementById('links-container');
             const row = document.createElement('div');
-            row.className = 'author-row';
-            row.style.gridTemplateColumns = '1fr 1fr 2fr 80px';
+            row.className = 'author-row link-row';
             
             let options = '<option value="">Select Source</option>';
             AVAILABLE_SOURCES.forEach(src => {
@@ -516,7 +641,7 @@
 
             row.innerHTML = `
                 <select class="link-sid" required onchange="toggleLinkName(this)">${options}</select>
-                <input type="text" class="link-esname" placeholder="Source Name" value="${displayEsname}" ${isCustom ? 'required' : 'readonly'} style="${isCustom ? '' : 'background: #eee;'}">
+                <input type="text" class="link-esname" placeholder="Source Name" value="${displayEsname}" ${isCustom ? 'required' : 'readonly'}>
                 <input type="url" class="link-url" placeholder="URL or DOI" required value="${url}">
                 <button type="button" class="remove-author" onclick="this.parentElement.remove();">Remove</button>
             `;
@@ -532,12 +657,10 @@
             if (sid > 2 && src) {
                 nameInput.value = src.esname;
                 nameInput.readOnly = true;
-                nameInput.style.background = '#eee';
                 nameInput.required = false;
             } else {
                 nameInput.value = '';
                 nameInput.readOnly = false;
-                nameInput.style.background = '';
                 nameInput.required = true;
             }
         }
@@ -584,11 +707,11 @@
             row.innerHTML = `
                 <span class="branch-num">${num}.</span>
                 <select class="branch-bid" required>${options}</select>
-                <div style="display: flex; align-items: center; gap: 5px;">
-                    <input type="number" class="branch-impact" min="1" max="100" value="${impact}" required style="width: 70px; padding: 0.4rem;">
+                <div class="branch-impact-group">
+                    <input type="number" class="branch-impact" min="1" max="100" value="${impact}" required>
                     <span>%</span>
                 </div>
-                <button type="button" class="remove-author" onclick="removeBranchRow(this);" style="background: #ff4444; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">X</button>
+                <button type="button" class="remove-author" onclick="removeBranchRow(this);">X</button>
             `;
 
             row.querySelector('.branch-impact').addEventListener('change', updateBranchSummary);
