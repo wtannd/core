@@ -71,7 +71,7 @@
 
             <hr>
 
-            <a href="/orcid_login.php" class="btn btn-orcid">
+            <a href="/orcid_login" class="btn btn-orcid">
                 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 256 256" xml:space="preserve">
                     <style type="text/css">.st0{fill:#A6CE39;}.st1{fill:#FFFFFF;}</style>
                     <path class="st0" d="M256,128c0,70.7-57.3,128-128,128C57.3,256,0,198.7,0,128C0,57.3,57.3,0,128,0C198.7,0,256,57.3,256,128z"/>

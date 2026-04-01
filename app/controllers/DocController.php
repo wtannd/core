@@ -5,6 +5,11 @@ declare(strict_types=1);
 namespace app\controllers;
 
 use app\models\Document;
+use app\models\Member;
+use app\models\lookups\Institution;
+use app\models\lookups\ResearchBranch;
+use app\models\lookups\DocType;
+use app\models\lookups\ResearchTopic;
 use Exception;
 
 /**
@@ -15,12 +20,12 @@ use Exception;
 class DocController
 {
     private Document $documentModel;
-    private \app\models\Member $memberModel;
+    private Member $memberModel;
 
     public function __construct()
     {
         $this->documentModel = new Document();
-        $this->memberModel = new \app\models\Member();
+        $this->memberModel = new Member();
     }
 
     /**
@@ -84,25 +89,7 @@ class DocController
     {
         $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
         $doc = $this->documentModel->getDocument((int)$id, (int)$mRole);
-
-        if (!$doc) {
-            http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
-            exit;
-        }
-
-        // Fetch external links
-        $extLinks = $this->documentModel->getExternalLinks((int)$id);
-
-        $docData = [
-            'document'  => $doc,
-            'authors'   => json_decode($doc['author_list'], true) ?? [],
-            'extLinks'  => $extLinks,
-            'branches'  => $this->documentModel->getDocBranches((int)$doc['dID']),
-            'topic'     => $this->documentModel->getDocTopic((int)$doc['dID']),
-        ];
-
-        include rtrim(VIEWS_PATH, '/') . '/repository/view_doc.php';
+        $this->renderDocument($doc);
     }
 
     /**
@@ -112,21 +99,29 @@ class DocController
     {
         $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
         $doc = $this->documentModel->getDocumentByDoi($doi, (int)$mRole);
+        $this->renderDocument($doc);
+    }
 
+    /**
+     * Render a single published document view.
+     */
+    private function renderDocument(array|false $doc): void
+    {
         if (!$doc) {
-            http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            http_response_code(404);
+            include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
             exit;
         }
 
-        $extLinks = $this->documentModel->getExternalLinks((int)$doc['dID']);
+        $dID = (int)$doc['dID'];
+        $extLinks = $this->documentModel->getExternalLinks($dID);
 
         $docData = [
             'document'  => $doc,
             'authors'   => json_decode($doc['author_list'], true) ?? [],
             'extLinks'  => $extLinks,
-            'branches'  => $this->documentModel->getDocBranches((int)$doc['dID']),
-            'topic'     => $this->documentModel->getDocTopic((int)$doc['dID']),
+            'branches'  => $this->documentModel->getDocBranches($dID),
+            'topic'     => $this->documentModel->getDocTopic($dID),
         ];
 
         include rtrim(VIEWS_PATH, '/') . '/repository/view_doc.php';
@@ -138,7 +133,7 @@ class DocController
     public function viewDocDraft(string $id): void
     {
         if (!isset($_SESSION['mID'])) {
-            header('Location: /login.php');
+            header('Location: /login');
             exit;
         }
 
@@ -215,7 +210,7 @@ class DocController
     public function approveDraft(array $postData): void
     {
         if (!isset($_SESSION['mID'])) {
-            header('Location: /login.php');
+            header('Location: /login');
             exit;
         }
 
@@ -258,7 +253,7 @@ class DocController
     public function finalizeDraft(array $postData): void
     {
         if (!isset($_SESSION['mID'])) {
-            header('Location: /login.php');
+            header('Location: /login');
             exit;
         }
 
@@ -303,7 +298,6 @@ class DocController
                 'submission_time' => $submission_time,
                 'pubdate'         => $pubdate,
                 'notes'           => $draft['notes'],
-                'ext_url'         => $draft['ext_url'],
                 'full_text'       => $draft['full_text'],
                 'dtype'           => $draft['dtype'] ?? 1,
                 'link_list_array' => json_decode($draft['link_list'] ?? '[]', true)
@@ -386,7 +380,7 @@ class DocController
             $doc = $this->documentModel->getDraftById((int)$id);
             if (!$doc) {
                 http_response_code(404);
-                require_once rtrim(VIEWS_PATH, '/') . '/errors/404.php';
+                include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
                 exit;
             }
             // Check if user is submitter or co-author
@@ -409,8 +403,8 @@ class DocController
         } else {
             $doc = $this->documentModel->getDocument((int)$id, (int)$mRole);
             if (!$doc) {
-                http_response_code(403);
-                include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+                http_response_code(404);
+                include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
                 exit;
             }
             $path = $this->getPathFromPubdate($doc['submission_time']);
@@ -430,7 +424,7 @@ class DocController
                 $contentType = 'application/zip';
             } else {
                 http_response_code(404);
-                require_once rtrim(VIEWS_PATH, '/') . '/errors/404.php';
+                include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
                 exit;
             }
         } else {
@@ -439,14 +433,14 @@ class DocController
                 $contentType = 'application/pdf';
             } else {
                 http_response_code(404);
-                require_once rtrim(VIEWS_PATH, '/') . '/errors/404.php';
+                include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
                 exit;
             }
         }
 
         if (!$filePath || !file_exists($filePath)) {
             http_response_code(404);
-            require_once rtrim(VIEWS_PATH, '/') . '/errors/404.php';
+            include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
             exit;
         }
 
@@ -459,16 +453,17 @@ class DocController
     /**
      * Show the upload form.
      */
-    public function showUpload(): void
+    public function showUpload(?array $errors = null): void
     {
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
         $availableSources = $this->documentModel->getAvailableSources();
-        $institutions = (new \app\models\lookups\Institution())->getAllInstitutions();
-        $researchBranches = (new \app\models\lookups\ResearchBranch())->getAllBranches();
-        $docTypes = (new \app\models\lookups\DocType())->getAllDocTypes();
-        
+        $institutions = (new Institution())->getAllInstitutions();
+        $researchBranches = (new ResearchBranch())->getAllBranches();
+        $researchTopics = (new ResearchTopic())->getAllTopics();
+        $docTypes = (new DocType())->getAllDocTypes();
+
         include rtrim(VIEWS_PATH, '/') . '/repository/upload.php';
     }
 
@@ -484,11 +479,9 @@ class DocController
         $action = $postData['action'] ?? 'draft';
         $mID = (int)$_SESSION['mID'];
 
-        // Extract new fields
-        $notes = $postData['notes'] ?? '';
-        $extUrl = $postData['ext_url'] ?? '';
         $linkListJson = $postData['link_list_json'] ?? '';
         $fullText = $postData['full_text'] ?? '';
+        $tID = (int)($postData['tID'] ?? 0);
 
         $hasFile = 0;
         $isMainUploaded = isset($fileData['main_file']) && $fileData['main_file']['error'] === UPLOAD_ERR_OK;
@@ -594,29 +587,6 @@ class DocController
             }
         }
 
-        // Collect all relevant fields into a single $docData array
-        $docData = [
-            'submitter_ID'    => $mID,
-            'title'           => $postData['title'] ?? '',
-            'abstract'        => $postData['abstract'] ?? '',
-            'author_list'     => $postData['author_list_json'] ?? '',
-            'has_file'        => $hasFile,
-            'dtype'           => (int)($postData['dtype'] ?? 1),
-            'notes'           => $postData['notes'] ?? '',
-            'ext_url'         => $postData['ext_url'] ?? '',
-            'full_text'       => $fullText,
-            'pubdate'         => $pubdate,
-            'link_list'       => $linkListJson, // For draft storage
-            'link_list_array' => $cleanedLinks, // For final submission link insertion
-            'branch_list'     => !empty($cleanedBranches) ? json_encode($cleanedBranches) : '', // For draft storage
-            'submission_time' => $submissionTime
-        ];
-
-        // Optional metric fields
-        if (isset($postData['main_pages']) && $postData['main_pages'] !== '') { $docData['main_pages'] = (int)$postData['main_pages']; }
-        if (isset($postData['main_figs']) && $postData['main_figs'] !== '') { $docData['main_figs'] = (int)$postData['main_figs']; }
-        if (isset($postData['main_tabs']) && $postData['main_tabs'] !== '') { $docData['main_tabs'] = (int)$postData['main_tabs']; }
-
         // Parse branch data
         $branches = json_decode($postData['branch_list_json'] ?? '[]', true) ?? [];
         $cleanedBranches = [];
@@ -629,6 +599,29 @@ class DocController
                 ];
             }
         }
+
+        // Collect all relevant fields into a single $docData array
+        $docData = [
+            'submitter_ID'    => $mID,
+            'title'           => $postData['title'] ?? '',
+            'abstract'        => $postData['abstract'] ?? '',
+            'author_list'     => $postData['author_list_json'] ?? '',
+            'has_file'        => $hasFile,
+            'dtype'           => (int)($postData['dtype'] ?? 1),
+            'notes'           => $postData['notes'] ?? '',
+            'full_text'       => $fullText,
+            'pubdate'         => $pubdate,
+            'link_list'       => $linkListJson, // For draft storage
+            'link_list_array' => $cleanedLinks, // For final submission link insertion
+            'branch_list'     => !empty($cleanedBranches) ? json_encode($cleanedBranches) : '', // For draft storage
+            'tID'             => $tID > 0 ? $tID : null, // For draft storage
+            'submission_time' => $submissionTime
+        ];
+
+        // Optional metric fields
+        if (isset($postData['main_pages']) && $postData['main_pages'] !== '') { $docData['main_pages'] = (int)$postData['main_pages']; }
+        if (isset($postData['main_figs']) && $postData['main_figs'] !== '') { $docData['main_figs'] = (int)$postData['main_figs']; }
+        if (isset($postData['main_tabs']) && $postData['main_tabs'] !== '') { $docData['main_tabs'] = (int)$postData['main_tabs']; }
 
         try {
             if ($action === 'draft') {
@@ -650,6 +643,11 @@ class DocController
                 // Save research branches
                 if (!empty($cleanedBranches)) {
                     $this->documentModel->saveBranches($dID, $cleanedBranches);
+                }
+
+                // Save topic
+                if ($tID > 0) {
+                    $this->documentModel->saveTopic($dID, $tID);
                 }
             }
 

@@ -128,7 +128,7 @@ class AuthController
         $result = $this->login($email, $password, $rememberMe);
         
         if ($result['success']) {
-            header('Location: /index.php');
+            header('Location: /');
             exit;
         } else {
             $errors = ['login' => $result['message']];
@@ -174,7 +174,7 @@ class AuthController
         $result = $this->finalizeOrcidRegistration($postData);
         
         if ($result['success']) {
-            header('Location: /index.php');
+            header('Location: /');
             exit;
         } else {
             $errors = $result['errors'] ?? ['general' => $result['message']];
@@ -225,8 +225,8 @@ class AuthController
         }
         
         // Process work and interest areas
-        $workAreasStr = $this->processAreas($data['work_areas'] ?? [], $data['work_areas_public'] ?? []);
-        $interestAreasStr = $this->processAreas($data['interest_areas'] ?? [], $data['interest_areas_public'] ?? []);
+        $workAreasStr = Member::processAreas($data['work_areas'] ?? [], $data['work_areas_public'] ?? []);
+        $interestAreasStr = Member::processAreas($data['interest_areas'] ?? [], $data['interest_areas_public'] ?? []);
         $mailAreasStr = implode(';', $data['mail_areas'] ?? []);
 
         $memberData = [
@@ -247,20 +247,7 @@ class AuthController
         $mID = $this->memberModel->create($memberData);
         if ($mID) {
             // Extract and save optional metadata
-            $metaKeys = [
-                'full_name', 'other_names', 'prefix', 'suffix', 'position', 
-                'affiliations', 'address', 'url1', 'url2', 'education', 
-                'cv', 'research_statement', 'other_interests', 'mstatus'
-            ];
-            $metaData = [];
-            foreach ($metaKeys as $key) {
-                if (!empty($data[$key])) {
-                    $metaData[$key] = $data[$key];
-                }
-            }
-            if (!empty($metaData)) {
-                $this->memberModel->addMemberMeta((int)$mID, $metaData, $data['meta_public'] ?? []);
-            }
+            $this->saveMemberMeta((int)$mID, $data);
 
             return ['success' => true, 'message' => 'Registration successful. Please log in.', 'mID' => $mID];
         }
@@ -353,7 +340,7 @@ class AuthController
         // Clear remember_token cookie
         setcookie('remember_token', '', time() - 3600, '/', '', true, true);
 
-        header('Location: /login.php');
+        header('Location: /login');
         exit;
     }
 
@@ -490,8 +477,8 @@ class AuthController
         $familyName = $data['family_name'] ?? (count($parts) > 1 ? $parts[1] : $parts[0]);
 
         // Process work and interest areas
-        $workAreasStr = $this->processAreas($data['work_areas'] ?? [], $data['work_areas_public'] ?? []);
-        $interestAreasStr = $this->processAreas($data['interest_areas'] ?? [], $data['interest_areas_public'] ?? []);
+        $workAreasStr = Member::processAreas($data['work_areas'] ?? [], $data['work_areas_public'] ?? []);
+        $interestAreasStr = Member::processAreas($data['interest_areas'] ?? [], $data['interest_areas_public'] ?? []);
 
         $memberData = [
             'ORCID'            => $pending['orcid'],
@@ -514,20 +501,7 @@ class AuthController
         }
 
         // Extract and save optional metadata
-        $metaKeys = [
-            'full_name', 'other_names', 'prefix', 'suffix', 'position', 
-            'affiliations', 'address', 'url1', 'url2', 'education', 
-            'cv', 'research_statement', 'other_interests', 'mstatus'
-        ];
-        $metaData = [];
-        foreach ($metaKeys as $key) {
-            if (!empty($data[$key])) {
-                $metaData[$key] = $data[$key];
-            }
-        }
-        if (!empty($metaData)) {
-            $this->memberModel->addMemberMeta((int)$mID, $metaData, $data['meta_public'] ?? []);
-        }
+        $this->saveMemberMeta((int)$mID, $data);
 
         // 6. Clear the pending session data
         unset($_SESSION['pending_orcid_registration']);
@@ -547,27 +521,8 @@ class AuthController
 
         $this->memberModel->updateLastLogin((int)$_SESSION['mID']);
 
-        header('Location: /index.php');
+        header('Location: /');
         exit;
-    }
-
-    /**
-     * Helper to process research areas with public/private flags.
-     */
-    private function processAreas(array $selectedIds, array $publicIds): string
-    {
-        $processed = [];
-        foreach ($selectedIds as $id) {
-            $idInt = (int)$id;
-            if ($idInt === 0) continue;
-            
-            // If not in public array, make negative (private)
-            if (!in_array((string)$id, $publicIds)) {
-                $idInt *= -1;
-            }
-            $processed[] = $idInt;
-        }
-        return implode(';', $processed);
     }
 
     /**
@@ -622,5 +577,26 @@ class AuthController
         }
 
         return $errors;
+    }
+
+    /**
+     * Extract and save member metadata from registration/profile data.
+     */
+    private function saveMemberMeta(int $mID, array $data): void
+    {
+        $metaKeys = [
+            'full_name', 'other_names', 'prefix', 'suffix', 'position',
+            'affiliations', 'address', 'url1', 'url2', 'education',
+            'cv', 'research_statement', 'other_interests', 'mstatus'
+        ];
+        $metaData = [];
+        foreach ($metaKeys as $key) {
+            if (!empty($data[$key])) {
+                $metaData[$key] = $data[$key];
+            }
+        }
+        if (!empty($metaData)) {
+            $this->memberModel->addMemberMeta($mID, $metaData, $data['meta_public'] ?? []);
+        }
     }
 }

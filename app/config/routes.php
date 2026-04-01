@@ -88,10 +88,10 @@ switch ($requestUri) {
                 header('Location: /');
             } else {
                 $errors = [$result['message']];
-                $docController->showUpload();
+                $docController->showUpload($errors);
             }
-        } else {
-            $docController->showUpload();
+            } else {
+                $docController->showUpload([]);
         }
         break;
 
@@ -219,6 +219,6 @@ switch ($requestUri) {
     // --- 404 Not Found ---
     default:
         http_response_code(404);
-        require_once rtrim(VIEWS_PATH, '/') . '/errors/404.php';
+        include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
         break;
 }

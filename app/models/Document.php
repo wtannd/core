@@ -45,7 +45,7 @@ class Document
             'dtype'        => (int)($data['dtype'] ?? 1)
         ];
 
-        $optionalFields = ['notes', 'ext_url', 'author_list', 'submission_time', 'pubdate', 'full_text', 'link_list', 'branch_list'];
+        $optionalFields = ['notes', 'author_list', 'submission_time', 'pubdate', 'full_text', 'link_list', 'branch_list', 'tID'];
         foreach ($optionalFields as $f) {
             if (isset($data[$f]) && $data[$f] !== '') {
                 $fields[] = $f;
@@ -76,7 +76,7 @@ class Document
             'dtype'        => (int)($data['dtype'] ?? 1)
         ];
 
-        $optionalFields = ['notes', 'ext_url', 'author_list', 'submission_time', 'pubdate', 'full_text', 'main_pages', 'main_figs', 'main_tabs', 'main_size', 'suppl_size'];
+        $optionalFields = ['notes', 'author_list', 'submission_time', 'pubdate', 'full_text', 'main_pages', 'main_figs', 'main_tabs', 'main_size', 'suppl_size'];
         foreach ($optionalFields as $f) {
             if (isset($data[$f]) && $data[$f] !== '') {
                 $fields[] = $f;
@@ -93,15 +93,15 @@ class Document
 
         // Insert external links if provided
         if (!empty($data['link_list_array'])) {
-            $sqlLink = "INSERT INTO ExternalDocs (dID, sID, esname, url) VALUES (:dID, :sID, :esname, :url)";
+            $sqlLink = "INSERT INTO ExternalDocs (dID, sID, esname, link) VALUES (:dID, :sID, :esname, :link)";
             $stmtLink = $this->db->prepare($sqlLink);
             foreach ($data['link_list_array'] as $link) {
                 if (isset($link[0], $link[2])) {
                     $stmtLink->execute([
-                        'dID' => $dID,
-                        'sID' => (int)$link[0],
+                        'dID'    => $dID,
+                        'sID'    => (int)$link[0],
                         'esname' => $link[1],
-                        'url' => $link[2]
+                        'link'   => $link[2]
                     ]);
                 }
             }
@@ -291,18 +291,16 @@ class Document
      */
     public function saveBranches(int $dID, array $branches): void
     {
-        $sql = "INSERT INTO DocBranches (dID, bID, num, impact, frac) 
-                VALUES (:dID, :bID, :num, :impact, :frac)";
+        $sql = "INSERT INTO DocBranches (dID, bID, num, impact) 
+                VALUES (:dID, :bID, :num, :impact)";
         $stmt = $this->db->prepare($sql);
 
         foreach ($branches as $branch) {
-            $impact = (int)$branch['impact'];
             $stmt->execute([
                 'dID'    => $dID,
                 'bID'    => (int)$branch['bID'],
                 'num'    => (int)$branch['num'],
-                'impact' => $impact,
-                'frac'   => $impact / 100.0
+                'impact' => (int)$branch['impact']
             ]);
         }
     }

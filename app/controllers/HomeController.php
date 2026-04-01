@@ -34,7 +34,7 @@ class HomeController
      */
     public function index(): void
     {
-        $mRole = $_SESSION['mrole'] ?? 0;
+        $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
         
         $docTypes = $this->docTypeModel->getAllDocTypes();
         $branches = $this->branchModel->getAllBranches();

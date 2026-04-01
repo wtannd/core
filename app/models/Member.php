@@ -242,30 +242,6 @@ class Member
     }
 
     /**
-     * Register a new member using ORCID.
-     * (Kept for backwards compatibility if needed, but create() is now preferred)
-     */
-    public function registerWithOrcid(string $orcidId, string $name): int|bool
-    {
-        $parts = explode(' ', $name, 2);
-        $firstName = count($parts) > 1 ? $parts[0] : '';
-        $familyName = count($parts) > 1 ? $parts[1] : $parts[0];
-
-        $data = [
-            'ORCID'            => $orcidId,
-            'family_name'      => $familyName,
-            'first_name'       => $firstName,
-            'display_name'     => $firstName === '' ? $familyName : $firstName . ' ' . $familyName,
-            'publication_name' => $firstName === '' ? $familyName : substr($firstName, 0, 1) . '. ' . $familyName,
-            'timezone'         => '+00:00',
-            'start_membership' => date('Y-m-d H:i:s'),
-            'is_active'        => 1
-        ];
-
-        return $this->create($data);
-    }
-
-    /**
      * Fetch a full editable member profile including all metadata and public flags.
      *
      * @param int $mID
@@ -356,11 +332,10 @@ class Member
     /**
      * Fetch a public member profile by their alphanumeric ID.
      *
-     * @param PDO $pdo
      * @param string $ID_alphanum
      * @return array|bool
      */
-    public function getPublicProfileByAlphaId(PDO $pdo, string $ID_alphanum): array|bool
+    public function getPublicProfileByAlphaId(string $ID_alphanum): array|bool
     {
         $sql = "SELECT m.*, mm.meta_value, mk.mkname, mm.is_public as meta_public, i.iname
                 FROM Members m
@@ -369,7 +344,7 @@ class Member
                 LEFT JOIN Institutions i ON m.iID = i.iID
                 WHERE m.ID_alphanum = :ID_alphanum";
         
-        $stmt = $pdo->prepare($sql);
+        $stmt = $this->db->prepare($sql);
         $stmt->execute(['ID_alphanum' => $ID_alphanum]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
@@ -532,5 +507,23 @@ class Member
         $stmt->execute();
 
         return ['results' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'total' => $total];
+    }
+
+    /**
+     * Convert selected area IDs with public/private flags into a semicolon-separated string.
+     * Private areas are stored as negative IDs.
+     */
+    public static function processAreas(array $selectedIds, array $publicIds): string
+    {
+        $processed = [];
+        foreach ($selectedIds as $id) {
+            $idInt = (int)$id;
+            if ($idInt === 0) continue;
+            if (!in_array((string)$id, $publicIds)) {
+                $idInt *= -1;
+            }
+            $processed[] = $idInt;
+        }
+        return implode(';', $processed);
     }
 }

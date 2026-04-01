@@ -97,11 +97,6 @@
                     <input type="text" id="notes" name="notes" value="<?php echo htmlspecialchars($_POST['notes'] ?? ''); ?>">
                 </div>
 
-                <div class="form-group">
-                    <label for="ext_url">External URL:</label>
-                    <input type="url" id="ext_url" name="ext_url" value="<?php echo htmlspecialchars($_POST['ext_url'] ?? ''); ?>">
-                </div>
-
                 <hr>
 
                 <h3>Affiliations</h3>
@@ -112,17 +107,23 @@
 
                 <hr>
 
-                <h3>Authors & Contributions</h3>
-                <div class="form-group">
-                    <label for="author_scheme">Author Scheme:</label>
-                    <select id="author_scheme" name="author_scheme">
-                        <option value="all-class">Duty assignment (1st: 100%, 2nd: 50%, 3rd: 25%, var:20-99%, Gen: 10%) -- non-gen total <= 875%</option>
-                    </select>
+                <h3>Authors &amp; Contributions</h3>
+                <div style="background: #f0f4f8; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.9rem; color: #333;">
+                    <strong>Duty Assignment Rules:</strong> Each author is assigned a duty percentage reflecting their contribution level.
+                    <ul style="margin: 0.4rem 0 0 1.2rem; padding: 0;">
+                        <li><strong>1st author:</strong> 100% &nbsp;|&nbsp; <strong>2nd author:</strong> 50% &nbsp;|&nbsp; <strong>3rd author:</strong> 25%</li>
+                        <li><strong>Other classified authors:</strong> 20% &ndash; 99% each</li>
+                        <li><strong>General contributor:</strong> 10% each (unclassified contribution)</li>
+                        <li>The total of all classified duties must not exceed <strong>875%</strong>.</li>
+                    </ul>
                 </div>
 
                 <div class="batch-add-ui" style="margin-bottom: 1rem;">
                     <textarea id="batch-core-ids" rows="2" class="form-control" placeholder="Paste [,;\n\r]-Separated CORE-IDs here (e.g., 12A-45B-78C, 65B32A)"></textarea>
-                    <button type="button" id="btn-lookup-authors" class="btn btn-add">Lookup & Add Authors by CORE-ID</button>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center;">
+                        <input type="text" id="batch-aff-ids" placeholder="Aff. IDs (e.g. 1,2)" style="width: 150px; padding: 0.4rem;">
+                        <button type="button" id="btn-lookup-authors" class="btn btn-add">Lookup &amp; Add Authors by CORE-ID</button>
+                    </div>
                 </div>
 
                 <div id="authors-container" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem;">
@@ -138,14 +139,6 @@
 
                 <hr>
 
-                <h3>External Links</h3>
-                <div id="links-container">
-                    <!-- Dynamic link rows -->
-                </div>
-                <button type="button" class="btn btn-add" onclick="addLinkRow()">+ Add Link</button>
-
-                <hr>
-
                 <h3>Research Branches</h3>
                 <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">Assign 1 to 3 research branches. The total impact must equal 100%.</p>
                 <div id="branches-container">
@@ -155,6 +148,28 @@
                     <button type="button" class="btn btn-add" id="btn-add-branch" onclick="addBranchRow()">+ Add Branch</button>
                     <span class="branch-summary" id="branch-summary">Total Impact: 100%</span>
                 </div>
+
+                <hr>
+
+                <div class="form-group">
+                    <label for="tID">Research Topic (optional):</label>
+                    <select name="tID" id="tID" class="form-control">
+                        <option value="0">-- None --</option>
+                        <?php foreach ($researchTopics as $t): ?>
+                            <option value="<?php echo $t['tID']; ?>" <?php echo ($_POST['tID'] ?? '0') == $t['tID'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($t['abbr'] . ' — ' . $t['tname']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <hr>
+
+                <h3>External Links</h3>
+                <div id="links-container">
+                    <!-- Dynamic link rows -->
+                </div>
+                <button type="button" class="btn btn-add" onclick="addLinkRow()">+ Add Link</button>
 
                 <hr>
 
@@ -364,15 +379,17 @@
 						alert("No members found matching those IDs.");
 					} else {
 						const members = data;
-						// ... loop through members and call createAuthorRow(m) ...
+						const batchAffIds = document.getElementById('batch-aff-ids').value.trim();
 						members.forEach(m => {
-							// Make sure m has the properties your createAuthorRow expects
 							const row = createAuthorRow({
 								pub_name: m.pub_name,
 								mID: m.mID,
 								core_id: m.core_id,
 								is_manual: false
 							});
+							if (batchAffIds) {
+								row.querySelector('.auth-aff-refs').value = batchAffIds;
+							}
 							document.getElementById('authors-container').appendChild(row);
 						});
 						
@@ -382,6 +399,7 @@
 						}
 						
 						textarea.value = ''; // Clear box on success
+						document.getElementById('batch-aff-ids').value = '';
 					}
 				} catch (e) {
 					console.error("Failed to parse JSON. Server returned:", text);

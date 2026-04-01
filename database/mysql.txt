@@ -590,7 +590,6 @@ CREATE TABLE Documents (
     title TEXT COLLATE utf8mb4_general_ci NOT NULL,
     abstract TEXT COLLATE utf8mb4_general_ci NOT NULL,
     notes VARCHAR(255) COLLATE utf8mb4_general_ci,     -- page#, fig#, other brief comments or changes for new revision
-    ext_url VARCHAR(255) COLLATE utf8mb4_general_ci,   -- an external URL link is needed for most docs if no attachment
     submitter_ID BIGINT UNSIGNED NOT NULL,             -- member ID of the submitter
     author_list JSON,        -- JSON array of authors without affiliations: [[author_name=pub_name, mID , significance_factor=duty], ...] (author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author  -- more complex: {"authors" : [[pub_name, mID, duty, [list of order numbers of affiliations]], ...], "affiliations": [[order#, name], ...]}
     visibility TINYINT UNSIGNED NOT NULL default 60,   -- 99=visible to submitter/authors only (for draft) , 1=visible to all, 10=visible to members, 20=visible to raters+, 30=visible to reviewers+, 40=visible to moderators+, 50=visible to leaders+, 100=visible to administrators only; default to 60=ready to be announced
@@ -1636,7 +1635,6 @@ CREATE TABLE DocDrafts (  -- document drafts that can also be used for future de
     title TEXT COLLATE utf8mb4_general_ci NOT NULL,
     abstract TEXT COLLATE utf8mb4_general_ci NOT NULL,
     notes VARCHAR(255) COLLATE utf8mb4_general_ci,     -- page#, fig#, other brief comments or changes for new revision
-    ext_url VARCHAR(255) COLLATE utf8mb4_general_ci,   -- an external URL link is needed for most docs if no attachment
     submitter_ID BIGINT UNSIGNED NOT NULL,             -- member ID of the submitter
     author_list JSON,        -- JSON array of authors without affiliations: [[author_name=pub_name, mID , significance_factor=duty], ...] (author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author  -- more complex: {"authors" : [[pub_name, mID, duty, [list of order numbers of affiliations]], ...], "affiliations": [[order#, name], ...]}
     link_list JSON,          -- JSON array of external links [[sID,esname,link],...]

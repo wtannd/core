@@ -101,7 +101,7 @@ $isLoggedIn = isset($_SESSION['mID']);
                 <h2>Recent Original Research</h2>
                 <?php 
                 $documents = $recentDocs;
-                include __DIR__ . '/../partials/document_feed.php'; 
+                include rtrim(VIEWS_PATH, '/') . '/partials/document_feed.php'; 
                 ?>
             </section>
 

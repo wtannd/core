@@ -7,8 +7,6 @@ namespace app\controllers;
 use app\models\Member;
 use app\models\lookups\Institution;
 use app\models\lookups\ResearchBranch;
-use config\Database;
-use PDO;
 
 /**
  * MemberController
@@ -20,14 +18,12 @@ class MemberController
     private Member $memberModel;
     private Institution $institutionModel;
     private ResearchBranch $branchModel;
-    private PDO $db;
 
     public function __construct()
     {
         $this->memberModel = new Member();
         $this->institutionModel = new Institution();
         $this->branchModel = new ResearchBranch();
-        $this->db = Database::getInstance();
     }
 
     /**
@@ -44,7 +40,7 @@ class MemberController
         $user = $this->memberModel->getFullEditableProfile($mID);
         if (!$user) {
             http_response_code(404);
-            require rtrim(VIEWS_PATH, '/') . '/errors/404.php';
+            include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
             exit;
         }
 
@@ -138,8 +134,8 @@ class MemberController
         }
 
         // Process research areas strings
-        $workAreasStr = $this->processAreas($postData['work_areas'] ?? [], $postData['work_areas_public'] ?? []);
-        $interestAreasStr = $this->processAreas($postData['interest_areas'] ?? [], $postData['interest_areas_public'] ?? []);
+        $workAreasStr = Member::processAreas($postData['work_areas'] ?? [], $postData['work_areas_public'] ?? []);
+        $interestAreasStr = Member::processAreas($postData['interest_areas'] ?? [], $postData['interest_areas_public'] ?? []);
         $mailAreasStr = implode(';', $postData['mail_areas'] ?? []);
 
         $baseData = [
@@ -185,24 +181,6 @@ class MemberController
     }
 
     /**
-     * Helper to process research areas with public/private flags.
-     */
-    private function processAreas(array $selectedIds, array $publicIds): string
-    {
-        $processed = [];
-        foreach ($selectedIds as $id) {
-            $idInt = (int)$id;
-            if ($idInt === 0) continue;
-            
-            if (!in_array((string)$id, $publicIds)) {
-                $idInt *= -1;
-            }
-            $processed[] = $idInt;
-        }
-        return implode(';', $processed);
-    }
-
-    /**
      * Display a member's public profile.
      *
      * @param string $ID_alphanum
@@ -219,11 +197,11 @@ class MemberController
         }
 
         // 1. Call model to get user data - fully formatted by the model (Fat Model)
-        $member = $this->memberModel->getPublicProfileByAlphaId($this->db, $cleanId);
+        $member = $this->memberModel->getPublicProfileByAlphaId($cleanId);
 
         if (!$member) {
             http_response_code(404);
-            require rtrim(VIEWS_PATH, '/') . '/errors/404.php';
+            include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
             exit;
         }
 

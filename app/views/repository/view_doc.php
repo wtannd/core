@@ -164,7 +164,7 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
                     <!-- Full PDF -->
                     <?php if ($hasMainFile): ?>
                     <div class="doc-sidebar-section">
-                        <div class="doc-sidebar-label">Full PDF</div>
+                        <div class="doc-sidebar-label">Full Text PDF</div>
                         <a href="/stream?type=doc&id=<?php echo $doc['dID']; ?>" class="doc-file-link" download>
                             Download
                             <?php if ($mainSize > 0): ?>
@@ -207,13 +207,7 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
                     </div>
                     <?php endif; ?>
 
-                    <!-- External URL -->
-                    <?php if (!empty($doc['ext_url'])): ?>
-                    <div class="doc-sidebar-section">
-                        <div class="doc-sidebar-label">External URL</div>
-                        <a href="<?php echo htmlspecialchars($doc['ext_url']); ?>" target="_blank" rel="noopener noreferrer" class="doc-file-link">Link</a>
-                    </div>
-                    <?php endif; ?>
+
                 </div>
             </div>
 
