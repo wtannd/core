@@ -28,9 +28,9 @@
         <div class="search-results-page">
             <h2>Member Search</h2>
 
-            <form action="/members" method="GET" class="filter-bar" style="margin-bottom: 1.5rem;">
-                <div class="filter-group" style="flex: 1;">
-                    <input type="text" name="q" value="<?php echo htmlspecialchars($query); ?>" placeholder="Search members by name..." class="search-input" style="max-width: 100%; width: 100%;">
+            <form action="/members" method="GET" class="filter-bar">
+                <div class="filter-group filter-group-search">
+                    <input type="text" name="q" value="<?php echo htmlspecialchars($query); ?>" placeholder="Search members by name..." class="search-input">
                 </div>
                 <button type="submit" class="btn btn-primary btn-small">Search</button>
             </form>

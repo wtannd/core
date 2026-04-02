@@ -76,7 +76,7 @@ $isLoggedIn = isset($_SESSION['mID']);
                     <?php endif; ?>
 
                     <?php if (!empty($userInterestAreas)): ?>
-                        <h3 style="margin-top: 2rem;">Your Interest Areas</h3>
+                        <h3>Your Interest Areas</h3>
                         <div class="area-grid">
                             <?php foreach ($userInterestAreas as $area): ?>
                                 <div class="area-card">

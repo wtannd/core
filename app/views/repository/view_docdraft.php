@@ -217,27 +217,27 @@ $streamSupplPrefix = 'draft';
                 </table>
 
                 <?php if ($userApprovalNeeded): ?>
-                    <form action="/draft/approve" method="POST" style="margin-bottom: 1rem;">
+                    <form action="/draft/approve" method="POST" class="approval-form">
                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                         <input type="hidden" name="dID" value="<?php echo $doc['dID']; ?>">
-                        <button type="submit" class="btn btn-primary" style="background: #28a745; width: auto;">Approve this Draft</button>
+                        <button type="submit" class="btn btn-primary btn-approve">Approve this Draft</button>
                     </form>
                 <?php endif; ?>
 
                 <?php if ($isSubmitter): ?>
-                    <div style="display: flex; gap: 10px; align-items: center;">
+                    <div class="finalize-actions">
                         <form action="/draft/finalize" method="POST">
                             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                             <input type="hidden" name="dID" value="<?php echo $doc['dID']; ?>">
-                            <button type="submit" class="btn btn-submit <?php echo !$isFullyApproved ? 'btn-disabled' : ''; ?>" <?php echo !$isFullyApproved ? 'disabled' : ''; ?> style="width: auto;">
+                            <button type="submit" class="btn btn-submit <?php echo !$isFullyApproved ? 'btn-disabled' : ''; ?>" <?php echo !$isFullyApproved ? 'disabled' : ''; ?>>
                                 Finalize Submission
                             </button>
                         </form>
                         <?php if (!$isFullyApproved): ?>
-                            <small style="color: #666;">Waiting for all co-authors to approve.</small>
+                            <small class="approval-note">Waiting for all co-authors to approve.</small>
                         <?php endif; ?>
 
-                        <a href="/draft/edit?id=<?php echo $doc['dID']; ?>" class="btn" style="background: #eee; color: #333; width: auto; padding: 0.75rem 1rem;" onclick="return confirm('Editing this draft will unlock it and reset all current co-author approvals. Continue?');">
+                        <a href="/draft/edit?id=<?php echo $doc['dID']; ?>" class="btn btn-edit-draft" onclick="return confirm('Editing this draft will unlock it and reset all current co-author approvals. Continue?');">
                             Edit Draft
                         </a>
                     </div>

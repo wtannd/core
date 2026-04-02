@@ -113,6 +113,14 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
+.admin-section:first-of-type {
+    margin-top: 2rem;
+}
+
+.admin-form {
+    margin-top: 1rem;
+}
+
 .admin-section h2 {
     margin-top: 0;
     font-size: 1.25rem;

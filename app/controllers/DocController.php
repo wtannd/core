@@ -558,6 +558,8 @@ class DocController
         $isMainUploaded = $fileResult['isMainUploaded'];
         $isSupplUploaded = $fileResult['isSupplUploaded'];
         $filesChanged = $isMainUploaded || $isSupplUploaded;
+        $mainSize = $fileResult['mainSize'];
+        $supplSize = $fileResult['supplSize'];
 
         $fullText = $postData['full_text'] ?? '';
         if ($hasFile > 0 || $filesChanged) {
@@ -607,6 +609,8 @@ class DocController
             $docData['link_list'] = json_encode($cleanedLinks);
             $docData['link_list_array'] = $cleanedLinks;
             $docData['branch_list'] = !empty($cleanedBranches) ? json_encode($cleanedBranches) : '';
+            $docData['main_size'] = $mainSize;
+            $docData['suppl_size'] = $supplSize;
         } elseif ($isEditDraft) {
             $docData['link_list'] = json_encode($cleanedLinks);
             $docData['branch_list'] = !empty($cleanedBranches) ? json_encode($cleanedBranches) : '';
@@ -615,6 +619,8 @@ class DocController
             $docData['main_pages'] = $postData['main_pages'] ?? '';
             $docData['main_figs'] = $postData['main_figs'] ?? '';
             $docData['main_tabs'] = $postData['main_tabs'] ?? '';
+            $docData['main_size'] = $mainSize;
+            $docData['suppl_size'] = $supplSize;
         }
 
         // ── Phase 1: DB operation (critical) ──
@@ -676,7 +682,7 @@ class DocController
             }
 
         } catch (Exception $e) {
-            return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
+            return ['success' => false, 'message' => 'Database error: ' . $e->getMessage(), 'dID' => $dID, 'action' => $action];
         }
 
         // ── Phase 2: File operations (non-critical — document already saved) ──
@@ -802,17 +808,19 @@ class DocController
     {
         $isMainUploaded = isset($fileData['main_file']) && $fileData['main_file']['error'] === UPLOAD_ERR_OK;
         $isSupplUploaded = isset($fileData['supplemental_file']) && $fileData['supplemental_file']['error'] === UPLOAD_ERR_OK;
+        $mainSize = $isMainUploaded ? (int)$fileData['main_file']['size'] : 0;
+        $supplSize = $isSupplUploaded ? (int)$fileData['supplemental_file']['size'] : 0;
 
         if (!$isMainUploaded && !$isSupplUploaded) {
-            return ['error' => null, 'hasFile' => $existingHasFile, 'isMainUploaded' => false, 'isSupplUploaded' => false];
+            return ['error' => null, 'hasFile' => $existingHasFile, 'isMainUploaded' => false, 'isSupplUploaded' => false, 'mainSize' => 0, 'supplSize' => 0];
         }
 
         // Size check
         if ($isMainUploaded && $fileData['main_file']['size'] > MAX_UPLOAD_SIZE) {
-            return ['error' => 'File exceeds the maximum allowed size of ' . (MAX_UPLOAD_SIZE / (1024 * 1024)) . 'MB.', 'hasFile' => 0, 'isMainUploaded' => false, 'isSupplUploaded' => false];
+            return ['error' => 'File exceeds the maximum allowed size of ' . (MAX_UPLOAD_SIZE / (1024 * 1024)) . 'MB.', 'hasFile' => 0, 'isMainUploaded' => false, 'isSupplUploaded' => false, 'mainSize' => 0, 'supplSize' => 0];
         }
         if ($isSupplUploaded && $fileData['supplemental_file']['size'] > MAX_UPLOAD_SIZE) {
-            return ['error' => 'File exceeds the maximum allowed size of ' . (MAX_UPLOAD_SIZE / (1024 * 1024)) . 'MB.', 'hasFile' => 0, 'isMainUploaded' => false, 'isSupplUploaded' => false];
+            return ['error' => 'File exceeds the maximum allowed size of ' . (MAX_UPLOAD_SIZE / (1024 * 1024)) . 'MB.', 'hasFile' => 0, 'isMainUploaded' => false, 'isSupplUploaded' => false, 'mainSize' => 0, 'supplSize' => 0];
         }
 
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
@@ -821,7 +829,7 @@ class DocController
         if ($isMainUploaded) {
             $mainMime = $finfo->file($fileData['main_file']['tmp_name']);
             if ($mainMime !== 'application/pdf') {
-                return ['error' => 'Security Error: Main document must be a valid PDF.', 'hasFile' => 0, 'isMainUploaded' => false, 'isSupplUploaded' => false];
+                return ['error' => 'Security Error: Main document must be a valid PDF.', 'hasFile' => 0, 'isMainUploaded' => false, 'isSupplUploaded' => false, 'mainSize' => 0, 'supplSize' => 0];
             }
             $hasFile = 1;
         }
@@ -832,18 +840,18 @@ class DocController
 
             if ($ext === 'pdf') {
                 if ($supplMime !== 'application/pdf') {
-                    return ['error' => 'Security Error: Supplemental PDF is invalid.', 'hasFile' => 0, 'isMainUploaded' => false, 'isSupplUploaded' => false];
+                    return ['error' => 'Security Error: Supplemental PDF is invalid.', 'hasFile' => 0, 'isMainUploaded' => false, 'isSupplUploaded' => false, 'mainSize' => 0, 'supplSize' => 0];
                 }
                 $hasFile = 2;
             } elseif ($ext === 'zip') {
                 if ($supplMime !== 'application/zip' && $supplMime !== 'application/x-zip-compressed') {
-                    return ['error' => 'Security Error: Supplemental ZIP is invalid.', 'hasFile' => 0, 'isMainUploaded' => false, 'isSupplUploaded' => false];
+                    return ['error' => 'Security Error: Supplemental ZIP is invalid.', 'hasFile' => 0, 'isMainUploaded' => false, 'isSupplUploaded' => false, 'mainSize' => 0, 'supplSize' => 0];
                 }
                 $hasFile = 3;
             }
         }
 
-        return ['error' => null, 'hasFile' => $hasFile, 'isMainUploaded' => $isMainUploaded, 'isSupplUploaded' => $isSupplUploaded];
+        return ['error' => null, 'hasFile' => $hasFile, 'isMainUploaded' => $isMainUploaded, 'isSupplUploaded' => $isSupplUploaded, 'mainSize' => $mainSize, 'supplSize' => $supplSize];
     }
 
     /**

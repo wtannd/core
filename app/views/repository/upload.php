@@ -225,7 +225,7 @@
                 <div class="file-section">
                     <h3>Attach Files</h3>
                     <?php if ($isEditDraft || $isRevise): ?>
-                    <div style="margin-bottom: 0.75rem; font-size: 0.82rem; color: #555;">
+                    <div class="file-hint">
                         Current file: <strong><?php echo ($docData['has_file'] ?? 0) >= 1 ? 'Main PDF attached' : 'None'; ?>
                         <?php if (($docData['has_file'] ?? 0) === 2): ?> + Supplemental PDF<?php elseif (($docData['has_file'] ?? 0) === 3): ?> + Supplemental ZIP<?php endif; ?></strong>
                         — upload new files below to replace.
@@ -256,17 +256,17 @@
                     </div>
                 </div>
 
-                <div class="form-group" id="full-text-group" style="display: none;">
-                    <label for="full_text">Full Text (if no file attached):</label>
-                    <textarea id="full_text" name="full_text" rows="8"><?php echo htmlspecialchars($valFullText); ?></textarea>
-                </div>
-
                 <?php if ($isRevise): ?>
                 <div class="form-group">
                     <label for="revision_notes"><h3>Revision Notes:</h3></label>
                     <textarea id="revision_notes" name="revision_notes" rows="3" placeholder="Describe what changed in this revision..."><?php echo htmlspecialchars($_POST['revision_notes'] ?? ''); ?></textarea>
                 </div>
                 <?php endif; ?>
+
+                <div class="form-group" id="full-text-group" style="display: none;">
+                    <label for="full_text">Full Text (if no file attached):</label>
+                    <textarea id="full_text" name="full_text" rows="8"><?php echo htmlspecialchars($valFullText); ?></textarea>
+                </div>
 
                 <div class="submit-group">
                     <?php if ($mode === 'upload'): ?>

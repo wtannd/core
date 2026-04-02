@@ -575,35 +575,45 @@ class Document
     public function reviseDocument(int $dID, array $data, bool $filesChanged): int
     {
         // Fetch current version info
-        $stmt = $this->db->prepare("SELECT version, revision_history FROM Documents WHERE dID = :dID");
+        $stmt = $this->db->prepare("SELECT version, revision_history, last_revision_time, main_size, suppl_size FROM Documents WHERE dID = :dID");
         $stmt->execute(['dID' => $dID]);
         $current = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $oldVersion = (int)($current['version'] ?? 1);
-        $newVersion = $filesChanged ? $oldVersion + 1 : $oldVersion;
-        $revisionHistory = json_decode($current['revision_history'] ?? '[]', true) ?? [];
-
-        // Append revision entry
-        $revisionHistory[] = [
-            'version' => $oldVersion,
-            'date'    => date('Y-m-d H:i:s'),
-            'notes'   => $data['revision_notes'] ?? ''
-        ];
+        $newVersion = $oldVersion;
 
         // Build UPDATE
-        $fields = ['title', 'abstract', 'has_file', 'dtype', 'version', 'revision_history', 'last_revision_time'];
+        $fields = ['title', 'abstract', 'has_file', 'dtype'];
         $params = [
-            'dID'               => $dID,
-            'title'             => $data['title'],
-            'abstract'          => $data['abstract'],
-            'has_file'          => (int)$data['has_file'],
-            'dtype'             => (int)($data['dtype'] ?? 1),
-            'version'           => $newVersion,
-            'revision_history'  => json_encode($revisionHistory),
-            'last_revision_time' => date('Y-m-d H:i:s')
+            'dID'      => $dID,
+            'title'    => $data['title'],
+            'abstract' => $data['abstract'],
+            'has_file' => (int)$data['has_file'],
+            'dtype'    => (int)($data['dtype'] ?? 1),
         ];
 
-        $optionalFields = ['notes', 'author_list', 'full_text', 'main_pages', 'main_figs', 'main_tabs'];
+        // Only update revision history when files change
+        if ($filesChanged) {
+            $newVersion = $oldVersion + 1;
+            $revisionHistory = json_decode($current['revision_history'] ?? '[]', true) ?? [];
+
+            $revisionHistory[] = [
+                'version'    => $oldVersion,
+                'date'       => $current['last_revision_time'] ?? date('Y-m-d H:i:s'),
+                'notes'      => $data['revision_notes'] ?? '',
+                'main_size'  => (int)($current['main_size'] ?? 0),
+                'suppl_size' => (int)($current['suppl_size'] ?? 0)
+            ];
+
+            $fields[] = 'version';
+            $fields[] = 'revision_history';
+            $fields[] = 'last_revision_time';
+            $params['version'] = $newVersion;
+            $params['revision_history'] = json_encode($revisionHistory);
+            $params['last_revision_time'] = date('Y-m-d H:i:s');
+        }
+
+        $optionalFields = ['notes', 'author_list', 'full_text', 'main_pages', 'main_figs', 'main_tabs', 'main_size', 'suppl_size'];
         foreach ($optionalFields as $f) {
             if (array_key_exists($f, $data)) {
                 $fields[] = $f;

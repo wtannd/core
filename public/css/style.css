@@ -593,6 +593,12 @@ hr {
     margin-bottom: 0.75rem;
 }
 
+.file-hint {
+    margin-bottom: 0.75rem;
+    font-size: 0.82rem;
+    color: #555;
+}
+
 /* Submission Type Toggle */
 
 .submission-type-toggle {
@@ -1352,6 +1358,12 @@ details > summary + div { margin-top: 1rem; }
 .doc-tab-panel { display: none; }
 .doc-tab-panel.active { display: block; }
 
+.doc-actions {
+    margin: 1rem 0;
+    display: flex;
+    gap: 0.5rem;
+}
+
 /* Abstract Tab */
 .doc-abstract {
     font-family: var(--font-academic);
@@ -1393,6 +1405,32 @@ details > summary + div { margin-top: 1rem; }
     border-radius: 8px;
     margin-bottom: 20px;
     border: 1px solid #dee2e6;
+}
+
+.approval-form {
+    margin-bottom: 1rem;
+}
+
+.btn-approve {
+    background: #28a745;
+    width: auto;
+}
+
+.finalize-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.approval-note {
+    color: #666;
+}
+
+.btn-edit-draft {
+    background: #eee;
+    color: #333;
+    width: auto;
+    padding: 0.75rem 1rem;
 }
 
 /* ====================================

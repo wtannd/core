@@ -212,8 +212,8 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
             </div>
 
             <?php if (!empty($docData['isSubmitter'])): ?>
-            <div style="margin: 1rem 0; display: flex; gap: 0.5rem;">
-                <a href="/revise_doc?id=<?php echo $doc['dID']; ?>" class="btn btn-draft" style="width: auto; padding: 0.5rem 1rem;">Revise Document</a>
+            <div class="doc-actions">
+                <a href="/revise_doc?id=<?php echo $doc['dID']; ?>" class="btn btn-draft">Revise Document</a>
             </div>
             <?php endif; ?>
 
