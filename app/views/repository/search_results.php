@@ -38,11 +38,6 @@
 
             <?php if ($showFilters): ?>
                 <form action="<?php echo htmlspecialchars($filterAction); ?>" method="GET" class="filter-bar" id="filter-form">
-                    <div class="filter-group filter-group-search">
-                        <label for="f-q">Search</label>
-                        <input type="text" name="q" id="f-q" value="<?php echo htmlspecialchars($searchQuery); ?>" placeholder="Keywords...">
-                    </div>
-
                     <div class="filter-group">
                         <label for="f-type">Type</label>
                         <select name="type" id="f-type">
@@ -99,7 +94,12 @@
                         <input type="date" name="to" id="f-to" value="<?php echo htmlspecialchars($filters['to'] ?? ''); ?>">
                     </div>
 
-                    <button type="submit" class="btn btn-primary btn-small">Filter</button>
+                    <div class="filter-group filter-group-search">
+                        <label for="f-q">Search</label>
+                        <input type="text" name="q" id="f-q" value="<?php echo htmlspecialchars($searchQuery); ?>" placeholder="Keywords...">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Filter/Search</button>
                 </form>
             <?php endif; ?>
 

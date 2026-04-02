@@ -56,8 +56,8 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
     <main>
     <div class="document-viewer">
             <!-- Branch/Topic Labels -->
-            <?php if (!empty($branches) || $topic): ?>
             <div class="doc-labels">
+                <?php if (!empty($branches) || $topic): ?>
                 <?php foreach ($branches as $b): ?>
                     <a href="/browse?branch=<?php echo $b['bID']; ?>&range=week" class="label-pill label-branch" title="<?php echo htmlspecialchars($b['bname']); ?>">
                         <?php echo htmlspecialchars($b['abbr']); ?>
@@ -68,8 +68,13 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
                         <?php echo htmlspecialchars($topic['abbr']); ?>
                     </a>
                 <?php endif; ?>
+                <?php endif; ?>
+                <?php if (!empty($docData['isSubmitter'])): ?>
+                <span style="margin-left: auto;">
+                    <a href="/revise_doc?id=<?php echo $doc['dID']; ?>" class="btn btn-draft btn-small">Revise Document</a>
+                </span>
+                <?php endif; ?>
             </div>
-            <?php endif; ?>
 
             <!-- Title -->
             <h1 class="doc-title"><?php echo htmlspecialchars($doc['title']); ?></h1>
@@ -98,8 +103,8 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
                             if (!empty($hiddenAuthors)): ?>
                                 <span id="hidden-authors" style="display: none;">, <?php echo implode(', ', $hiddenAuthors); ?></span>
                                 <a href="javascript:void(0)" onclick="this.style.display='none'; document.getElementById('hidden-authors').style.display='inline';">[Show more authors]</a>
-                            <?php endif; ?>
-                        </div>
+                <?php endif; ?>
+            </div>
 
                         <?php if (!empty($affiliations)): ?>
                             <ul class="affiliation-list">
@@ -210,12 +215,6 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
 
                 </div>
             </div>
-
-            <?php if (!empty($docData['isSubmitter'])): ?>
-            <div class="action-row">
-                <a href="/revise_doc?id=<?php echo $doc['dID']; ?>" class="btn btn-draft">Revise Document</a>
-            </div>
-            <?php endif; ?>
 
             <!-- Tabs -->
             <div class="doc-tabs">

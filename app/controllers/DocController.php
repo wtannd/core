@@ -83,14 +83,16 @@ class DocController
     public function viewDocument(string $id): void
     {
         $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
-        $doc = $this->documentModel->getDocument((int)$id, (int)$mRole);
+        $mID = (int)($_SESSION['mID'] ?? 0);
+        $doc = $this->documentModel->getDocument((int)$id, (int)$mRole, $mID);
         $this->renderDocument($doc);
     }
 
     public function viewDocDoi(string $doi): void
     {
         $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
-        $doc = $this->documentModel->getDocumentByDoi($doi, (int)$mRole);
+        $mID = (int)($_SESSION['mID'] ?? 0);
+        $doc = $this->documentModel->getDocumentByDoi($doi, (int)$mRole, $mID);
         $this->renderDocument($doc);
     }
 
@@ -256,6 +258,11 @@ class DocController
                 $this->documentModel->saveTopic($newDID, (int)$draft['tID']);
             }
 
+            // Save authors to DocAuthors
+            if (!empty($draft['author_list'])) {
+                $this->documentModel->saveAuthorsFromList($newDID, $draft['author_list']);
+            }
+
             // Move files from docdrafts/ to YYYY/MM/DD/
             $path = $this->getPathFromPubdate($pubdate);
             $targetDir = rtrim(UPLOAD_PATH, '/') . '/' . $path;
@@ -281,6 +288,9 @@ class DocController
                     mail($author['email'], $subject, $body, $headers);
                 }
             }
+
+            // Remove the draft now that it's published
+            $this->documentModel->deleteDraft($dID);
 
             $_SESSION['success_message'] = "Document published successfully!";
             header("Location: /document?id=$newDID");
@@ -334,7 +344,7 @@ class DocController
             }
             $uploadDir = rtrim(UPLOAD_PATH, '/') . '/docdrafts';
         } else {
-            $doc = $this->documentModel->getDocument((int)$id, (int)$mRole);
+            $doc = $this->documentModel->getDocument((int)$id, (int)$mRole, (int)($mID ?? 0));
             if (!$doc) {
                 http_response_code(404);
                 include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
@@ -436,7 +446,7 @@ class DocController
         $mID = (int)$_SESSION['mID'];
         $mRole = (int)($_SESSION['mrole'] ?? GUEST_ROLE);
         $dID = (int)$id;
-        $doc = $this->documentModel->getDocument($dID, $mRole);
+        $doc = $this->documentModel->getDocument($dID, $mRole, $mID);
 
         if (!$doc || (int)$doc['submitter_ID'] !== $mID) {
             http_response_code(403);
@@ -542,7 +552,7 @@ class DocController
             $existingHasFile = (int)$draft['has_file'];
         } elseif ($isReviseDoc) {
             $mRole = (int)($_SESSION['mrole'] ?? GUEST_ROLE);
-            $existingDoc = $this->documentModel->getDocument($dID, $mRole);
+            $existingDoc = $this->documentModel->getDocument($dID, $mRole, $mID);
             if (!$existingDoc || (int)$existingDoc['submitter_ID'] !== $mID) {
                 return ['success' => false, 'message' => 'Document not found or access denied.'];
             }
@@ -647,6 +657,11 @@ class DocController
                     $this->documentModel->saveTopic($dID, $tID);
                 }
 
+                // Save authors to DocAuthors
+                if (!empty($docData['author_list'])) {
+                    $this->documentModel->saveAuthorsFromList($dID, $docData['author_list']);
+                }
+
             } elseif ($isEditDraft) {
                 $this->documentModel->updateDraft($dID, $docData);
                 $this->documentModel->resetDraftApprovals($dID);
@@ -664,6 +679,12 @@ class DocController
                 $this->documentModel->deleteDocTopic($dID);
                 if ($tID > 0) {
                     $this->documentModel->saveTopic($dID, $tID);
+                }
+
+                // Replace authors in DocAuthors
+                $this->documentModel->deleteAuthors($dID);
+                if (!empty($docData['author_list'])) {
+                    $this->documentModel->saveAuthorsFromList($dID, $docData['author_list']);
                 }
 
                 $pubdate = $existingDoc['pubdate'] ?? '';

@@ -41,7 +41,7 @@ class FeedController
         $offset = ($page - 1) * $this->perPage;
         $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
 
-        $result = $this->documentModel->searchDocuments($query, [], $this->perPage, $offset);
+        $result = $this->documentModel->searchDocuments($query, [], $this->perPage, $offset, (int)$mRole);
 
         $documents = $result['results'];
         $totalResults = $result['total'];
@@ -80,7 +80,7 @@ class FeedController
 
         $filters = $this->extractFilters($_GET);
 
-        $result = $this->documentModel->searchDocuments($query, $filters, $this->perPage, $offset);
+        $result = $this->documentModel->searchDocuments($query, $filters, $this->perPage, $offset, (int)$mRole);
 
         $documents = $result['results'];
         $totalResults = $result['total'];
@@ -120,7 +120,7 @@ class FeedController
             $filters['range'] = 'week';
         }
 
-        $result = $this->documentModel->getDocumentsByFilter($filters, $this->perPage, $offset);
+        $result = $this->documentModel->getDocumentsByFilter($filters, $this->perPage, $offset, (int)$mRole);
 
         $documents = $result['results'];
         $totalResults = $result['total'];

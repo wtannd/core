@@ -237,7 +237,7 @@ $streamSupplPrefix = 'draft';
                             <small class="text-muted">Waiting for all co-authors to approve.</small>
                         <?php endif; ?>
 
-                        <a href="/draft/edit?id=<?php echo $doc['dID']; ?>" class="btn btn-secondary" onclick="return confirm('Editing this draft will unlock it and reset all current co-author approvals. Continue?');">
+                        <a href="/edit_draft?id=<?php echo $doc['dID']; ?>" class="btn btn-secondary" onclick="return confirm('Editing this draft will unlock it and reset all current co-author approvals. Continue?');">
                             Edit Draft
                         </a>
                     </div>

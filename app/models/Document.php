@@ -158,19 +158,23 @@ class Document
 
     /**
      * Fetch a single document by DOI with visibility filtering.
+     * Authors listed in DocAuthors can view regardless of visibility.
      */
-    public function getDocumentByDoi(string $doi, int $mRole): array|bool
+    public function getDocumentByDoi(string $doi, int $mRole, int $mID = 0): array|bool
     {
-        $sql = "SELECT d.*, m.display_name as submitter_name 
+        $sql = "SELECT d.*, m.pub_name as submitter_name 
                 FROM Documents d
                 JOIN Members m ON d.submitter_ID = m.mID
-                WHERE d.doi = :doi AND :mRole2 >= d.visibility
+                WHERE d.doi = :doi AND (:mRole2 >= d.visibility OR EXISTS (
+                    SELECT 1 FROM DocAuthors da WHERE da.dID = d.dID AND da.mID = :mID
+                ))
                 LIMIT 1";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             'doi'    => $doi,
-            'mRole2' => $mRole
+            'mRole2' => $mRole,
+            'mID'    => $mID
         ]);
 
         return $stmt->fetch();
@@ -178,19 +182,23 @@ class Document
 
     /**
      * Fetch a single document by dID with visibility filtering.
+     * Authors listed in DocAuthors can view regardless of visibility.
      */
-    public function getDocument(int $dID, int $mRole): array|bool
+    public function getDocument(int $dID, int $mRole, int $mID = 0): array|bool
     {
-        $sql = "SELECT d.*, m.display_name as submitter_name 
+        $sql = "SELECT d.*, m.pub_name as submitter_name 
                 FROM Documents d
                 JOIN Members m ON d.submitter_ID = m.mID
-                WHERE d.dID = :dID AND :mRole2 >= d.visibility
+                WHERE d.dID = :dID AND (:mRole2 >= d.visibility OR EXISTS (
+                    SELECT 1 FROM DocAuthors da WHERE da.dID = d.dID AND da.mID = :mID
+                ))
                 LIMIT 1";
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             'dID'    => $dID,
-            'mRole2' => $mRole
+            'mRole2' => $mRole,
+            'mID'    => $mID
         ]);
         
         return $stmt->fetch();
@@ -224,7 +232,7 @@ class Document
                 FROM DocDraftAuthors dda
                 LEFT JOIN Members m ON dda.mID = m.mID
                 WHERE dda.dID = :dID
-                ORDER BY dda.author_order ASC";
+                ORDER BY dda.mID ASC";
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['dID' => $dID]);
@@ -236,7 +244,7 @@ class Document
      */
     public function approveDraft(int $dID, int $mID): bool
     {
-        $sql = "UPDATE DocDraftAuthors SET approved = 1 WHERE dID = :dID AND mID = :mID";
+        $sql = "UPDATE DocDraftAuthors SET is_approved = 1 WHERE dID = :dID AND mID = :mID";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute(['dID' => $dID, 'mID' => $mID]);
     }
@@ -246,7 +254,7 @@ class Document
      */
     public function resetDraftApprovals(int $dID): bool
     {
-        $sql = "UPDATE DocDraftAuthors SET approved = 0 WHERE dID = :dID";
+        $sql = "UPDATE DocDraftAuthors SET is_approved = 0 WHERE dID = :dID";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute(['dID' => $dID]);
     }
@@ -266,7 +274,7 @@ class Document
             return true; // Single author or no internal members
         }
 
-        $sqlApproved = "SELECT COUNT(*) FROM DocDraftAuthors WHERE dID = :dID AND mID IS NOT NULL AND approved = 1";
+        $sqlApproved = "SELECT COUNT(*) FROM DocDraftAuthors WHERE dID = :dID AND mID IS NOT NULL AND is_approved = 1";
         $stmtApproved = $this->db->prepare($sqlApproved);
         $stmtApproved->execute(['dID' => $dID]);
         $approvedCount = (int)$stmtApproved->fetchColumn();
@@ -452,7 +460,7 @@ class Document
      * 
      * @return array ['results' => array, 'total' => int]
      */
-    public function searchDocuments(string $query, array $filters, int $limit, int $offset): array
+    public function searchDocuments(string $query, array $filters, int $limit, int $offset, int $mRole = 0): array
     {
         $query = trim($query);
         $result = ['results' => [], 'total' => 0];
@@ -461,11 +469,12 @@ class Document
         $filter = $this->buildFilterWhere($filters, 0);
         $whereClauses = array_merge(
             ["MATCH(d.title, d.abstract) AGAINST (:search_query IN BOOLEAN MODE)"],
-            $filter['where']
+            $filter['where'],
+            [":mRole >= d.visibility"]
         );
         $whereSql = implode(' AND ', $whereClauses);
 
-        $params = array_merge(['search_query' => $query], $filter['params']);
+        $params = array_merge(['search_query' => $query, 'mRole' => $mRole], $filter['params']);
 
         // Count total
         $countSql = "SELECT COUNT(*) FROM Documents d{$filter['joins']} WHERE {$whereSql}";
@@ -501,10 +510,14 @@ class Document
      * 
      * @return array ['results' => array, 'total' => int]
      */
-    public function getDocumentsByFilter(array $filters, int $limit, int $offset): array
+    public function getDocumentsByFilter(array $filters, int $limit, int $offset, int $mRole = 0): array
     {
         $result = ['results' => [], 'total' => 0];
         $filter = $this->buildFilterWhere($filters, 0);
+
+        // Always include visibility filter
+        $filter['where'][] = ":mRole >= d.visibility";
+        $filter['params']['mRole'] = $mRole;
 
         if (empty($filter['where'])) {
             return $result;
@@ -678,5 +691,50 @@ class Document
     {
         $stmt = $this->db->prepare("DELETE FROM DocTopics WHERE dID = :dID");
         $stmt->execute(['dID' => $dID]);
+    }
+
+    /**
+     * Delete an entire draft record.
+     */
+    public function deleteDraft(int $dID): void
+    {
+        $stmt = $this->db->prepare("DELETE FROM DocDrafts WHERE dID = :dID");
+        $stmt->execute(['dID' => $dID]);
+    }
+
+    /**
+     * Delete all authors for a document (DocAuthors).
+     */
+    public function deleteAuthors(int $dID): void
+    {
+        $stmt = $this->db->prepare("DELETE FROM DocAuthors WHERE dID = :dID");
+        $stmt->execute(['dID' => $dID]);
+    }
+
+    /**
+     * Insert authors from author_list JSON into DocAuthors.
+     * Only authors with a valid mID are recorded (FK requirement).
+     */
+    public function saveAuthorsFromList(int $dID, string $authorListJson): void
+    {
+        $data = json_decode($authorListJson, true) ?? [];
+        $authors = $data['authors'] ?? [];
+
+        if (empty($authors)) return;
+
+        $sql = "INSERT INTO DocAuthors (dID, mID, author_order, duty) VALUES (:dID, :mID, :author_order, :duty)";
+        $stmt = $this->db->prepare($sql);
+
+        foreach ($authors as $i => $author) {
+            $mID = (int)($author[1] ?? 0);
+            if ($mID > 0) {
+                $stmt->execute([
+                    'dID'          => $dID,
+                    'mID'          => $mID,
+                    'author_order' => $i + 1,
+                    'duty'         => (int)($author[2] ?? 100)
+                ]);
+            }
+        }
     }
 }

@@ -616,6 +616,10 @@
         }
 
         function addLinkRow(sid = '', url = '', esname = '') {
+            // Prefix bare DOIs for display
+            if (url && url.startsWith('10.')) {
+                url = 'https://doi.org/' + url;
+            }
             const container = document.getElementById('links-container');
             const row = document.createElement('div');
             row.className = 'author-row link-row';

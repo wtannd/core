@@ -162,6 +162,14 @@ INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'La
 INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Scientific Method', 'Cross.HPS.method' FROM ResearchBranches WHERE abbr = 'Cross.HPS';
 INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Sociology of Science', 'Cross.HPS.sociology' FROM ResearchBranches WHERE abbr = 'Cross.HPS';
 INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Material Science', 'Cross.MS' FROM ResearchBranches WHERE abbr = 'Cross';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Brain & Neuroscience', 'Cross.BRAIN' FROM ResearchBranches WHERE abbr = 'Cross';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Neurophysiology', 'Cross.BRAIN.physio' FROM ResearchBranches WHERE abbr = 'Cross.BRAIN';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Molecular & Cellular Neuroscience', 'Cross.BRAIN.mol-cell' FROM ResearchBranches WHERE abbr = 'Cross.BRAIN';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Cognitive Neuroscience', 'Cross.BRAIN.cogn' FROM ResearchBranches WHERE abbr = 'Cross.BRAIN';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Computational Neuroscience', 'Cross.BRAIN.comput' FROM ResearchBranches WHERE abbr = 'Cross.BRAIN';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Developmental Neuroscience', 'Cross.BRAIN.devel' FROM ResearchBranches WHERE abbr = 'Cross.BRAIN';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Systems Neuroscience', 'Cross.BRAIN.sys' FROM ResearchBranches WHERE abbr = 'Cross.BRAIN';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Neurophilosophy', 'Cross.BRAIN.phil' FROM ResearchBranches WHERE abbr = 'Cross.BRAIN';
 
 CREATE TABLE BranchParameters (  -- parameters that depend on different research branches 
     pname VARCHAR(255) NOT NULL,
@@ -205,12 +213,15 @@ CREATE TABLE ResearchTopics (  -- multi-parent-branch research subjects (emergin
 );
 INSERT INTO ResearchTopics (tID, ttype, tname, abbr) VALUES (1,1, 'All Topics', 'AllTopics');  -- a dummy representing all topic subjects; no sub-topics should be allowed
 INSERT INTO ResearchTopics (ttype, tname, abbr) VALUES (1, 'Artificial Intelligence', 'AI');
-INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Machine Learning', CONCAT(abbr,'/ML') FROM ResearchTopics WHERE abbr = 'AI';
-INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Deep Learning', CONCAT(abbr,'/DL') FROM ResearchTopics WHERE abbr = 'AI';
+INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Machine Learning', CONCAT(abbr,'/MachL') FROM ResearchTopics WHERE abbr = 'AI';
+INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Deep Learning', CONCAT(abbr,'/DeepL') FROM ResearchTopics WHERE abbr = 'AI';
 INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Natural Language Processing', CONCAT(abbr,'/NLP') FROM ResearchTopics WHERE abbr = 'AI';
-INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Computer Vision', CONCAT(abbr,'/CV') FROM ResearchTopics WHERE abbr = 'AI';
-INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Robotics', CONCAT(abbr,'/ROB') FROM ResearchTopics WHERE abbr = 'AI';
-INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Generative AI', CONCAT(abbr,'/GAI') FROM ResearchTopics WHERE abbr = 'AI';
+INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Computer Vision', CONCAT(abbr,'/CompV') FROM ResearchTopics WHERE abbr = 'AI';
+INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Robotics', CONCAT(abbr,'/Rob') FROM ResearchTopics WHERE abbr = 'AI';
+INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Generative AI', CONCAT(abbr,'/GenAI') FROM ResearchTopics WHERE abbr = 'AI';
+INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Artificial General Intelligence', CONCAT(abbr,'/AGI') FROM ResearchTopics WHERE abbr = 'AI';
+INSERT INTO ResearchTopics (ttype, tname, abbr) VALUES (1, 'Quantum Computing', 'QC');
+
 
 CREATE TABLE TopicBranches ( -- parent branches of a top-level topic
     tID INT UNSIGNED NOT NULL,
@@ -270,8 +281,8 @@ CREATE TABLE AuthorClasses (  -- fixed-scheme and variable-scheme, sum of all no
 INSERT INTO AuthorClasses (ID,acname,duty) VALUES (1,'1st',100);   -- 1st-class  100%
 INSERT INTO AuthorClasses (ID,acname,duty) VALUES (2,'2nd',50);    -- 2nd-class  50%
 INSERT INTO AuthorClasses (ID,acname,duty) VALUES (3,'3rd',25);    -- 3rd-class  25%
-INSERT INTO AuthorClasses (ID,acname,duty) VALUES (4,'gen',10);    -- general class   10%
-INSERT INTO AuthorClasses (ID,acname,duty,duty_min,duty_max,is_fixed) VALUES (5,'var',75,20,99,0);   -- variable-class  20-99%
+INSERT INTO AuthorClasses (ID,acname,duty,duty_min,duty_max,is_fixed) VALUES (4,'var',75,20,99,0);   -- variable-class  20-99%
+INSERT INTO AuthorClasses (ID,acname,duty) VALUES (5,'gen',10);    -- general class   10%
 
 CREATE TABLE Countries ( -- list of countries for institutions below
     ID SMALLINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
@@ -975,7 +986,7 @@ CREATE TABLE DocAuthors (   -- authors with no mID will not be recorded here
     author_order INT UNSIGNED,                   -- Order of authors in the list
     duty TINYINT UNSIGNED NOT NULL DEFAULT 100,  -- Significance percentage in contribution normalized to 100% of 1st-class
     frac DOUBLE NOT NULL default 1,  -- fraction for ECP calculation = duty / sum of all duties (including general classes)
-    author_class TINYINT UNSIGNED,   -- 1='1st-author', 2='2nd-author', 3='3rd-author', 4='general-author', 5='variable-author'
+    author_class TINYINT UNSIGNED,   -- 1='1st-author', 2='2nd-author', 3='3rd-author', 4='variable-author', 5='general-author': classified if<5; non-classified if>=5 (won't count as duty cap)
     contribution VARCHAR(255) COLLATE utf8mb4_general_ci,
     -- ... additional fields (specific contribution details if needed)
     FOREIGN KEY (dID) REFERENCES Documents(dID),
