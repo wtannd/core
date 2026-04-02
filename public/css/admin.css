@@ -132,9 +132,9 @@
 
 /* Buttons */
 .btn-danger {
-    background-color: #dc3545;
+    background-color: var(--danger-color);
     color: #ffffff;
-    border: 1px solid #dc3545;
+    border: 1px solid var(--danger-color);
     padding: 0.5rem 1rem;
     border-radius: 4px;
     cursor: pointer;

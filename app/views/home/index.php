@@ -28,7 +28,7 @@ $isLoggedIn = isset($_SESSION['mID']);
                 <?php endif; ?>
             </div>
 
-            <form action="/browse" method="GET" class="search-browse-block">
+            <form action="/browse" method="GET" class="filter-bar">
                 <select name="type">
                     <?php foreach ($docTypes as $type): ?>
                         <option value="<?php echo $type['ID']; ?>" <?php echo $type['ID'] == 1 ? 'selected' : ''; ?>>

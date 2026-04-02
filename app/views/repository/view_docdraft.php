@@ -134,13 +134,13 @@ $streamSupplPrefix = 'draft';
                 <div class="doc-sidebar">
                     <!-- Draft Saved -->
                     <div class="doc-sidebar-section">
-                        <div class="doc-sidebar-label">Draft Saved</div>
+                        <div class="field-label field-label-sm">Draft Saved</div>
                         <div class="doc-sidebar-value"><?php echo date('M d, Y H:i', strtotime($doc['datetime_added'])); ?> UTC</div>
                     </div>
 
                     <?php if (!empty($doc['pubdate'])): ?>
                     <div class="doc-sidebar-section">
-                        <div class="doc-sidebar-label">Pub Date</div>
+                        <div class="field-label field-label-sm">Pub Date</div>
                         <div class="doc-sidebar-value"><?php echo htmlspecialchars($doc['pubdate']); ?></div>
                     </div>
                     <?php endif; ?>
@@ -150,7 +150,7 @@ $streamSupplPrefix = 'draft';
                     <!-- Full PDF -->
                     <?php if ($hasMainFile): ?>
                     <div class="doc-sidebar-section">
-                        <div class="doc-sidebar-label">Full Text PDF</div>
+                        <div class="field-label field-label-sm">Full Text PDF</div>
                         <a href="/stream?type=draft&id=<?php echo $doc['dID']; ?>" class="doc-file-link" download>Download</a>
                     </div>
                     <?php endif; ?>
@@ -158,7 +158,7 @@ $streamSupplPrefix = 'draft';
                     <!-- Supplemental File -->
                     <?php if ($hasSupplFile): ?>
                     <div class="doc-sidebar-section">
-                        <div class="doc-sidebar-label">Supplemental File</div>
+                        <div class="field-label field-label-sm">Supplemental File</div>
                         <a href="/stream?type=draft&id=<?php echo $doc['dID']; ?>&suppl" class="doc-file-link" download>Download</a>
                     </div>
                     <?php endif; ?>
@@ -220,12 +220,12 @@ $streamSupplPrefix = 'draft';
                     <form action="/draft/approve" method="POST" class="approval-form">
                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                         <input type="hidden" name="dID" value="<?php echo $doc['dID']; ?>">
-                        <button type="submit" class="btn btn-primary btn-approve">Approve this Draft</button>
+                        <button type="submit" class="btn btn-primary btn-submit">Approve this Draft</button>
                     </form>
                 <?php endif; ?>
 
                 <?php if ($isSubmitter): ?>
-                    <div class="finalize-actions">
+                    <div class="action-row">
                         <form action="/draft/finalize" method="POST">
                             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                             <input type="hidden" name="dID" value="<?php echo $doc['dID']; ?>">
@@ -234,10 +234,10 @@ $streamSupplPrefix = 'draft';
                             </button>
                         </form>
                         <?php if (!$isFullyApproved): ?>
-                            <small class="approval-note">Waiting for all co-authors to approve.</small>
+                            <small class="text-muted">Waiting for all co-authors to approve.</small>
                         <?php endif; ?>
 
-                        <a href="/draft/edit?id=<?php echo $doc['dID']; ?>" class="btn btn-edit-draft" onclick="return confirm('Editing this draft will unlock it and reset all current co-author approvals. Continue?');">
+                        <a href="/draft/edit?id=<?php echo $doc['dID']; ?>" class="btn btn-secondary" onclick="return confirm('Editing this draft will unlock it and reset all current co-author approvals. Continue?');">
                             Edit Draft
                         </a>
                     </div>

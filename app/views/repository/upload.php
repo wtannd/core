@@ -125,28 +125,18 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="title">Document Title:</label>
+                    <label for="title"><h3>Document Title:</h3></label>
                     <input type="text" id="title" name="title" required value="<?php echo htmlspecialchars($valTitle); ?>">
                 </div>
 
                 <div class="form-group">
-                    <label for="abstract">Abstract:</label>
+                    <label for="abstract"><h3>Abstract:</h3></label>
                     <textarea id="abstract" name="abstract" rows="6" required><?php echo htmlspecialchars($valAbstract); ?></textarea>
                 </div>
 
                 <div class="form-group">
-                    <label for="notes">Notes:</label>
-                    <input type="text" id="notes" name="notes" value="<?php echo htmlspecialchars($valNotes); ?>">
-                </div>
-
-                <div class="form-group">
-                    <label for="abstract"><h3>Abstract:</h3></label>
-                    <textarea id="abstract" name="abstract" rows="6" required><?php echo htmlspecialchars($_POST['abstract'] ?? ''); ?></textarea>
-                </div>
-
-                <div class="form-group">
                     <label for="notes"><h3>Notes:</h3></label>
-                    <input type="text" id="notes" name="notes" value="<?php echo htmlspecialchars($_POST['notes'] ?? ''); ?>">
+                    <input type="text" id="notes" name="notes" value="<?php echo htmlspecialchars($valNotes); ?>">
                 </div>
 
                 <hr>
@@ -189,7 +179,7 @@
                 <hr>
 
                 <h3>Research Branches</h3>
-                <p class="section-desc">Assign 1 to 3 research branches. The total impact must equal 100%.</p>
+                <p class="form-hint">Assign 1 to 3 research branches. The total impact must equal 100%.</p>
                 <div id="branches-container">
                     <!-- Dynamic branch rows -->
                 </div>
@@ -225,7 +215,7 @@
                 <div class="file-section">
                     <h3>Attach Files</h3>
                     <?php if ($isEditDraft || $isRevise): ?>
-                    <div class="file-hint">
+                    <div class="form-hint">
                         Current file: <strong><?php echo ($docData['has_file'] ?? 0) >= 1 ? 'Main PDF attached' : 'None'; ?>
                         <?php if (($docData['has_file'] ?? 0) === 2): ?> + Supplemental PDF<?php elseif (($docData['has_file'] ?? 0) === 3): ?> + Supplemental ZIP<?php endif; ?></strong>
                         — upload new files below to replace.

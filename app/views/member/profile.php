@@ -55,7 +55,7 @@
                     <div class="primary-info">
                         <!-- Metrics Section -->
                         <div class="info-group">
-                            <span class="info-label">Metrics</span>
+                            <span class="field-label">Metrics</span>
                             <div class="info-value">
                                 <strong>AL:</strong> <?php echo htmlspecialchars((string)$member['AL']); ?> | 
                                 <strong>ALS:</strong> <?php echo htmlspecialchars((string)$member['ALS']); ?> | 
@@ -64,13 +64,13 @@
                         </div>
 
                         <div class="info-group">
-                            <span class="info-label">Name in Publications</span>
+                            <span class="field-label">Name in Publications</span>
                             <div class="info-value"><?php echo htmlspecialchars($member['pub_name']); ?></div>
                         </div>
 
                         <?php if (isset($member['email'])): ?>
                         <div class="info-group">
-                            <span class="info-label">Email Address</span>
+                            <span class="field-label">Email Address</span>
                             <div class="info-value">
                                 <a href="mailto:<?php echo htmlspecialchars($member['email']); ?>" class="link-academic">
                                     <?php echo htmlspecialchars($member['email']); ?>
@@ -83,7 +83,7 @@
                     <div class="research-info">
                         <?php if (!empty($member['work_areas_display'])): ?>
                         <div class="info-group">
-                            <span class="info-label">Work Areas</span>
+                            <span class="field-label">Work Areas</span>
                             <div class="pill-container">
                                 <?php foreach ($member['work_areas_display'] as $area): ?>
                                     <span class="pill"><?php echo htmlspecialchars($area); ?></span>
@@ -94,7 +94,7 @@
 
                         <?php if (!empty($member['interest_areas_display'])): ?>
                         <div class="info-group">
-                            <span class="info-label">Interest Areas</span>
+                            <span class="field-label">Interest Areas</span>
                             <div class="pill-container">
                                 <?php foreach ($member['interest_areas_display'] as $area): ?>
                                     <span class="pill"><?php echo htmlspecialchars($area); ?></span>
@@ -111,7 +111,7 @@
                     <div class="info-grid">
                         <?php foreach ($member['metadata'] as $key => $value): ?>
                             <div class="meta-item">
-                                <span class="info-label"><?php echo htmlspecialchars(str_replace('_', ' ', $key)); ?></span>
+                                <span class="field-label"><?php echo htmlspecialchars(str_replace('_', ' ', $key)); ?></span>
                                 <div class="info-value">
                                     <?php if (strpos($key, 'url') !== false || $key === 'cv'): ?>
                                         <a href="<?php echo htmlspecialchars($value); ?>" target="_blank" rel="noopener noreferrer" class="link-academic">

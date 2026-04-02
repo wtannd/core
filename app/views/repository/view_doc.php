@@ -132,7 +132,7 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
                         if ($mainFigs > 0) $metrics[] = $mainFigs . ' figure' . ($mainFigs !== 1 ? 's' : '');
                         if ($mainTabs > 0) $metrics[] = $mainTabs . ' table' . ($mainTabs !== 1 ? 's' : '');
                         if (!empty($metrics)): ?>
-                            <span class="doc-metrics">, <?php echo implode(', ', $metrics); ?></span>
+                            <span class="text-muted">, <?php echo implode(', ', $metrics); ?></span>
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
@@ -147,13 +147,13 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
                 <div class="doc-sidebar">
                     <!-- Submitted -->
                     <div class="doc-sidebar-section">
-                        <div class="doc-sidebar-label">Submitted</div>
+                        <div class="field-label field-label-sm">Submitted</div>
                         <div class="doc-sidebar-value"><?php echo date('M d, Y', strtotime($doc['submission_time'])); ?></div>
                     </div>
 
                     <!-- Announced -->
                     <div class="doc-sidebar-section">
-                        <div class="doc-sidebar-label">Announced</div>
+                        <div class="field-label field-label-sm">Announced</div>
                         <div class="doc-sidebar-value">
                             <?php echo !empty($doc['announce_time']) ? date('M d, Y', strtotime($doc['announce_time'])) : '&mdash;'; ?>
                         </div>
@@ -164,7 +164,7 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
                     <!-- Full PDF -->
                     <?php if ($hasMainFile): ?>
                     <div class="doc-sidebar-section">
-                        <div class="doc-sidebar-label">Full Text PDF</div>
+                        <div class="field-label field-label-sm">Full Text PDF</div>
                         <a href="/stream?type=doc&id=<?php echo $doc['dID']; ?>" class="doc-file-link" download>
                             Download
                             <?php if ($mainSize > 0): ?>
@@ -177,7 +177,7 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
                     <!-- Supplemental File -->
                     <?php if ($hasSupplFile): ?>
                     <div class="doc-sidebar-section">
-                        <div class="doc-sidebar-label">Supplemental File</div>
+                        <div class="field-label field-label-sm">Supplemental File</div>
                         <a href="/stream?type=doc&id=<?php echo $doc['dID']; ?>&suppl" class="doc-file-link" download>
                             Download
                             <?php if ($supplSize > 0): ?>
@@ -212,7 +212,7 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
             </div>
 
             <?php if (!empty($docData['isSubmitter'])): ?>
-            <div class="doc-actions">
+            <div class="action-row">
                 <a href="/revise_doc?id=<?php echo $doc['dID']; ?>" class="btn btn-draft">Revise Document</a>
             </div>
             <?php endif; ?>
