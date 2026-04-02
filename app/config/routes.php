@@ -82,7 +82,7 @@ switch ($requestUri) {
         }
         $docController = new \app\controllers\DocController();
         if ($requestMethod === 'POST') {
-            $result = $docController->processUpload($_POST, $_FILES);
+            $result = $docController->processFormSubmission($_POST, $_FILES);
             if ($result['success']) {
                 $_SESSION['success_message'] = $result['message'];
                 $redirectTo = isset($result['dID']) ? ($result['action'] ?? 'draft') : 'home';
@@ -119,7 +119,7 @@ switch ($requestUri) {
         }
         $docController = new \app\controllers\DocController();
         if ($requestMethod === 'POST') {
-            $result = $docController->processEdit($_POST, $_FILES);
+            $result = $docController->processFormSubmission($_POST, $_FILES);
             if ($result['success']) {
                 $_SESSION['success_message'] = $result['message'];
                 header('Location: /docdraft?id=' . $result['dID']);
@@ -139,7 +139,7 @@ switch ($requestUri) {
         }
         $docController = new \app\controllers\DocController();
         if ($requestMethod === 'POST') {
-            $result = $docController->processEdit($_POST, $_FILES);
+            $result = $docController->processFormSubmission($_POST, $_FILES);
             if ($result['success']) {
                 $_SESSION['success_message'] = $result['message'];
                 header('Location: /document?id=' . $result['dID']);
