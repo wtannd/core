@@ -666,7 +666,7 @@
                 total += parseInt(input.value) || 0;
             });
             document.getElementById('duty-summary').textContent = `Total Duty: ${total}%`;
-            document.getElementById('duty-summary').style.color = total > 875 ? 'red' : '#555';
+            document.getElementById('duty-summary').className = total > 875 ? 'duty-summary text-danger' : 'duty-summary';
         }
 
         function validateDuty() {
@@ -768,7 +768,7 @@
             });
             const summary = document.getElementById('branch-summary');
             summary.textContent = `Total Impact: ${total}%`;
-            summary.style.color = total !== 100 ? 'red' : '#555';
+            summary.className = total !== 100 ? 'branch-summary text-danger' : 'branch-summary';
         }
 
         function collectBranchJson() {

@@ -213,6 +213,7 @@ CREATE TABLE ResearchTopics (  -- multi-parent-branch research subjects (emergin
 );
 INSERT INTO ResearchTopics (tID, ttype, tname, abbr) VALUES (1,1, 'All Topics', 'AllTopics');  -- a dummy representing all topic subjects; no sub-topics should be allowed
 INSERT INTO ResearchTopics (ttype, tname, abbr) VALUES (1, 'Artificial Intelligence', 'AI');
+INSERT INTO ResearchTopics (ttype, tname, abbr) VALUES (1, 'Quantum Computing', 'QC');
 INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Machine Learning', CONCAT(abbr,'/MachL') FROM ResearchTopics WHERE abbr = 'AI';
 INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Deep Learning', CONCAT(abbr,'/DeepL') FROM ResearchTopics WHERE abbr = 'AI';
 INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Natural Language Processing', CONCAT(abbr,'/NLP') FROM ResearchTopics WHERE abbr = 'AI';
@@ -220,7 +221,6 @@ INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Comp
 INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Robotics', CONCAT(abbr,'/Rob') FROM ResearchTopics WHERE abbr = 'AI';
 INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Generative AI', CONCAT(abbr,'/GenAI') FROM ResearchTopics WHERE abbr = 'AI';
 INSERT INTO ResearchTopics (parent_tID, ttype, tname, abbr) SELECT tID, 2, 'Artificial General Intelligence', CONCAT(abbr,'/AGI') FROM ResearchTopics WHERE abbr = 'AI';
-INSERT INTO ResearchTopics (ttype, tname, abbr) VALUES (1, 'Quantum Computing', 'QC');
 
 
 CREATE TABLE TopicBranches ( -- parent branches of a top-level topic
@@ -230,10 +230,14 @@ CREATE TABLE TopicBranches ( -- parent branches of a top-level topic
     FOREIGN KEY (bID) REFERENCES ResearchBranches (bID),
     PRIMARY KEY (tID,bID)
 );
-INSERT INTO TopicBranches (tID,bID) SELECT 1, bID FROM ResearchBranches WHERE abbr = 'Phys'; -- top level 'AI'
-INSERT INTO TopicBranches (tID,bID) SELECT 1, bID FROM ResearchBranches WHERE abbr = 'Math'; -- top level 'AI'
-INSERT INTO TopicBranches (tID,bID) SELECT 1, bID FROM ResearchBranches WHERE abbr = 'Comp'; -- top level 'AI'
-INSERT INTO TopicBranches (tID,bID) SELECT 1, bID FROM ResearchBranches WHERE abbr = 'Engr'; -- top level 'AI'
+INSERT INTO TopicBranches (tID,bID) SELECT 2, bID FROM ResearchBranches WHERE abbr = 'Phys'; -- top level 'AI'
+INSERT INTO TopicBranches (tID,bID) SELECT 2, bID FROM ResearchBranches WHERE abbr = 'Math'; -- top level 'AI'
+INSERT INTO TopicBranches (tID,bID) SELECT 2, bID FROM ResearchBranches WHERE abbr = 'Comp'; -- top level 'AI'
+INSERT INTO TopicBranches (tID,bID) SELECT 2, bID FROM ResearchBranches WHERE abbr = 'Engr'; -- top level 'AI'
+INSERT INTO TopicBranches (tID,bID) SELECT 3, bID FROM ResearchBranches WHERE abbr = 'Phys'; -- top level 'QC'
+INSERT INTO TopicBranches (tID,bID) SELECT 3, bID FROM ResearchBranches WHERE abbr = 'Math'; -- top level 'QC'
+INSERT INTO TopicBranches (tID,bID) SELECT 3, bID FROM ResearchBranches WHERE abbr = 'Comp'; -- top level 'QC'
+INSERT INTO TopicBranches (tID,bID) SELECT 3, bID FROM ResearchBranches WHERE abbr = 'Engr'; -- top level 'QC'
 
 
 -- Member-related tables

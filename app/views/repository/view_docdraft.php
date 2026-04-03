@@ -220,7 +220,7 @@ $streamSupplPrefix = 'draft';
                     <form action="/draft/approve" method="POST" class="approval-form">
                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                         <input type="hidden" name="dID" value="<?php echo $doc['dID']; ?>">
-                        <button type="submit" class="btn btn-primary btn-submit">Approve this Draft</button>
+                        <button type="submit" class="btn btn-submit">Approve this Draft</button>
                     </form>
                 <?php endif; ?>
 
@@ -229,7 +229,7 @@ $streamSupplPrefix = 'draft';
                         <form action="/draft/finalize" method="POST">
                             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                             <input type="hidden" name="dID" value="<?php echo $doc['dID']; ?>">
-                            <button type="submit" class="btn btn-submit <?php echo !$isFullyApproved ? 'btn-disabled' : ''; ?>" <?php echo !$isFullyApproved ? 'disabled' : ''; ?>>
+                            <button type="submit" class="btn btn-submit" <?php echo !$isFullyApproved ? 'disabled' : ''; ?>>
                                 Finalize Submission
                             </button>
                         </form>

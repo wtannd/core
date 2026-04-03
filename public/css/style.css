@@ -2,12 +2,21 @@
     --brand-dark: #2C5E4E;
     --brand-dark-hover: #1e4539;
     --brand-light: #687D75;
+    --brand-bg: #f0f4f2;
+    --brand-border: #d4e8e4;
     --border-subtle: #eee;
     --border-input: #ddd;
+    --border-light: #d3d3d3;
+    --border-hover: #e2e8f0;
     --text-main: #2b2b2b;
     --text-secondary: #666;
     --text-muted: #888;
+    --text-faint: #c4cdd5;
+    --text-accent: #586D65;
     --bg-color: #f8f9fa;
+    --bg-subtle: #f4f4f4;
+    --bg-row: #f9f9f9;
+    --bg-hover: #fafafa;
     --surface-white: #ffffff;
     --font-ui: 'Inter', system-ui, sans-serif;
     --font-academic: 'Lora', 'Georgia', serif;
@@ -15,7 +24,21 @@
     --link-color: #007bff;
     --success-color: #28a745;
     --danger-color: #dc3545;
+    --danger-hover: #c82333;
+    --danger-text: #721c24;
+    --danger-bg: #f8d7da;
+    --danger-border: #f5c6cb;
     --warning-color: #ffc107;
+    --warning-text: #856404;
+    --warning-bg: #fff3cd;
+    --warning-border: #ffeeba;
+    --info-color: #17a2b8;
+    --info-bg: #f0f7ff;
+    --info-border: #d0d7de;
+    --topic-bg: #f0f0f8;
+    --topic-border: #d8d8e8;
+    --topic-text: #4a4a8a;
+    --draft-color: #6c757d;
     --disabled-color: #ccc;
 }
 
@@ -67,6 +90,10 @@ hr {
     color: var(--text-secondary);
 }
 
+.text-danger {
+    color: var(--danger-color);
+}
+
 .field-label {
     display: block;
     font-size: 0.75rem;
@@ -102,7 +129,7 @@ hr {
 .auth-container, .profile-container, .doc-container, .document-viewer, .search-results-page, .feed-container {
     background: var(--surface-white);
     box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-    border: 1px solid #eaeaea;
+    border: 1px solid var(--border-subtle);
     border-radius: 8px;
     width: 95%;
 }
@@ -203,13 +230,13 @@ hr {
 }
 
 .btn-secondary {
-    background-color: #f4f6f8;
+    background-color: var(--bg-color);
     color: var(--text-main);
     border: 1px solid var(--border-subtle);
 }
 
 .btn-secondary:hover {
-    background-color: #e2e8f0;
+    background-color: var(--border-hover);
 }
 
 .btn-danger {
@@ -218,7 +245,7 @@ hr {
 }
 
 .btn-danger:hover {
-    background-color: #c82333;
+    background-color: var(--danger-hover);
 }
 
 .btn-orcid {
@@ -227,7 +254,7 @@ hr {
     justify-content: center;
     gap: 10px;
     background: white;
-    border: 1px solid #d3d3d3;
+    border: 1px solid var(--border-light);
     color: var(--text-main);
     padding: 0.5rem 1rem;
     border-radius: 4px;
@@ -272,8 +299,9 @@ hr {
 }
 
 .btn-disabled { background-color: var(--disabled-color) !important; cursor: not-allowed; }
-.btn-add { background-color: #17a2b8; color: white; width: auto; }
-.btn-draft { background-color: #6c757d; color: white; }
+.btn:disabled { background-color: var(--disabled-color); cursor: not-allowed; opacity: 0.65; }
+.btn-add { background-color: var(--info-color); color: white; width: auto; }
+.btn-draft { background-color: var(--draft-color); color: white; }
 .btn-submit { background-color: var(--success-color); color: white; }
 
 /* ====================================
@@ -289,12 +317,12 @@ hr {
 }
 
 .alert-danger {
-    background-color: #fdf2f2;
-    color: var(--danger-color);
+    background-color: var(--danger-bg);
+    color: var(--danger-text);
 }
 
 .alert-info {
-    background-color: #f0f7f4;
+    background-color: var(--info-bg);
     color: var(--brand-dark);
 }
 
@@ -360,7 +388,7 @@ hr {
 }
 
 .bracket {
-    color: #c4cdd5;
+    color: var(--text-faint);
     font-weight: 450;
 }
 
@@ -370,9 +398,9 @@ hr {
 }
 
 .triple-e {
-    color: #586D65;
+    color: var(--text-accent);
     letter-spacing: normal;
-    text-shadow: 1px 0.5px 0 var(--brand-light), 2px 1px 0 #a1a9a6;
+    text-shadow: 1px 0.5px 0 var(--brand-light), 2px 1px 0 var(--text-faint);
     display: inline-block;
 }
 
@@ -434,8 +462,8 @@ hr {
 .dropdown-item:hover { background-color: var(--bg-color); color: var(--brand-dark); }
 .dropdown-divider { height: 1px; background-color: var(--border-subtle); margin: 0; }
 
-.dropdown-item.text-danger { color: #d9534f; }
-.dropdown-item.text-danger:hover { background-color: #fdf2f2; color: var(--danger-color); }
+.dropdown-item.text-danger { color: var(--danger-color); }
+.dropdown-item.text-danger:hover { background-color: var(--danger-bg); color: var(--danger-text); }
 
 /* Optional styling to differentiate view-switching links */
 .dropdown-item.view-switch { font-weight: 500; }
@@ -445,7 +473,7 @@ hr {
    ==================================== */
 
 .dashboard-wrapper { max-width: var(--max-content-width); margin: 2rem auto; padding: 0 2rem; width: 100%; }
-.intro-block { line-height: 1.6; color: #444; font-size: 1.1rem; margin-bottom: 2.5rem; }
+.intro-block { line-height: 1.6; color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 2.5rem; }
 
 /* Member Research Areas on Dashboard */
 .user-areas-section { margin-bottom: 3rem; }
@@ -460,7 +488,7 @@ hr {
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem 1rem;
-    background: #fdfdfd;
+    background: var(--surface-white);
     border: 1px solid var(--border-subtle);
     border-radius: 6px;
 }
@@ -514,7 +542,7 @@ hr {
     transition: all 0.2s;
 }
 .doc-item:hover {
-    background: #fafafa;
+    background: var(--bg-hover);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
@@ -635,7 +663,7 @@ hr {
     border: 1px solid var(--border-input);
     border-radius: 6px;
     overflow: hidden;
-    background: #f0f0f0;
+    background: var(--bg-subtle);
 }
 
 .submission-type-btn {
@@ -694,12 +722,12 @@ hr {
     gap: 8px;
     margin-bottom: 8px;
     align-items: center;
-    background: #f9f9f9;
+    background: var(--bg-row);
     padding: 8px;
     border-radius: 4px;
 }
 .remove-author {
-    background: #ff4444;
+    background: var(--danger-color);
     color: white;
     border: none;
     padding: 5px 10px;
@@ -735,8 +763,8 @@ hr {
 }
 
 .duty-rules-box {
-    background: #f0f4f8;
-    border: 1px solid #d0d7de;
+    background: var(--info-bg);
+    border: 1px solid var(--info-border);
     border-radius: 6px;
     padding: 0.6rem 0.8rem;
     margin-bottom: 0.75rem;
@@ -805,7 +833,7 @@ hr {
     gap: 10px;
     margin-bottom: 10px;
     align-items: center;
-    background: #f9f9f9;
+    background: var(--bg-row);
     padding: 8px;
     border-radius: 4px;
 }
@@ -836,7 +864,7 @@ hr {
 /* File-section and Metrics Group */
 
 .file-section {
-    background: #f0f7ff;
+    background: var(--info-bg);
     padding: 15px;
     border-radius: 8px;
     margin-bottom: 20px;
@@ -879,7 +907,7 @@ hr {
     padding: 0 5px;
     font-size: 0.8rem;
     border: 1px solid var(--border-input);
-    background: #f9f9f9;
+    background: var(--bg-row);
     border-radius: 3px;
     cursor: pointer;
 }
@@ -1024,7 +1052,7 @@ hr {
     transition: all 0.15s;
 }
 .member-item:hover {
-    background: #fafafa;
+    background: var(--bg-hover);
     box-shadow: 0 2px 6px rgba(0,0,0,0.04);
 }
 .member-name {
@@ -1040,7 +1068,7 @@ hr {
     font-family: monospace;
     font-size: 0.85rem;
     color: var(--brand-light);
-    background: #f0f4f2;
+    background: var(--brand-bg);
     padding: 0.2rem 0.5rem;
     border-radius: 4px;
     flex-shrink: 0;
@@ -1057,11 +1085,11 @@ hr {
    Member Public Profile Styles (member/profile.php)
    ==================================== */
 
-.profile-header { text-align: center; border-bottom: 1px solid var(--border-subtle); background: linear-gradient(to bottom, #fdfdfd, #ffffff); padding-bottom: 2rem; margin-bottom: 2rem; }
+.profile-header { text-align: center; border-bottom: 1px solid var(--border-subtle); background: linear-gradient(to bottom, var(--surface-white), #ffffff); padding-bottom: 2rem; margin-bottom: 2rem; }
 .profile-header h1 {
     margin: 0 0 0.75rem;
     font-size: 2.25rem;
-    color: #1a1a1a;
+    color: var(--text-main);
     font-weight: 700;
     letter-spacing: -0.02em;
 }
@@ -1079,9 +1107,9 @@ hr {
 }
 
 .id-badge {
-    display: inline-block; background-color: #E8F3F1; color: var(--brand-dark);
+    display: inline-block; background-color: var(--brand-bg); color: var(--brand-dark);
     padding: 0.4rem 1rem; border-radius: 20px; font-family: monospace;
-    font-weight: 600; font-size: 0.95rem; border: 1px solid #d4e8e4; letter-spacing: 0.05em;
+    font-weight: 600; font-size: 0.95rem; border: 1px solid var(--brand-border); letter-spacing: 0.05em;
 }
 .id-badge-orcid {
     background-color: #f0fdf4;
@@ -1100,8 +1128,8 @@ hr {
     text-transform: uppercase;
     margin-right: 10px;
 }
-.status-inactive { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-.status-deceased { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.status-inactive { background: var(--warning-bg); color: var(--warning-text); border: 1px solid var(--warning-border); }
+.status-deceased { background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-border); }
 
 .info-grid {
     display: grid;
@@ -1119,9 +1147,9 @@ hr {
 }
 
 .pill {
-    display: inline-block; background: #f0f4f2; color: var(--brand-dark);
+    display: inline-block; background: var(--brand-bg); color: var(--brand-dark);
     padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem;
-    margin-right: 5px; margin-bottom: 5px; border: 1px solid #e0e8e4; text-decoration: none;
+    margin-right: 5px; margin-bottom: 5px; border: 1px solid var(--brand-border); text-decoration: none;
 }
 .pill-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 0.5rem; }
 
@@ -1132,7 +1160,7 @@ hr {
 }
 .meta-section h2 {
     font-size: 1.25rem;
-    color: #1a1a1a;
+    color: var(--text-main);
     margin-bottom: 1.5rem;
     font-weight: 600;
 }
@@ -1208,14 +1236,14 @@ details > summary + div { margin-top: 1rem; }
     transition: all 0.15s;
 }
 .label-branch {
-    background: #e8f3f1;
+    background: var(--brand-bg);
     color: var(--brand-dark);
-    border: 1px solid #d4e8e4;
+    border: 1px solid var(--brand-border);
 }
 .label-topic {
-    background: #f0f0f8;
-    color: #4a4a8a;
-    border: 1px solid #d8d8e8;
+    background: var(--topic-bg);
+    color: var(--topic-text);
+    border: 1px solid var(--topic-border);
 }
 .label-pill:hover {
     filter: brightness(0.95);
@@ -1268,9 +1296,6 @@ details > summary + div { margin-top: 1rem; }
     font-weight: 600;
     color: var(--text-muted);
     margin-left: 0.25rem;
-}
-.doc-metrics {
-    color: var(--text-secondary);
 }
 
 /* Notes */
@@ -1379,7 +1404,7 @@ details > summary + div { margin-top: 1rem; }
 .revision-table th { background: var(--bg-color); font-weight: 600; }
 
 /* PDF Viewer */
-.pdf-frame { border: 1px solid var(--border-input); border-radius: 4px; background: #f4f4f4; }
+.pdf-frame { border: 1px solid var(--border-input); border-radius: 4px; background: var(--bg-subtle); }
 
 /* ====================================
    DocDraft styles (repository/view_docdraft.php)
@@ -1398,7 +1423,7 @@ details > summary + div { margin-top: 1rem; }
 .approval-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
 .approval-table th, .approval-table td { padding: 10px; border: 1px solid var(--border-subtle); text-align: left; }
 .status-approved { color: var(--success-color); font-weight: bold; }
-.status-pending { color: #e67e00; font-weight: bold; }
+.status-pending { color: var(--warning-text); font-weight: bold; }
 .action-zone {
     background: var(--bg-color);
     padding: 20px;
@@ -1409,6 +1434,40 @@ details > summary + div { margin-top: 1rem; }
 
 .approval-form {
     margin-bottom: 1rem;
+}
+
+.status-pending { color: var(--warning-color); font-weight: bold; }
+
+/* ====================================
+   Missing CSS for Orphaned Classes
+   ==================================== */
+
+.profile-content {
+    /* structural wrapper — no visual style needed */
+}
+
+.primary-info {
+    /* left column of profile info grid */
+}
+
+.research-info {
+    /* right column of profile info grid */
+}
+
+.abstract-text {
+    /* abstract preview in feed */
+}
+
+.authors-short {
+    /* short author list in feed */
+}
+
+.authors-hidden {
+    display: none;
+}
+
+.hidden-affil {
+    display: none;
 }
 
 /* ====================================
@@ -1476,7 +1535,7 @@ details > summary + div { margin-top: 1rem; }
         font-size: 1.1rem;
     }
 
-    .nav-link, .welcome-text {
+    .nav-link {
         font-size: 0.85rem;
     }
 }
