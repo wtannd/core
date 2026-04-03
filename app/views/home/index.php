@@ -29,70 +29,100 @@ $isLoggedIn = isset($_SESSION['mID']);
             </div>
 
             <form action="/browse" method="GET" class="filter-bar">
-                <select name="type">
-                    <?php foreach ($docTypes as $type): ?>
-                        <option value="<?php echo $type['ID']; ?>" <?php echo $type['ID'] == 1 ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($type['dtname']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <div class="filter-group">
+                    <label for="f-type">Type</label>
+                    <select name="type" id="f-type">
+                        <?php foreach ($docTypes as $type): ?>
+                            <option value="<?php echo $type['ID']; ?>" <?php echo $type['ID'] == 1 ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($type['dtname']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-                <select name="branch">
-                    <option value="">All Branches</option>
-                    <?php foreach ($branches as $branch): ?>
-                        <option value="<?php echo $branch['bID']; ?>">
-                            <?php echo htmlspecialchars($branch['abbr']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <div class="filter-group">
+                    <label for="f-branch">Branch</label>
+                    <select name="branch" id="f-branch">
+                        <option value="">All Branches</option>
+                        <?php foreach ($branches as $branch): ?>
+                            <option value="<?php echo $branch['bID']; ?>">
+                                <?php echo htmlspecialchars($branch['abbr']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-                <div class="btn-group">
-                    <button type="submit" name="range" value="day" class="btn-mini">New</button>
-                    <button type="submit" name="range" value="week" class="btn-mini">Recent</button>
-                    <button type="submit" class="btn-mini">Browse</button>
+                <div class="filter-group">
+                    <label for="f-topic">Topic</label>
+                    <select name="topic" id="f-topic">
+                        <option value="">All Topics</option>
+                        <?php foreach ($topics as $topic): ?>
+                            <option value="<?php echo $topic['tID']; ?>">
+                                <?php echo htmlspecialchars($topic['abbr']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="filter-group filter-group-range">
+                    <label>Range</label>
+                    <div class="range-btns">
+                        <button type="submit" name="range" value="day" class="btn btn-mini">New</button>
+                        <button type="submit" name="range" value="week" class="btn btn-mini">Recent</button>
+                        <button type="submit" class="btn btn-mini">Browse</button>
+                    </div>
                 </div>
             </form>
 
             <?php if ($isLoggedIn && (!empty($userWorkAreas) || !empty($userInterestAreas))): ?>
                 <div class="user-areas-section">
+                    <div class="areas-tabs">
+                        <?php if (!empty($userWorkAreas)): ?>
+                            <button class="areas-tab active" data-tab="work">Work Areas</button>
+                        <?php endif; ?>
+                        <?php if (!empty($userInterestAreas)): ?>
+                            <button class="areas-tab <?php echo empty($userWorkAreas) ? 'active' : ''; ?>" data-tab="interest">Interest Areas</button>
+                        <?php endif; ?>
+                    </div>
+
                     <?php if (!empty($userWorkAreas)): ?>
-                        <h3>Your Work Areas</h3>
-                        <div class="area-grid">
+                    <div class="areas-tab-panel active" id="panel-work">
+                        <div class="area-pill-grid">
                             <?php foreach ($userWorkAreas as $area): ?>
-                                <div class="area-card">
-                                    <span class="area-abbr" title="<?php echo htmlspecialchars($area['label']); ?>"><?php echo htmlspecialchars($area['abbr']); ?></span>
-                                    <div class="area-card-actions">
-                                        <a href="/browse?branch=<?php echo $area['bID']; ?>&range=day" class="btn-mini btn-small">New</a>
-                                        <a href="/browse?branch=<?php echo $area['bID']; ?>&range=week" class="btn-mini btn-small">Recent</a>
-                                        <form action="/match" method="GET" class="area-search-form">
-                                            <input type="hidden" name="branch" value="<?php echo $area['bID']; ?>">
-                                            <input type="text" name="q" placeholder="Search..." class="area-search-input">
-                                            <button type="submit" class="btn-mini btn-small">Search</button>
-                                        </form>
-                                    </div>
-                                </div>
+                            <div class="area-pill-row">
+                                <a href="/browse?branch=<?php echo $area['bID']; ?>&range=week" class="label-pill label-branch" title="<?php echo htmlspecialchars($area['label']); ?>">
+                                    <?php echo htmlspecialchars($area['abbr']); ?>
+                                </a>
+                                <a href="/browse?branch=<?php echo $area['bID']; ?>&range=day" class="btn btn-mini btn-small" title="New documents in this branch">New</a>
+                                <form action="/match" method="GET" class="area-pill-search">
+                                    <input type="hidden" name="branch" value="<?php echo $area['bID']; ?>">
+                                    <input type="text" name="q" placeholder="Search..." class="area-pill-input">
+                                    <button type="submit" class="btn btn-mini btn-small">Go</button>
+                                </form>
+                            </div>
                             <?php endforeach; ?>
                         </div>
+                    </div>
                     <?php endif; ?>
 
                     <?php if (!empty($userInterestAreas)): ?>
-                        <h3>Your Interest Areas</h3>
-                        <div class="area-grid">
+                    <div class="areas-tab-panel <?php echo empty($userWorkAreas) ? 'active' : ''; ?>" id="panel-interest">
+                        <div class="area-pill-grid">
                             <?php foreach ($userInterestAreas as $area): ?>
-                                <div class="area-card">
-                                    <span class="area-abbr" title="<?php echo htmlspecialchars($area['label']); ?>"><?php echo htmlspecialchars($area['abbr']); ?></span>
-                                    <div class="area-card-actions">
-                                        <a href="/browse?branch=<?php echo $area['bID']; ?>&range=day" class="btn-mini btn-small">New</a>
-                                        <a href="/browse?branch=<?php echo $area['bID']; ?>&range=week" class="btn-mini btn-small">Recent</a>
-                                        <form action="/match" method="GET" class="area-search-form">
-                                            <input type="hidden" name="branch" value="<?php echo $area['bID']; ?>">
-                                            <input type="text" name="q" placeholder="Search..." class="area-search-input">
-                                            <button type="submit" class="btn-mini btn-small">Search</button>
-                                        </form>
-                                    </div>
-                                </div>
+                            <div class="area-pill-row">
+                                <a href="/browse?branch=<?php echo $area['bID']; ?>&range=week" class="label-pill label-branch" title="<?php echo htmlspecialchars($area['label']); ?>">
+                                    <?php echo htmlspecialchars($area['abbr']); ?>
+                                </a>
+                                <a href="/browse?branch=<?php echo $area['bID']; ?>&range=day" class="btn btn-mini btn-small" title="New documents in this branch">New</a>
+                                <form action="/match" method="GET" class="area-pill-search">
+                                    <input type="hidden" name="branch" value="<?php echo $area['bID']; ?>">
+                                    <input type="text" name="q" placeholder="Search..." class="area-pill-input">
+                                    <button type="submit" class="btn btn-mini btn-small">Go</button>
+                                </form>
+                            </div>
                             <?php endforeach; ?>
                         </div>
+                    </div>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
@@ -109,5 +139,19 @@ $isLoggedIn = isset($_SESSION['mID']);
     </main>
 
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/footer.php'; ?>
+
+    <script>
+    (function() {
+        document.querySelectorAll('.areas-tab').forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                var section = this.closest('.user-areas-section');
+                section.querySelectorAll('.areas-tab').forEach(function(t) { t.classList.remove('active'); });
+                section.querySelectorAll('.areas-tab-panel').forEach(function(p) { p.classList.remove('active'); });
+                this.classList.add('active');
+                document.getElementById('panel-' + this.dataset.tab).classList.add('active');
+            });
+        });
+    })();
+    </script>
 </body>
 </html>

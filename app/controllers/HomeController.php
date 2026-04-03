@@ -6,6 +6,7 @@ namespace app\controllers;
 
 use app\models\lookups\DocType;
 use app\models\lookups\ResearchBranch;
+use app\models\lookups\ResearchTopic;
 use app\models\Document;
 use app\models\Member;
 
@@ -18,6 +19,7 @@ class HomeController
 {
     private DocType $docTypeModel;
     private ResearchBranch $branchModel;
+    private ResearchTopic $topicModel;
     private Document $documentModel;
     private Member $memberModel;
 
@@ -25,6 +27,7 @@ class HomeController
     {
         $this->docTypeModel = new DocType();
         $this->branchModel = new ResearchBranch();
+        $this->topicModel = new ResearchTopic();
         $this->documentModel = new Document();
         $this->memberModel = new Member();
     }
@@ -38,6 +41,7 @@ class HomeController
         
         $docTypes = $this->docTypeModel->getAllDocTypes();
         $branches = $this->branchModel->getAllBranches();
+        $topics = $this->topicModel->getAllTopics();
         $recentDocs = $this->documentModel->getRecentDocuments(1, 20, (int)$mRole);
 
         $userWorkAreas = [];

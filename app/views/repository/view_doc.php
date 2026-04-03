@@ -238,6 +238,9 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
 
             <!-- Revisions Panel -->
             <div id="panel-revisions" class="doc-tab-panel">
+                <div class="revision-submitter">
+                    Submitted by <a href="/profile?id=<?php echo htmlspecialchars($doc['submitter_id']); ?>"><?php echo htmlspecialchars($doc['submitter_name']); ?></a>
+                </div>
                 <?php if (!empty($revisionHistory)): ?>
                     <table class="revision-table">
                         <thead>

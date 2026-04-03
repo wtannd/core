@@ -126,6 +126,19 @@
                     </div>
                 </section>
                 <?php endif; ?>
+
+                <?php if (!empty($authoredDocs)): ?>
+                <section class="authored-docs-section">
+                    <h2>Authored Documents (<?php echo $totalAuthored; ?>)</h2>
+                    <?php $documents = $authoredDocs; include rtrim(VIEWS_PATH, '/') . '/partials/document_feed.php'; ?>
+                    <?php
+                        $buildPageUrl = function (int $p) use ($member) {
+                            return '/profile?id=' . $member['ID_alphanum'] . '&page=' . $p;
+                        };
+                        include rtrim(VIEWS_PATH, '/') . '/partials/paginate.php';
+                    ?>
+                </section>
+                <?php endif; ?>
             </div>
         </div>
     </main>

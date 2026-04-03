@@ -117,7 +117,7 @@ class FeedController
         $filters = $this->extractFilters($_GET);
 
         if (empty(array_filter($filters))) {
-            $filters['range'] = 'week';
+            $filters['range'] = 'month';
         }
 
         $result = $this->documentModel->getDocumentsByFilter($filters, $this->perPage, $offset, (int)$mRole);

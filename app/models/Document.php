@@ -140,11 +140,10 @@ class Document
      */
     public function getRecentDocuments(int $dtID = 1, int $limit = 20, int $mRole = 0): array
     {
-        $sql = "SELECT d.*, m.display_name as submitter_name 
+        $sql = "SELECT d.*
                 FROM Documents d
-                JOIN Members m ON d.submitter_ID = m.mID
                 WHERE d.dtype = :dtID AND :mRole >= d.visibility
-                ORDER BY d.submission_time DESC 
+                ORDER BY d.announce_time DESC
                 LIMIT :limit";
         
         $stmt = $this->db->prepare($sql);
@@ -162,7 +161,7 @@ class Document
      */
     public function getDocumentByDoi(string $doi, int $mRole, int $mID = 0): array|bool
     {
-        $sql = "SELECT d.*, m.pub_name as submitter_name 
+        $sql = "SELECT d.*, m.pub_name as submitter_name, m.ID_alphanum as submitter_id
                 FROM Documents d
                 JOIN Members m ON d.submitter_ID = m.mID
                 WHERE d.doi = :doi AND (:mRole2 >= d.visibility OR EXISTS (
@@ -186,7 +185,7 @@ class Document
      */
     public function getDocument(int $dID, int $mRole, int $mID = 0): array|bool
     {
-        $sql = "SELECT d.*, m.pub_name as submitter_name 
+        $sql = "SELECT d.*, m.pub_name as submitter_name, m.ID_alphanum as submitter_id
                 FROM Documents d
                 JOIN Members m ON d.submitter_ID = m.mID
                 WHERE d.dID = :dID AND (:mRole2 >= d.visibility OR EXISTS (
@@ -429,12 +428,12 @@ class Document
         if (!empty($filters['from']) || !empty($filters['to'])) {
             $idx = $paramIdx++;
             if (!empty($filters['from'])) {
-                $where[] = "d.submission_time >= :f_from{$idx}";
+                $where[] = "d.announce_time >= :f_from{$idx}";
                 $params["f_from{$idx}"] = $filters['from'] . ' 00:00:00';
             }
             if (!empty($filters['to'])) {
                 $idx2 = $paramIdx++;
-                $where[] = "d.submission_time <= :f_to{$idx2}";
+                $where[] = "d.announce_time <= :f_to{$idx2}";
                 $params["f_to{$idx2}"] = $filters['to'] . ' 23:59:59';
             }
         } elseif (!empty($filters['range'])) {
@@ -447,7 +446,7 @@ class Document
                 default => null
             };
             if ($interval !== null) {
-                $where[] = "d.submission_time >= DATE_SUB(:f_now{$idx}, INTERVAL {$interval})";
+                $where[] = "d.announce_time >= DATE_SUB(:f_now{$idx}, INTERVAL {$interval})";
                 $params["f_now{$idx}"] = $now;
             }
         }
@@ -483,13 +482,12 @@ class Document
         $total = (int)$stmt->fetchColumn();
 
         // Fetch results with relevance score
-        $sql = "SELECT d.*, m.display_name as submitter_name,
+        $sql = "SELECT d.*,
                         MATCH(d.title, d.abstract) AGAINST (:search_query2 IN BOOLEAN MODE) as relevance
                 FROM Documents d
-                JOIN Members m ON d.submitter_ID = m.mID
                 {$filter['joins']}
                 WHERE {$whereSql}
-                ORDER BY relevance DESC, d.submission_time DESC
+                ORDER BY relevance DESC, d.announce_time DESC
                 LIMIT :limit OFFSET :offset";
 
         $params['search_query2'] = $query;
@@ -533,12 +531,11 @@ class Document
         $total = (int)$stmt->fetchColumn();
 
         // Fetch results
-        $sql = "SELECT d.*, m.display_name as submitter_name
+        $sql = "SELECT d.*
                 FROM Documents d
-                JOIN Members m ON d.submitter_ID = m.mID
                 {$filter['joins']}
                 WHERE {$whereSql}
-                ORDER BY d.submission_time DESC
+                ORDER BY d.announce_time DESC
                 LIMIT :limit OFFSET :offset";
 
         $stmt = $this->db->prepare($sql);
@@ -736,5 +733,42 @@ class Document
                 ]);
             }
         }
+    }
+
+    /**
+     * Get documents authored by a member with visibility filtering.
+     *
+     * @return array ['results' => array, 'total' => int]
+     */
+    public function getDocumentsByAuthor(int $mID, int $mRole, int $limit, int $offset): array
+    {
+        $result = ['results' => [], 'total' => 0];
+
+        // Count total
+        $countSql = "SELECT COUNT(*) FROM Documents d
+                     INNER JOIN DocAuthors da ON d.dID = da.dID
+                     WHERE da.mID = :mID AND :mRole >= d.visibility";
+        $stmt = $this->db->prepare($countSql);
+        $stmt->execute(['mID' => $mID, 'mRole' => $mRole]);
+        $total = (int)$stmt->fetchColumn();
+
+        if ($total === 0) return $result;
+
+        // Fetch results
+        $sql = "SELECT d.*
+                FROM Documents d
+                INNER JOIN DocAuthors da ON d.dID = da.dID
+                WHERE da.mID = :mID AND :mRole2 >= d.visibility
+                ORDER BY d.submission_time DESC
+                LIMIT :limit OFFSET :offset";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':mID', $mID, PDO::PARAM_INT);
+        $stmt->bindValue(':mRole2', $mRole, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return ['results' => $stmt->fetchAll(), 'total' => $total];
     }
 }

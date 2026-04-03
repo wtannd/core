@@ -9,7 +9,7 @@
     --border-light: #d3d3d3;
     --border-hover: #e2e8f0;
     --text-main: #2b2b2b;
-    --text-secondary: #666;
+    --text-secondary: #444;
     --text-muted: #888;
     --text-faint: #c4cdd5;
     --text-accent: #586D65;
@@ -274,8 +274,6 @@ hr {
     height: 24px;
 }
 
-.btn-group { display: flex; gap: 0.5rem; }
-
 .btn-mini {
     padding: 0.5rem 1rem;
     border: 1px solid var(--border-input);
@@ -298,7 +296,6 @@ hr {
     font-size: 0.8rem;
 }
 
-.btn-disabled { background-color: var(--disabled-color) !important; cursor: not-allowed; }
 .btn:disabled { background-color: var(--disabled-color); cursor: not-allowed; opacity: 0.65; }
 .btn-add { background-color: var(--info-color); color: white; width: auto; }
 .btn-draft { background-color: var(--draft-color); color: white; }
@@ -477,49 +474,79 @@ hr {
 
 /* Member Research Areas on Dashboard */
 .user-areas-section { margin-bottom: 3rem; }
-.area-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
-}
-.area-card {
+
+/* Tab bar */
+.areas-tabs {
     display: flex;
-    justify-content: space-between;
+    border-bottom: 2px solid var(--border-subtle);
+    margin-bottom: 1rem;
+}
+.areas-tab {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s, border-color 0.15s;
+}
+.areas-tab:hover {
+    color: var(--text-main);
+}
+.areas-tab.active {
+    color: var(--brand-dark);
+    border-bottom-color: var(--brand-dark);
+    font-weight: 600;
+}
+
+/* Tab panels */
+.areas-tab-panel {
+    display: none;
+}
+.areas-tab-panel.active {
+    display: block;
+}
+
+/* Pill grid */
+.area-pill-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.area-pill-row {
+    display: flex;
     align-items: center;
-    padding: 0.75rem 1rem;
+    gap: 0.5rem;
+    padding: 0.35rem 0.6rem;
     background: var(--surface-white);
     border: 1px solid var(--border-subtle);
     border-radius: 6px;
 }
-.area-abbr {
-    font-weight: 600;
-    color: var(--brand-dark);
-    font-size: 0.75rem;
-}
-.area-card-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    flex-shrink: 0;
-}
-.area-search-form {
+.area-pill-search {
     display: flex;
     align-items: center;
     gap: 0.25rem;
 }
-.area-search-input {
-    width: 90px;
-    padding: 0.3rem 0.5rem;
+.area-pill-input {
+    width: 80px;
+    padding: 0.25rem 0.4rem;
     border: 1px solid var(--border-input);
     border-radius: 4px;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
+    line-height: 1.4;
 }
-.area-search-input:focus {
+.area-pill-input:focus {
     outline: none;
     border-color: var(--brand-dark);
     box-shadow: 0 0 0 2px rgba(44, 94, 78, 0.1);
 }
+
+/* Authored Documents Section on Profile */
+.authored-docs-section { margin-top: 2rem; }
+.authored-docs-section h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 
 .recent-feed { margin-top: 3rem; }
 .recent-feed h2 {
@@ -625,6 +652,13 @@ hr {
 .btn-toggle-abstract:hover {
     text-decoration: underline;
 }
+.abstract-text {
+    /* abstract preview in feed */
+}
+
+.authors-short {
+    /* short author list in feed */
+}
 
 /* ====================================
    Upload/Edit/Revise Document/Draft Styles (repository/upload.php)
@@ -655,6 +689,18 @@ hr {
     font-size: 0.85rem;
     padding: 0.5rem 1rem;
 }
+
+.filter-group-range {
+    flex-shrink: 0;
+}
+.range-btns {
+    display: flex;
+    gap: 0.3rem;
+}
+
+/* ====================================
+   Upload / Edit / Revise Form Styles
+   ==================================== */
 
 /* Submission Type Toggle */
 
@@ -1085,6 +1131,13 @@ hr {
    Member Public Profile Styles (member/profile.php)
    ==================================== */
 
+.profile-content { padding: 0.1rem 0; }
+.primary-info, .research-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
 .profile-header { text-align: center; border-bottom: 1px solid var(--border-subtle); background: linear-gradient(to bottom, var(--surface-white), #ffffff); padding-bottom: 2rem; margin-bottom: 2rem; }
 .profile-header h1 {
     margin: 0 0 0.75rem;
@@ -1096,7 +1149,6 @@ hr {
 .institution-subtitle {
     font-size: 1.1rem;
     color: var(--text-secondary);
-    margin-top: -0.5rem;
     margin-bottom: 1rem;
 }
 .profile-badges {
@@ -1118,7 +1170,7 @@ hr {
     text-decoration: none;
 }
 
-.status-alerts { margin-bottom: 2rem; }
+.status-alerts { margin-bottom: 1rem; }
 .status-badge {
     display: inline-block;
     padding: 0.5rem 1rem;
@@ -1135,7 +1187,7 @@ hr {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 2rem;
-    margin-bottom: 3rem;
+    margin-bottom: 2rem;
 }
 .info-group {
     margin-bottom: 1.5rem;
@@ -1398,6 +1450,10 @@ details > summary + div { margin-top: 1rem; }
 }
 
 /* Revision History Table */
+.revision-submitter { margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-secondary); }
+.revision-submitter a { color: var(--link-color); text-decoration: none; }
+.revision-submitter a:hover { text-decoration: underline; }
+
 .revision-table { width: 100%; border-collapse: collapse; }
 .revision-table th,
 .revision-table td { padding: 0.5rem 0.75rem; border: 1px solid var(--border-subtle); text-align: left; font-size: 0.9rem; }
@@ -1438,37 +1494,6 @@ details > summary + div { margin-top: 1rem; }
 
 .status-pending { color: var(--warning-color); font-weight: bold; }
 
-/* ====================================
-   Missing CSS for Orphaned Classes
-   ==================================== */
-
-.profile-content {
-    /* structural wrapper — no visual style needed */
-}
-
-.primary-info {
-    /* left column of profile info grid */
-}
-
-.research-info {
-    /* right column of profile info grid */
-}
-
-.abstract-text {
-    /* abstract preview in feed */
-}
-
-.authors-short {
-    /* short author list in feed */
-}
-
-.authors-hidden {
-    display: none;
-}
-
-.hidden-affil {
-    display: none;
-}
 
 /* ====================================
    Responsive Adjustments
