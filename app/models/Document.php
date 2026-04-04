@@ -317,7 +317,8 @@ class Document
      */
     public function saveTopic(int $dID, int $tID): void
     {
-        $sql = "INSERT INTO DocTopics (dID, tID) VALUES (:dID, :tID)";
+        $sql = "INSERT INTO DocTopics (dID, tID) VALUES (:dID, :tID)
+                ON DUPLICATE KEY UPDATE tID = VALUES(tID)";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['dID' => $dID, 'tID' => $tID]);
     }
@@ -719,20 +720,79 @@ class Document
 
         if (empty($authors)) return;
 
-        $sql = "INSERT INTO DocAuthors (dID, mID, author_order, duty) VALUES (:dID, :mID, :author_order, :duty)";
+        // Calculate total duty from ALL authors (including those without mID)
+        $totalDuty = 0;
+        foreach ($authors as $author) {
+            $totalDuty += (int)($author[2] ?? 10);
+        }
+        if ($totalDuty === 0) return;
+
+        $sql = "INSERT INTO DocAuthors (dID, mID, duty, frac) VALUES (:dID, :mID, :duty, :frac)";
         $stmt = $this->db->prepare($sql);
 
-        foreach ($authors as $i => $author) {
+        foreach ($authors as $author) {
             $mID = (int)($author[1] ?? 0);
             if ($mID > 0) {
+                $duty = (int)($author[2] ?? 10);
                 $stmt->execute([
-                    'dID'          => $dID,
-                    'mID'          => $mID,
-                    'author_order' => $i + 1,
-                    'duty'         => (int)($author[2] ?? 100)
+                    'dID'  => $dID,
+                    'mID'  => $mID,
+                    'duty' => $duty,
+                    'frac' => $duty / $totalDuty
                 ]);
             }
         }
+    }
+
+    /**
+     * Upsert authors from author_list JSON into DocAuthors.
+     * Updates existing rows, inserts new ones, deletes orphaned mIDs.
+     * totalDuty counts ALL authors including those without mID.
+     */
+    public function upsertAuthorsFromList(int $dID, string $authorListJson): void
+    {
+        $data = json_decode($authorListJson, true) ?? [];
+        $authors = $data['authors'] ?? [];
+
+        if (empty($authors)) return;
+
+        // Calculate total duty from ALL authors (including those without mID)
+        $totalDuty = 0;
+        $validMIDs = [];
+        foreach ($authors as $author) {
+            $totalDuty += (int)($author[2] ?? 10);
+            $mID = (int)($author[1] ?? 0);
+            if ($mID > 0) {
+                $validMIDs[] = $mID;
+            }
+        }
+        if ($totalDuty === 0 || empty($validMIDs)) return;
+
+        // Upsert each valid author
+        $sql = "INSERT INTO DocAuthors (dID, mID, duty, frac) 
+                VALUES (:dID, :mID, :duty, :frac) 
+                ON DUPLICATE KEY UPDATE duty = VALUES(duty), frac = VALUES(frac)";
+        $stmt = $this->db->prepare($sql);
+
+        foreach ($authors as $author) {
+            $mID = (int)($author[1] ?? 0);
+            if ($mID > 0) {
+                $duty = (int)($author[2] ?? 10);
+                $stmt->execute([
+                    'dID'  => $dID,
+                    'mID'  => $mID,
+                    'duty' => $duty,
+                    'frac' => $duty / $totalDuty
+                ]);
+            }
+        }
+
+        // Delete authors not in the valid mID list
+        $placeholders = implode(',', array_fill(0, count($validMIDs), '?'));
+        $stmt = $this->db->prepare(
+            "DELETE FROM DocAuthors WHERE dID = ? AND mID NOT IN ($placeholders)"
+        );
+        $stmt->execute(array_merge([$dID], $validMIDs));
     }
 
     /**

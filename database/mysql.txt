@@ -987,17 +987,17 @@ CREATE TABLE CRCommentPhases (   -- saved past phases and overall numbers
 CREATE TABLE DocAuthors (   -- authors with no mID will not be recorded here
     dID BIGINT UNSIGNED NOT NULL,
     mID BIGINT UNSIGNED NOT NULL,
-    author_order INT UNSIGNED,                   -- Order of authors in the list
+--    author_order INT UNSIGNED,                   -- Order of authors in the list
     duty TINYINT UNSIGNED NOT NULL DEFAULT 100,  -- Significance percentage in contribution normalized to 100% of 1st-class
     frac DOUBLE NOT NULL default 1,  -- fraction for ECP calculation = duty / sum of all duties (including general classes)
-    author_class TINYINT UNSIGNED,   -- 1='1st-author', 2='2nd-author', 3='3rd-author', 4='variable-author', 5='general-author': classified if<5; non-classified if>=5 (won't count as duty cap)
+--    author_class TINYINT UNSIGNED,   -- 1='1st-author', 2='2nd-author', 3='3rd-author', 4='variable-author', 5='general-author': classified if<5; non-classified if>=5 (won't count as duty cap)
     contribution VARCHAR(255) COLLATE utf8mb4_general_ci,
     -- ... additional fields (specific contribution details if needed)
     FOREIGN KEY (dID) REFERENCES Documents(dID),
     FOREIGN KEY (mID) REFERENCES Members(mID),
-    FOREIGN KEY (author_class) REFERENCES AuthorClasses (ID),
+--    FOREIGN KEY (author_class) REFERENCES AuthorClasses (ID),
     PRIMARY KEY (dID, mID),         -- Ensure no duplicate authors for the same document
-    UNIQUE (dID,author_order),
+--    UNIQUE (dID,author_order),
     INDEX (mID)
 );
 -- e.g., INSERT INTO DocAuthors (dID,mID,duty,frac) VALUES (1,2,100,0.5) ON DUPLICATE KEY UPDATE duty=VALUES(duty), frac=VALUES(frac);

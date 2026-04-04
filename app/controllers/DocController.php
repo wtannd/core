@@ -728,15 +728,13 @@ class DocController
                     $this->documentModel->upsertBranches($dID, $cleanedBranches);
                 }
 
-                $this->documentModel->deleteDocTopic($dID);
                 if ($tID > 0) {
                     $this->documentModel->saveTopic($dID, $tID);
                 }
 
-                // Replace authors in DocAuthors
-                $this->documentModel->deleteAuthors($dID);
+                // Upsert authors in DocAuthors
                 if (!empty($docData['author_list'])) {
-                    $this->documentModel->saveAuthorsFromList($dID, $docData['author_list']);
+                    $this->documentModel->upsertAuthorsFromList($dID, $docData['author_list']);
                 }
 
                 $pubdate = $existingDoc['pubdate'] ?? '';

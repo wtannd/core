@@ -340,7 +340,7 @@
                 <input type="text" class="auth-core-id" placeholder="CORE-ID" value="${author.core_id}" readonly ${author.is_manual ? 'disabled' : ''}>
                 <input type="hidden" class="auth-mid" value="${author.mID}">
                 <input type="number" class="auth-duty duty-input" placeholder="Duty" required min="10" max="100" value="100">
-                <input type="text" class="auth-aff-refs" placeholder="Aff. IDs" value="">
+                <input type="text" class="auth-aff-refs" placeholder="Aff. IDs" value="1">
                 <button type="button" class="btn-remove remove-author">X</button>
             `;
 
@@ -714,8 +714,8 @@
 
         function addBranchRow() {
             const count = branchesContainer.children.length;
-            if (count >= 3) {
-                alert('Maximum of 3 branches allowed.');
+            if (count >= <?php echo DOC_BRANCH_MAX; ?>) {
+                alert('Maximum of <?php echo DOC_BRANCH_MAX; ?> branches allowed.');
                 return;
             }
             // Redistribute: for 1 row (100) -> add new, split 50/50
@@ -758,7 +758,7 @@
             updateBranchSummary();
 
             // Show/hide add button
-            document.getElementById('btn-add-branch').style.display = count >= 3 ? 'none' : '';
+            document.getElementById('btn-add-branch').style.display = count >= <?php echo DOC_BRANCH_MAX; ?> ? 'none' : '';
         }
 
         function updateBranchSummary() {
