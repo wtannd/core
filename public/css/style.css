@@ -549,6 +549,17 @@ hr {
 .authored-docs-section h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 
 .recent-feed { margin-top: 3rem; }
+
+/* My Documents Page */
+.my-docs-container { max-width: var(--max-content-width); margin: 2rem auto; padding: 0 2rem; }
+.my-docs-container h1 { font-size: 1.4rem; margin-bottom: 1.5rem; }
+.docs-group { margin-bottom: 2rem; }
+.docs-group h2 { font-size: 1.1rem; margin-bottom: 0.75rem; color: var(--text-secondary); }
+
+/* My Drafts Page */
+.my-drafts-container { max-width: var(--max-content-width); margin: 2rem auto; padding: 0 2rem; }
+.my-drafts-container h1 { font-size: 1.4rem; margin-bottom: 1.5rem; }
+
 .recent-feed h2 {
     border-bottom: 2px solid var(--brand-dark);
     display: inline-block;

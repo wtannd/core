@@ -69,6 +69,9 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
                     </a>
                 <?php endif; ?>
                 <?php endif; ?>
+                <?php if (!empty($docData['isOnHold'])): ?>
+                <span class="doc-tab-right status-inactive btn-small">To Be Announced!</span>
+                <?php endif; ?>
                 <?php if (!empty($docData['isSubmitter'])): ?>
                 <span class="doc-tab-right">
                     <a href="/revise_doc?id=<?php echo $doc['dID']; ?>" class="btn btn-draft btn-small">Revise Document</a>

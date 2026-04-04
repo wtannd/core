@@ -55,3 +55,4 @@ define('COOKIE_DOMAIN', ''); // Default to current domain
 define('GUEST_ROLE', 1);
 define('ADMIN_ROLE_MIN', 600);
 define('MOD_ROLE_MIN', 30);
+define('VISIBILITY_ON_HOLD', 60);

@@ -239,6 +239,22 @@ switch ($requestUri) {
         (new \app\controllers\DocController())->feed();
         break;
 
+    case '/mydocs':
+        if (!$isLoggedIn) {
+            header('Location: /login');
+            exit;
+        }
+        (new \app\controllers\DocController())->myDocuments();
+        break;
+
+    case '/mydrafts':
+        if (!$isLoggedIn) {
+            header('Location: /login');
+            exit;
+        }
+        (new \app\controllers\DocController())->myDrafts();
+        break;
+
     // --- Utilities ---
     case '/stream':
         $type = $_GET['type'] ?? 'doc';

@@ -771,4 +771,35 @@ class Document
 
         return ['results' => $stmt->fetchAll(), 'total' => $total];
     }
+
+    /**
+     * Get all documents authored by a member (no visibility filter).
+     *
+     * @return array of document rows ordered by submission_time DESC
+     */
+    public function getMyDocuments(int $mID): array
+    {
+        $sql = "SELECT d.*
+                FROM Documents d
+                INNER JOIN DocAuthors da ON d.dID = da.dID
+                WHERE da.mID = :mID
+                ORDER BY d.submission_time DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['mID' => $mID]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Get all drafts submitted by a member.
+     *
+     * @return array of DocDrafts rows ordered by submission_time DESC
+     */
+    public function getMyDrafts(int $mID): array
+    {
+        $sql = "SELECT * FROM DocDrafts WHERE submitter_ID = :mID ORDER BY submission_time DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['mID' => $mID]);
+        return $stmt->fetchAll();
+    }
 }

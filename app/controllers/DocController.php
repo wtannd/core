@@ -115,6 +115,7 @@ class DocController
             'branches'    => $this->documentModel->getDocBranches($dID),
             'topic'       => $this->documentModel->getDocTopic($dID),
             'isSubmitter' => $mID > 0 && (int)$doc['submitter_ID'] === $mID,
+            'isOnHold'    => (int)$doc['visibility'] === VISIBILITY_ON_HOLD
         ];
 
         include rtrim(VIEWS_PATH, '/') . '/repository/view_doc.php';
@@ -389,6 +390,58 @@ class DocController
         header('Content-Disposition: inline; filename="' . basename($filePath) . '"');
         readfile($filePath);
         exit;
+    }
+
+    // ─────────────────────────────────────────────
+    // My Documents
+    // ─────────────────────────────────────────────
+
+    public function myDocuments(): void
+    {
+        if (!isset($_SESSION['mID'])) {
+            header('Location: /login');
+            exit;
+        }
+
+        $mID = (int)$_SESSION['mID'];
+        $allDocs = $this->documentModel->getMyDocuments($mID);
+
+        $pendingDocs = [];
+        $announcedDocs = [];
+
+        foreach ($allDocs as $doc) {
+            if ((int)$doc['visibility'] >= \VISIBILITY_ON_HOLD) {
+                $pendingDocs[] = $doc;
+            } else {
+                $announcedDocs[] = $doc;
+            }
+        }
+
+        // Pagination for announced group
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 10;
+        $totalAnnounced = count($announcedDocs);
+        $totalPages = max(1, (int)ceil($totalAnnounced / $perPage));
+        $announcedSlice = array_slice($announcedDocs, ($page - 1) * $perPage, $perPage);
+
+        include rtrim(VIEWS_PATH, '/') . '/repository/my_docs.php';
+    }
+
+    // ─────────────────────────────────────────────
+    // My Drafts
+    // ─────────────────────────────────────────────
+
+    public function myDrafts(): void
+    {
+        if (!isset($_SESSION['mID'])) {
+            header('Location: /login');
+            exit;
+        }
+
+        $mID = (int)$_SESSION['mID'];
+        $drafts = $this->documentModel->getMyDrafts($mID);
+
+        include rtrim(VIEWS_PATH, '/') . '/repository/my_drafts.php';
     }
 
     // ─────────────────────────────────────────────

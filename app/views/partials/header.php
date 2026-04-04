@@ -35,6 +35,8 @@ $isAdmin = isset($_SESSION['admin_role']) && (int)$_SESSION['admin_role'] >= ADM
 						</button>
 						<div class="dropdown-menu">
 							<a href="/upload" class="dropdown-item">Upload Document</a>
+							<a href="/mydocs" class="dropdown-item">My Documents</a>
+							<a href="/mydrafts" class="dropdown-item">My Drafts</a>
 							<a href="/profile/edit" class="dropdown-item">Edit Profile</a>
 							
 							<?php if ($isAdmin): ?>
