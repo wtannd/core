@@ -243,39 +243,60 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
             <div id="panel-revisions" class="doc-tab-panel">
                 <div class="revision-submitter">
                     Submitted by <a href="/profile?id=<?php echo htmlspecialchars($doc['submitter_id']); ?>"><?php echo htmlspecialchars($doc['submitter_name']); ?></a>
+                    <?php if (!empty($doc['last_update_time'])): ?>
+                    | Last updated: <?php echo date('Y-m-d H:i:s', strtotime($doc['last_update_time'])) . ' UTC'; ?>
+                    <?php endif; ?>
                 </div>
-                <?php if (!empty($revisionHistory)): ?>
+                <?php if (!empty($doc['last_revision_time'])): ?>
                     <table class="revision-table">
                         <thead>
                             <tr>
                                 <th>Version</th>
-                                <th>Date</th>
-                                <th>Notes</th>
+                                <th>Datetime</th>
                                 <th>Size</th>
+                                <th>Notes</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($revisionHistory as $rev):
+                            <?php
+                            $currentVer = (int)($doc['version'] ?? 1);
+                            $currentSize = $formatSize((int)($doc['main_size'] ?? 0));
+                            $currentSupplSize = (int)($doc['suppl_size'] ?? 0);
+                            $currentNotes = !empty($revisionHistory) && isset($revisionHistory[0][2]) ? $revisionHistory[0][2] : '';
+                            ?>
+                            <tr>
+                                <td>v<?php echo $currentVer; ?></td>
+                                <td><?php echo !empty($doc['last_revision_time']) ? date('Y-m-d H:i:s', strtotime($doc['last_revision_time'])) . ' UTC' : '&mdash;'; ?></td>
+                                <td><?php
+                                    $sizeParts = [];
+                                    if ($currentSize !== '') $sizeParts[] = $currentSize;
+                                    if ($currentSupplSize > 0) $sizeParts[] = '+' . $formatSize($currentSupplSize);
+                                    echo !empty($sizeParts) ? implode(' ', $sizeParts) : '&mdash;';
+                                ?></td>
+                                <td><?php echo htmlspecialchars($currentNotes); ?></td>
+                            </tr>
+                            <?php
+                            $revCount = count($revisionHistory);
+                            for ($i = 0; $i < $revCount; $i++):
+                                $rev = $revisionHistory[$i];
                                 $revVer = (int)($rev[0] ?? 0);
                                 $revDate = $rev[1] ?? '';
-                                $revNotes = $rev[2] ?? '';
                                 $revMainSize = (int)($rev[3] ?? 0);
                                 $revSupplSize = (int)($rev[4] ?? 0);
+                                $revNotes = ($i + 1 < $revCount) ? ($revisionHistory[$i + 1][2] ?? '') : '';
                                 $revSizeParts = [];
                                 if ($revMainSize > 0) $revSizeParts[] = $formatSize($revMainSize);
                                 if ($revSupplSize > 0) $revSizeParts[] = '+' . $formatSize($revSupplSize);
                             ?>
                                 <tr>
                                     <td>v<?php echo $revVer; ?></td>
-                                    <td><?php echo $revDate ? date('M d, Y', strtotime($revDate)) : '&mdash;'; ?></td>
-                                    <td><?php echo htmlspecialchars($revNotes); ?></td>
+                                    <td><?php echo $revDate ? date('Y-m-d H:i:s', strtotime($revDate)) . ' UTC' : '&mdash;'; ?></td>
                                     <td><?php echo !empty($revSizeParts) ? implode(' ', $revSizeParts) : '&mdash;'; ?></td>
+                                    <td><?php echo htmlspecialchars($revNotes); ?></td>
                                 </tr>
-                            <?php endforeach; ?>
+                            <?php endfor; ?>
                         </tbody>
                     </table>
-                <?php else: ?>
-                    <p><em>No revision history available.</em></p>
                 <?php endif; ?>
             </div>
 
