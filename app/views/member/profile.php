@@ -19,7 +19,7 @@
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
 
     <main>
-        <div class="profile-container">
+        <div class="main-container profile-container">
             <header class="profile-header">
                 <?php if (isset($_SESSION['mID']) && (int)$_SESSION['mID'] === (int)$member['mID']): ?>
                     <a href="/profile/edit" class="edit-profile-btn">Edit Profile</a>

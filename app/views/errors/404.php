@@ -12,7 +12,7 @@
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
 
     <main>
-        <div class="auth-container">
+        <div class="main-container auth-container">
             <h1>404 - Page Not Found</h1>
             <p>Sorry, the page you are looking for does not exist or has been moved.</p>
             <br>

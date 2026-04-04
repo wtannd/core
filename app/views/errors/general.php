@@ -11,7 +11,7 @@
 <body>
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
     <main>
-        <div class="auth-container">
+        <div class="main-container auth-container">
             <h1>An Error Occurred</h1>
             <p><?php echo htmlspecialchars($errorMessage ?? 'An unexpected error has occurred. Please try again later.'); ?></p>
             <br>

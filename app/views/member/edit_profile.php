@@ -20,7 +20,7 @@ declare(strict_types=1);
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
 
     <main>
-        <div class="profile-container">
+        <div class="main-container profile-container">
             <h1>Edit Your Profile</h1>
 <a href="/profile?id=<?php echo htmlspecialchars($user['ID_alphanum']); ?>" class="edit-profile-btn">View Public Profile</a>
             <?php 

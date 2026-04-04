@@ -25,7 +25,7 @@
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
 
     <main>
-        <div class="search-results-page">
+        <div class="main-container doc-container">
             <h2>Member Search</h2>
 
             <form action="/members" method="GET" class="filter-bar">

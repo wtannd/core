@@ -23,7 +23,7 @@
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
 
     <main>
-        <div class="my-docs-container">
+        <div class="main-container doc-container">
             <h1>My Documents</h1>
 
             <?php if (!empty($pendingDocs)): ?>

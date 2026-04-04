@@ -19,7 +19,7 @@
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
 
     <main>
-        <div class="my-drafts-container">
+        <div class="main-container doc-container">
             <h1>My Drafts</h1>
 
             <?php if (!empty($drafts)): ?>

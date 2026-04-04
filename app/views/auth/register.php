@@ -17,7 +17,7 @@
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
 
     <main>
-        <div class="auth-container">
+        <div class="main-container auth-container">
             <h1>Register for OpenArxiv (CORE)</h1>
             
             <?php if (!empty($errors)): ?>

@@ -12,7 +12,7 @@
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
 
     <main>
-        <div class="feed-container">
+        <div class="main-container doc-container">
             <h2>Recent ePrints</h2>
             <?php include rtrim(VIEWS_PATH, '/') . '/partials/document_feed.php'; ?>
         </div>

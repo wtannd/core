@@ -54,7 +54,7 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
 
     <main>
-    <div class="document-viewer">
+    <div class="main-container doc-container">
             <!-- Branch/Topic Labels -->
             <div class="doc-labels">
                 <?php if (!empty($branches) || $topic): ?>

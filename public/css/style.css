@@ -126,7 +126,7 @@ hr {
    Containers
    ==================================== */
 
-.auth-container, .profile-container, .doc-container, .document-viewer, .search-results-page, .feed-container {
+.main-container {
     background: var(--surface-white);
     box-shadow: 0 4px 12px rgba(0,0,0,0.04);
     border: 1px solid var(--border-subtle);
@@ -136,7 +136,16 @@ hr {
 
 .auth-container { max-width: 500px; padding: 2rem; }
 .profile-container { max-width: 800px; margin: 1rem auto; padding: 2rem; }
-.doc-container, .document-viewer, .search-results-page, .feed-container { max-width: var(--max-content-width); padding: 1.5rem; margin: 0.5rem auto; font-size: 0.88rem;}
+.doc-container { max-width: var(--max-content-width); padding: 1.5rem; margin: 0.5rem auto; font-size: 0.88rem;}
+
+.doc-container h1 { font-size: 1.4rem; margin-bottom: 1.2rem; }
+.doc-container h2 {
+    border-bottom: 2px solid var(--brand-dark);
+    display: inline-block;
+    padding-bottom: 5px;
+    margin-bottom: 1.5rem;
+}
+
 
 /* ====================================
    Forms & Inputs
@@ -550,22 +559,18 @@ hr {
 
 .recent-feed { margin-top: 3rem; }
 
-/* My Documents Page */
-.my-docs-container { max-width: var(--max-content-width); margin: 2rem auto; padding: 0 2rem; }
-.my-docs-container h1 { font-size: 1.4rem; margin-bottom: 1.5rem; }
-.docs-group { margin-bottom: 2rem; }
-.docs-group h2 { font-size: 1.1rem; margin-bottom: 0.75rem; color: var(--text-secondary); }
-
-/* My Drafts Page */
-.my-drafts-container { max-width: var(--max-content-width); margin: 2rem auto; padding: 0 2rem; }
-.my-drafts-container h1 { font-size: 1.4rem; margin-bottom: 1.5rem; }
-
 .recent-feed h2 {
     border-bottom: 2px solid var(--brand-dark);
     display: inline-block;
     padding-bottom: 5px;
     margin-bottom: 1.5rem;
 }
+
+/* ====================================
+   My Documents Page 
+   ==================================== */
+.docs-group { margin-bottom: 2rem; }
+.docs-group h2 { font-size: 1.1rem; margin-bottom: 0.75rem; color: var(--text-secondary); }
 
 /* ====================================
    Document Feed Styles (partials/document_feed.php)
@@ -674,11 +679,6 @@ hr {
 /* ====================================
    Upload/Edit/Revise Document/Draft Styles (repository/upload.php)
    ==================================== */
-
-.doc-container h1 {
-    font-size: 1.45rem;
-    margin-bottom: 1rem;
-}
 
 .doc-container h3 {
     font-size: 1rem;
@@ -1029,13 +1029,6 @@ hr {
 /* ====================================
    Search & Feed Results Styles
    ==================================== */
-
-.search-results-page h2 {
-    border-bottom: 2px solid var(--brand-dark);
-    display: inline-block;
-    padding-bottom: 5px;
-    margin-bottom: 1.5rem;
-}
 
 .results-header {
     display: flex;

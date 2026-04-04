@@ -802,4 +802,34 @@ class Document
         $stmt->execute(['mID' => $mID]);
         return $stmt->fetchAll();
     }
+
+    /**
+     * Upsert branch associations for a document.
+     * Updates existing rows by num, inserts new ones, deletes rows beyond count.
+     */
+    public function upsertBranches(int $dID, array $branches): void
+    {
+        $sql = "INSERT INTO DocBranches (dID, num, bID, impact) 
+                VALUES (:dID, :num, :bID, :impact) 
+                ON DUPLICATE KEY UPDATE bID = VALUES(bID), impact = VALUES(impact)";
+        $stmt = $this->db->prepare($sql);
+
+        foreach ($branches as $b) {
+            $stmt->execute([
+                'dID'    => $dID,
+                'num'    => (int)$b['num'],
+                'bID'    => (int)$b['bID'],
+                'impact' => (int)$b['impact']
+            ]);
+        }
+
+        // Remove rows beyond the count provided, only if 0 < count < max
+        $maxNum = count($branches);
+        if ($maxNum > 0 && $maxNum < DOC_BRANCH_MAX) {
+            $stmt = $this->db->prepare(
+                "DELETE FROM DocBranches WHERE dID = :dID AND num > :maxNum"
+            );
+            $stmt->execute(['dID' => $dID, 'maxNum' => $maxNum]);
+        }
+    }
 }

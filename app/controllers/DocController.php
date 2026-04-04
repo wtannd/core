@@ -724,9 +724,8 @@ class DocController
                 $newVersion = $this->documentModel->reviseDocument($dID, $docData, $filesChanged);
                 $this->documentModel->updateExternalDocs($dID, $cleanedLinks);
 
-                $this->documentModel->deleteDocBranches($dID);
                 if (!empty($cleanedBranches)) {
-                    $this->documentModel->saveBranches($dID, $cleanedBranches);
+                    $this->documentModel->upsertBranches($dID, $cleanedBranches);
                 }
 
                 $this->documentModel->deleteDocTopic($dID);

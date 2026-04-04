@@ -23,7 +23,7 @@
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
 
     <main>
-        <div class="auth-container">
+        <div class="main-container auth-container">
             <h1>Welcome, <?php echo htmlspecialchars($pending['name']); ?>!</h1>
             <p>Your ORCID (<?php echo htmlspecialchars($pending['orcid']); ?>) has been verified.</p>
             <p>Please provide an email and password to complete your CORE registration. This allows you to log in with either ORCID or your email in the future.</p>

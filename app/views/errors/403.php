@@ -11,7 +11,7 @@
 <body>
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
     <main>
-        <div class="auth-container">
+        <div class="main-container auth-container">
             <h1>403 - Forbidden</h1>
             <p>Sorry, you do not have permission to access this resource, which may not exist, or your session has expired (CSRF failure).</p>
             <br>

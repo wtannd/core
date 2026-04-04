@@ -17,7 +17,7 @@
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
 
     <main>
-        <div class="doc-container">
+        <div class="main-container doc-container">
             <h1><?php echo htmlspecialchars($pageTitle); ?></h1>
 
             <?php if (!empty($errors)): ?>

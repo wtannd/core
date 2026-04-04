@@ -1782,8 +1782,8 @@ CREATE TABLE CollaborationMembers (    -- members listed in each collaboration
 CREATE TABLE CollaborationDocs (   -- published documents by each collaboration
     coll_ID BIGINT UNSIGNED NOT NULL,
     dID BIGINT UNSIGNED NOT NULL,
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    start_date DATE NOT NULL,       -- must provide the date range to determine authors
+    end_date DATE NOT NULL DEFAULT CURRENT_DATE,   -- default is the time at submission
     FOREIGN KEY (coll_ID) REFERENCES Collaborations(ID),
     FOREIGN KEY (dID) REFERENCES Documents(dID),
     PRIMARY KEY (coll_ID, dID),
@@ -1794,6 +1794,8 @@ CREATE TABLE CollaborationDocs (   -- published documents by each collaboration
 CREATE TABLE CollaborationDrafts (  -- doc drafts in a collaboration to be published
     coll_ID BIGINT UNSIGNED NOT NULL,
     dID BIGINT UNSIGNED NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE,             -- not needed until submission
     FOREIGN KEY (coll_ID) REFERENCES Collaborations(ID),
     FOREIGN KEY (dID) REFERENCES DocDrafts(dID) ON DELETE CASCADE,
     PRIMARY KEY (coll_ID, dID)

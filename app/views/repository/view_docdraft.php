@@ -54,7 +54,7 @@ $streamSupplPrefix = 'draft';
     <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
 
     <main>
-        <div class="document-viewer">
+        <div class="main-container doc-container">
             <!-- Draft Tag -->
             <div class="draft-tag">DRAFT MODE</div>
 
