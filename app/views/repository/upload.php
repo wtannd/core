@@ -216,8 +216,17 @@
                     <h3>Attach Files</h3>
                     <?php if ($isEditDraft || $isRevise): ?>
                     <div class="form-hint">
-                        Current file: <strong><?php echo ($docData['has_file'] ?? 0) >= 1 ? 'Main PDF attached' : 'None'; ?>
-                        <?php if (($docData['has_file'] ?? 0) === 2): ?> + Supplemental PDF<?php elseif (($docData['has_file'] ?? 0) === 3): ?> + Supplemental ZIP<?php endif; ?></strong>
+                        <?php
+                        if ($isEditDraft) {
+                            $hasMain = ($docData['has_file'] ?? 0) >= 1;
+                            $supplType = ($docData['has_file'] ?? 0) === 2 ? 'PDF' : (($docData['has_file'] ?? 0) === 3 ? 'ZIP' : null);
+                        } else {
+                            $hasMain = ($docData['version'] ?? 0) >= 1;
+                            $supplType = ($docData['ver_suppl'] ?? 0) >= 1 ? (($docData['suppl_ext'] ?? 0) === 2 ? 'ZIP' : 'PDF') : null;
+                        }
+                        ?>
+                        Current file: <strong><?php echo $hasMain ? 'Main PDF attached' : 'None'; ?>
+                        <?php if ($supplType): ?> + Supplemental <?php echo $supplType; ?><?php endif; ?></strong>
                         — upload new files below to replace.
                     </div>
                     <?php endif; ?>

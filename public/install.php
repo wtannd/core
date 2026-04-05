@@ -17,6 +17,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $dbPass = $_POST['db_pass'] ?? '';
     $adminEmail = $_POST['admin_email'] ?? '';
     $adminPass = $_POST['admin_pass'] ?? '';
+    $maxMB = (int)$_POST['max_mb'] ?? 0;
+    $siteName = $_POST['site_name'] ?? '';
+    $siteURL = $_POST['site_url'] ?? '';
+    $siteEmail = $_POST['site_email'] ?? '';
+    $subEmail = $_POST['sub_email'] ?? '';
+    $orcid = $_POST['orcid'] ?? '';
+    $orcidSecret = $_POST['orcid_secret'] ?? '';
+    $cronSecret = $_POST['cron_secret'] ?? '';
 
     try {
         // Step 1: Test Database Connection
@@ -40,8 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Step 4: Generate config.php
         $configTemplate = file_get_contents(__DIR__ . '/../config/config.sample.php');
         $newConfig = str_replace(
-            ['{{DB_HOST}}', '{{DB_NAME}}', '{{DB_USER}}', '{{DB_PASS}}'],
-            [$dbHost, $dbName, $dbUser, $dbPass],
+            ['{{DB_HOST}}', '{{DB_NAME}}', '{{DB_USER}}', '{{DB_PASS}}', {{MAX_MB}}, '{{SITE_NAME}}', '{{SITE_URL}}', '{{SITE_EMAIL}}', '{{SUBMISSION_EMAIL}}', '{{ORCID_CLIENT_ID}}', '{{ORCID_CLIENT_SECRET}}', '{{CRON_SECRET_TOKEN}}'],
+            [$dbHost, $dbName, $dbUser, $dbPass, $maxMB, $siteName, $siteURL, $siteEmail, $subEmail, $orcid, $orcidSecret, $cronSecret],
             $configTemplate
         );
         file_put_contents(__DIR__ . '/../config/config.php', $newConfig);
@@ -90,6 +98,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="email" name="admin_email" required>
                 <label>Admin Password</label>
                 <input type="password" name="admin_pass" required>
+
+                <h3>Admin Account</h3>
+                <label>Max Upload Size in MB</label>
+                <input type="number" name="max_mb" required>
+                <label>Site Name</label>
+                <input type="text" name="site_name" required>
+                <label>Site URL</label>
+                <input type="text" name="site_url" required>
+                <label>Site Contact Email</label>
+                <input type="email" name="site_email" required>
+                <label>Email for Document Submission</label>
+                <input type="email" name="sub_email" required>
+                <label>ORCID Client ID</label>
+                <input type="text" name="orcid" required>
+                <label>ORCID CLIENT SECRET</label>
+                <input type="text" name="orcid_secret" required>
+                <label>CRON SECRET TOKEN (a hash string to start cron by /cron?token=xxx)</label>
+                <input type="text" name="cron_secret" required>
 
                 <button type="submit">Install Application</button>
             </form>

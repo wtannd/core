@@ -51,6 +51,9 @@ define('VIEWS_PATH', __DIR__ . '/../app/views');
 define('REMEMBER_ME_DURATION', 30 * 24 * 60 * 60); // 30 days
 define('COOKIE_DOMAIN', ''); // Default to current domain
 
+// Cron Job Secret Token
+define('CRON_SECRET_TOKEN', '{{CRON_SECRET_TOKEN}}');
+
 // Roles
 define('GUEST_ROLE', 1);
 define('ADMIN_ROLE_MIN', 600);

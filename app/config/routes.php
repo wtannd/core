@@ -260,13 +260,14 @@ switch ($requestUri) {
         $type = $_GET['type'] ?? 'doc';
         $id = $_GET['id'] ?? '';
         $suppl = isset($_GET['suppl']);
+        $ver = isset($_GET['ver']) ? (int)$_GET['ver'] : null;
         if (empty($id)) {
             http_response_code(400);
             $errorMessage = 'A valid document ID is required to stream the file.';
             include rtrim(VIEWS_PATH, '/') . '/errors/400.php';
             exit;
         }
-        (new \app\controllers\DocController())->streamPdf($type, $id, $suppl);
+        (new \app\controllers\DocController())->streamPdf($type, $id, $suppl, $ver);
         break;
 
     // --- Admin Routes ---
@@ -287,6 +288,11 @@ switch ($requestUri) {
             exit;
         }
         (new \app\controllers\admin\DashboardController())->runUpdateComments();
+        break;
+
+    // --- System ---
+    case '/cron':
+        (new \app\controllers\system\CronController())->run();
         break;
 
     // --- 404 Not Found ---

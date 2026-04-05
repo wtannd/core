@@ -320,8 +320,8 @@ CREATE TABLE Institutions ( -- top level institutions (no sub-units like departm
     icountry SMALLINT UNSIGNED NOT NULL default 0,     -- 0=not belong to any country
     FOREIGN KEY (icountry) REFERENCES Countries (ID),
     FOREIGN KEY (itype) REFERENCES InstitutionTypes (ID),
-    INDEX (iname,itype,is_active),
-    INDEX (icountry,itype,is_active)
+    INDEX (iname,icountry,itype,is_active),
+    FULLTEXT INDEX (iname)
 );
 INSERT INTO Institutions (iID,iname) VALUES (1,'Independent');
 INSERT INTO Institutions (iID,iname,itype,icountry) VALUES (2,'University of Notre Dame (USA)',5,1);
@@ -608,9 +608,11 @@ CREATE TABLE Documents (
     submitter_ID BIGINT UNSIGNED NOT NULL,             -- member ID of the submitter
     author_list JSON,        -- JSON array of authors without affiliations: [[author_name=pub_name, mID , significance_factor=duty], ...] (author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author  -- more complex: {"authors" : [[pub_name, mID, duty, [list of order numbers of affiliations]], ...], "affiliations": [[order#, name], ...]}
     visibility TINYINT UNSIGNED NOT NULL default 60,   -- 99=visible to submitter/authors only (for draft) , 1=visible to all, 10=visible to members, 20=visible to raters+, 30=visible to reviewers+, 40=visible to moderators+, 50=visible to leaders+, 100=visible to administrators only; default to 60=ready to be announced
-    has_file TINYINT UNSIGNED NOT NULL DEFAULT 0,   -- 0=no file attachment, 1=main.pdf, 2=main.pdf+suppl.pdf, 3=main.pdf+suppl.zip
-    main_size INT UNSIGNED,  -- size in bytes for the main pdf file
+    version TINYINT UNSIGNED NOT NULL default 1,   -- = 0 (no main file); 1+ = current version# of the main document starting with 1, maybe max of 16
+    ver_suppl TINYINT UNSIGNED,                    -- NULL if no suppl file; 1+ =current version# of the supplementary file starting with 1 if uploaded, maybe max of 16
+    main_size INT UNSIGNED,  -- size in bytes for the main pdf file (pdf only)
     suppl_size INT UNSIGNED,  -- size in bytes for the suppl file (pdf or zip)
+    suppl_ext TINYINT UNSIGNED,  -- file type of suppl file: NULL if no suppl file, 1 = pdf, 2 = zip (currently only two formats supported for suppl file)
     main_pages SMALLINT UNSIGNED,  -- number of pages in main file
     main_figs SMALLINT UNSIGNED,  -- number of figures in main file
     main_tabs SMALLINT UNSIGNED,  -- number of tables in main file
@@ -618,10 +620,9 @@ CREATE TABLE Documents (
     submission_time DATETIME DEFAULT (datetime_added),   -- receive date (journal), posted date/time (preprint) for old doc / current datetime UTC at submission for new doc / deadline for v-doc
     pubdate VARCHAR(8) COLLATE ascii_general_ci,         -- YYYYMMDD, YYYYMM, or YYYY derived from submission_time unless for journal it is publication date; should never change once assigned and announced so that it is consistent with doi
     announce_time DATETIME,               -- initially NULL, set the time when announced (passed screening and assigned with doi etc.)
-    last_revision_time DATETIME DEFAULT (IF(has_file = 0, NULL, datetime_added)), -- NULL if no pdf attached
+    last_revision_time DATETIME DEFAULT (IF(version = 0, NULL, datetime_added)), -- NULL if no pdf attached
     last_update_time DATETIME DEFAULT (datetime_added) ON UPDATE CURRENT_TIMESTAMP,
-    version TINYINT UNSIGNED NOT NULL default 1,   -- current version# starting with 1, maybe max of 16
-    revision_history JSON,                         -- (JSON_ARRAY(JSON_ARRAY(version, last_revision_time, notes, main_size, suppl_size)))
+    revision_history JSON,                         -- (JSON_ARRAY(JSON_ARRAY(version, ver_suppl, suppl_ext, last_revision_time, revison_notes, main_size, suppl_size)))
     Tresp SMALLINT UNSIGNED NOT NULL default 14,   -- responding time for the f_t factor in unit of days (typically 2 weeks for 20 pages or less, additional 1 week per extra 10 pages)
     nphase TINYINT UNSIGNED NOT NULL DEFAULT 1,    -- current phase#
     reset_time DATETIME NOT NULL DEFAULT (submission_time), -- starting time of this phase
@@ -1713,6 +1714,26 @@ CREATE TABLE News (   -- announcements from CORE
     INDEX (mID, ntype, vis),
     FULLTEXT INDEX (title,detail)
 );
+
+
+-- Cron / System Tasks Table
+
+CREATE TABLE SystemTasks (
+    task_id INT AUTO_INCREMENT PRIMARY KEY,
+    task_name VARCHAR(50) COLLATE utf8mb4_general_ci NOT NULL UNIQUE,  -- e.g., 'calculate_ecp', 'send_emails', 'announce_doc', 'announce_com'
+    freq_minutes INT NOT NULL,         -- e.g., 60 (run every hour)
+    last_run DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_running TINYINT(1) DEFAULT 0,   -- lock to prevent overlapping runs
+    last_error DATETIME,  -- last time when task failed
+    INDEX (last_run, is_running)
+);
+INSERT INTO SystemTasks (task_name, freq_minutes) VALUES 
+('announce_comment', 10), -- every 10 min
+('announce_doc', 1440),   -- every 24 hrs
+('calc_ecp', 1440),   -- Run daily
+('calc_als', 10080),  -- Run weekly
+('move_logs',20160),  -- Run bi-weekly
+('check_misc', 60);   -- Run hourly
 
 
 -- -------------------------------------------------------------------------------------------

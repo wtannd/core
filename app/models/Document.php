@@ -66,14 +66,24 @@ class Document
      */
     public function submitDocument(array $data): int
     {
-        $fields = ['submitter_ID', 'title', 'abstract', 'has_file', 'dtype'];
-        $placeholders = [':submitter_ID', ':title', ':abstract', ':has_file', ':dtype'];
+        $mainSize = isset($data['main_size']) && $data['main_size'] !== '' ? (int)$data['main_size'] : 0;
+        $supplSize = isset($data['suppl_size']) && $data['suppl_size'] !== '' ? (int)$data['suppl_size'] : 0;
+        $supplExt = isset($data['suppl_ext']) ? (int)$data['suppl_ext'] : null;
+
+        // version=1 if main file exists, else 0; ver_suppl=1 if suppl file exists, else NULL
+        $version = $mainSize > 0 ? 1 : 0;
+        $verSuppl = $supplSize > 0 ? 1 : null;
+
+        $fields = ['submitter_ID', 'title', 'abstract', 'dtype', 'version', 'ver_suppl', 'suppl_ext'];
+        $placeholders = [':submitter_ID', ':title', ':abstract', ':dtype', ':version', ':ver_suppl', ':suppl_ext'];
         $params = [
             'submitter_ID' => $data['submitter_ID'],
             'title'        => $data['title'],
             'abstract'     => $data['abstract'],
-            'has_file'     => (int)$data['has_file'],
-            'dtype'        => (int)($data['dtype'] ?? 1)
+            'dtype'        => (int)($data['dtype'] ?? 1),
+            'version'      => $version,
+            'ver_suppl'    => $verSuppl,
+            'suppl_ext'    => $verSuppl !== null ? $supplExt : null
         ];
 
         $optionalFields = ['notes', 'author_list', 'submission_time', 'pubdate', 'full_text', 'main_pages', 'main_figs', 'main_tabs', 'main_size', 'suppl_size'];
@@ -583,48 +593,73 @@ class Document
      *
      * @return int The new version number
      */
-    public function reviseDocument(int $dID, array $data, bool $filesChanged): int
+    public function reviseDocument(int $dID, array $data, bool $mainChanged, bool $supplChanged): int
     {
         // Fetch current version info
-        $stmt = $this->db->prepare("SELECT version, revision_history, last_revision_time, main_size, suppl_size FROM Documents WHERE dID = :dID");
+        $stmt = $this->db->prepare("SELECT version, ver_suppl, suppl_ext, revision_history, last_revision_time, main_size, suppl_size FROM Documents WHERE dID = :dID");
         $stmt->execute(['dID' => $dID]);
         $current = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        $oldVersion = (int)($current['version'] ?? 1);
-        $newVersion = $oldVersion;
+        if (!$current) {
+            return 0;
+        }
+
+        $oldVersion = (int)($current['version'] ?? 0);
+        $oldVerSuppl = $current['ver_suppl'] !== null ? (int)$current['ver_suppl'] : null;
+        $oldSupplExt = $current['suppl_ext'] !== null ? (int)$current['suppl_ext'] : null;
+
+        // Bump versions only for changed files
+        $newVersion = $mainChanged ? $oldVersion + 1 : $oldVersion;
+        $newVerSuppl = $supplChanged ? ($oldVerSuppl !== null ? $oldVerSuppl + 1 : 1) : $oldVerSuppl;
+        $newSupplExt = $supplChanged && isset($data['suppl_ext']) ? (int)$data['suppl_ext'] : $oldSupplExt;
 
         // Build UPDATE
-        $fields = ['title', 'abstract', 'has_file', 'dtype'];
+        $fields = ['title', 'abstract', 'dtype'];
         $params = [
             'dID'      => $dID,
             'title'    => $data['title'],
             'abstract' => $data['abstract'],
-            'has_file' => (int)$data['has_file'],
             'dtype'    => (int)($data['dtype'] ?? 1),
         ];
 
-        // Only update revision history when files change
-        if ($filesChanged) {
-            $newVersion = $oldVersion + 1;
-            $revisionHistory = json_decode($current['revision_history'] ?? '[]', true) ?? [];
+        // Record revision history entry when files change
+        if ($mainChanged || $supplChanged) {
+            $revisionHistory = json_decode($current['revision_history'] ?? '[]', true) ?: [];
 
+            // Append current state to history before updating to new versions
+            // format: [version, ver_suppl, suppl_ext, last_revision_time, revision_notes, main_size, suppl_size]
             $revisionHistory[] = [
-                'version'    => $oldVersion,
-                'date'       => $current['last_revision_time'] ?? date('Y-m-d H:i:s'),
-                'notes'      => $data['revision_notes'] ?? '',
-                'main_size'  => (int)($current['main_size'] ?? 0),
-                'suppl_size' => (int)($current['suppl_size'] ?? 0)
+                $oldVersion,
+                $oldVerSuppl,
+                $oldSupplExt,
+                $current['last_revision_time'],
+                $data['revision_notes'] ?? '',
+                (int)($current['main_size'] ?? 0),
+                (int)($current['suppl_size'] ?? 0)
             ];
 
             $fields[] = 'version';
+            $fields[] = 'ver_suppl';
+            $fields[] = 'suppl_ext';
             $fields[] = 'revision_history';
             $fields[] = 'last_revision_time';
             $params['version'] = $newVersion;
+            $params['ver_suppl'] = $newVerSuppl;
+            $params['suppl_ext'] = $newSupplExt;
             $params['revision_history'] = json_encode($revisionHistory);
             $params['last_revision_time'] = date('Y-m-d H:i:s');
+            
+            if ($mainChanged) {
+                $fields[] = 'main_size';
+                $params['main_size'] = (int)($data['main_size'] ?? 0);
+            }
+            if ($supplChanged) {
+                $fields[] = 'suppl_size';
+                $params['suppl_size'] = (int)($data['suppl_size'] ?? 0);
+            }
         }
 
-        $optionalFields = ['notes', 'author_list', 'full_text', 'main_pages', 'main_figs', 'main_tabs', 'main_size', 'suppl_size'];
+        $optionalFields = ['notes', 'author_list', 'full_text', 'main_pages', 'main_figs', 'main_tabs'];
         foreach ($optionalFields as $f) {
             if (array_key_exists($f, $data)) {
                 $fields[] = $f;
@@ -637,7 +672,10 @@ class Document
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
 
-        return $newVersion;
+        return [
+            'version' => $newVersion,
+            'ver_suppl' => $newVerSuppl
+        ];
     }
 
     /**

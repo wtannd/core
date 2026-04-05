@@ -17,12 +17,13 @@ $branches = $docData['branches'] ?? [];
 $topic = $docData['topic'] ?? false;
 $extLinks = $docData['extLinks'] ?? [];
 
-$hasFileVal = (int)($doc['has_file'] ?? 0);
-$hasMainFile = $hasFileVal > 0;
-$hasSupplFile = ($hasFileVal === 2 || $hasFileVal === 3);
+$version = (int)($doc['version'] ?? 0);
+$ver_suppl = $doc['ver_suppl'];
+$suppl_ext = (int)($doc['suppl_ext'] ?? 0);
+$hasMainFile = $version > 0;
+$hasSupplFile = $ver_suppl !== null;
 
 $doi = $doc['doi'] ?? '';
-$version = (int)($doc['version'] ?? 1);
 $mainPages = (int)($doc['main_pages'] ?? 0);
 $mainFigs = (int)($doc['main_figs'] ?? 0);
 $mainTabs = (int)($doc['main_tabs'] ?? 0);
@@ -37,8 +38,8 @@ $formatSize = function (int $bytes): string {
     return round($bytes / 1048576, 1) . ' MB';
 };
 
-// Revision history
-$revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
+// Revision history format: [version, ver_suppl, suppl_ext, last_revision_time, revision_notes, main_size, suppl_size]
+$revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?: [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -133,7 +134,7 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
                     <?php if (!empty($doi)): ?>
                     <div class="doc-id-line">
                         <a href="/doc/<?php echo htmlspecialchars($doi); ?>">OpenArxiv:<?php echo htmlspecialchars($doi); ?></a>
-                        <span class="doc-version">[v<?php echo $version; ?>]</span>
+                        <span class="doc-version">[v<?php echo $version; ?><?php if ($ver_suppl !== null): ?>+v<?php echo $ver_suppl; ?><?php endif; ?>]</span>
                         <?php
                         $metrics = [];
                         if ($mainPages > 0) $metrics[] = $mainPages . ' page' . ($mainPages !== 1 ? 's' : '');
@@ -173,7 +174,7 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
                     <?php if ($hasMainFile): ?>
                     <div class="doc-sidebar-section">
                         <div class="field-label field-label-sm">Full Text PDF</div>
-                        <a href="/stream?type=doc&id=<?php echo $doc['dID']; ?>" class="doc-file-link" download>
+                        <a href="/stream?id=<?php echo $doc['dID']; ?>" class="doc-file-link" download>
                             Download
                             <?php if ($mainSize > 0): ?>
                                 <span class="doc-file-size">(<?php echo $formatSize($mainSize); ?>)</span>
@@ -186,7 +187,7 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
                     <?php if ($hasSupplFile): ?>
                     <div class="doc-sidebar-section">
                         <div class="field-label field-label-sm">Supplemental File</div>
-                        <a href="/stream?type=doc&id=<?php echo $doc['dID']; ?>&suppl" class="doc-file-link" download>
+                        <a href="/stream?id=<?php echo $doc['dID']; ?>&suppl=1" class="doc-file-link" download>
                             Download
                             <?php if ($supplSize > 0): ?>
                                 <span class="doc-file-size">(<?php echo $formatSize($supplSize); ?>)</span>
@@ -242,75 +243,99 @@ $revisionHistory = json_decode($doc['revision_history'] ?? '[]', true) ?? [];
             <!-- Revisions Panel -->
             <div id="panel-revisions" class="doc-tab-panel">
                 <div class="revision-submitter">
-                    Submitted by <a href="/profile?id=<?php echo htmlspecialchars($doc['submitter_id']); ?>"><?php echo htmlspecialchars($doc['submitter_name']); ?></a>
+                    Submitted by <a href="/profile?id=<?php echo htmlspecialchars((string)$doc['submitter_id']); ?>"><?php echo htmlspecialchars($doc['submitter_name'] ?? 'Unknown'); ?></a>
                     <?php if (!empty($doc['last_update_time'])): ?>
                     | Last updated: <?php echo date('Y-m-d H:i:s', strtotime($doc['last_update_time'])) . ' UTC'; ?>
                     <?php endif; ?>
                 </div>
-                <?php if (!empty($doc['last_revision_time'])): ?>
-                    <table class="revision-table">
-                        <thead>
+                
+                <table class="revision-table">
+                    <thead>
+                        <tr>
+                            <th>Version</th>
+                            <th>Datetime</th>
+                            <th>Files</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $history = array_reverse($revisionHistory);
+                        $revCount = count($history);
+                        
+                        // Current version row
+                        $verStr = "v{$version}";
+                        if ($ver_suppl !== null) $verStr .= "+v{$ver_suppl}";
+                        
+                        $mainFileStr = "";
+                        if ($version > 0) {
+                            $mainFileStr = '<a href="/stream?id='.$doc['dID'].'&ver='.$version.'">PDF</a>['.$formatSize($mainSize).']';
+                        }
+                        $supplFileStr = "";
+                        if ($ver_suppl !== null) {
+                            $extLabel = ($suppl_ext === 2 ? 'ZIP' : 'PDF');
+                            $supplFileStr = ' + <a href="/stream?id='.$doc['dID'].'&suppl=1&ver='.$ver_suppl.'">'.$extLabel.'</a>['.$formatSize($supplSize).']';
+                        }
+                        
+                        // Row Current pulls notes from history[0] (which is E(v_{N-1}), describing v_N)
+                        $currentNotes = ($revCount > 0) ? $history[0][4] : '';
+                        ?>
+                        <tr>
+                            <td><?php echo $verStr; ?></td>
+                            <td><?php echo !empty($doc['last_revision_time']) ? date('Y-m-d H:i:s', strtotime($doc['last_revision_time'])) . ' UTC' : date('Y-m-d H:i:s', strtotime($doc['submission_time'])) . ' UTC'; ?></td>
+                            <td><?php echo $mainFileStr . $supplFileStr; ?></td>
+                            <td><?php echo htmlspecialchars($currentNotes); ?></td>
+                        </tr>
+                        <?php
+                        // History rows
+                        foreach ($history as $hIndex => $rev):
+                            $rVer = (int)$rev[0];
+                            $rVerSuppl = ($rev[1] !== null) ? (int)$rev[1] : null;
+                            $rSupplExt = (int)($rev[2] ?? 0);
+                            $rDate = $rev[3] ?? '';
+                            $rMainSize = (int)($rev[5] ?? 0);
+                            $rSupplSize = (int)($rev[6] ?? 0);
+
+                            // Pull notes from the NEXT entry in the current (reversed) array.
+                            // history[0] is E(v_{N-1}), history[1] is E(v_{N-2}).
+                            // Row history[0] (Version v_{N-1}) pulls notes from history[1] (describing v_{N-2}->v_{N-1}).
+                            $rNotes = isset($history[$hIndex + 1]) ? $history[$hIndex + 1][4] : '';
+
+                            $rVerStr = "v{$rVer}";
+                            if ($rVerSuppl !== null) $rVerStr .= "+v{$rVerSuppl}";
+
+                            $rMainFileStr = "";
+                            if ($rVer > 0) {
+                                $rMainFileStr = '<a href="/stream?id='.$doc['dID'].'&ver='.$rVer.'">PDF</a>['.$formatSize($rMainSize).']';
+                            }
+                            $rSupplFileStr = "";
+                            if ($rVerSuppl !== null) {
+                                $rExtLabel = ($rSupplExt === 2 ? 'ZIP' : 'PDF');
+                                $rSupplFileStr = ' + <a href="/stream?id='.$doc['dID'].'&suppl=1&ver='.$rVerSuppl.'">'.$rExtLabel.'</a>['.$formatSize($rSupplSize).']';
+                            }
+                        ?>
                             <tr>
-                                <th>Version</th>
-                                <th>Datetime</th>
-                                <th>Size</th>
-                                <th>Notes</th>
+                                <td><?php echo $rVerStr; ?></td>
+                                <td><?php echo $rDate ? date('Y-m-d H:i:s', strtotime($rDate)) . ' UTC' : '&mdash;'; ?></td>
+                                <td><?php echo $rMainFileStr . $rSupplFileStr; ?></td>
+                                <td><?php echo htmlspecialchars($rNotes); ?></td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            <?php
-                            $currentVer = (int)($doc['version'] ?? 1);
-                            $currentSize = $formatSize((int)($doc['main_size'] ?? 0));
-                            $currentSupplSize = (int)($doc['suppl_size'] ?? 0);
-                            $currentNotes = !empty($revisionHistory) && isset($revisionHistory[0][2]) ? $revisionHistory[0][2] : '';
-                            ?>
-                            <tr>
-                                <td>v<?php echo $currentVer; ?></td>
-                                <td><?php echo !empty($doc['last_revision_time']) ? date('Y-m-d H:i:s', strtotime($doc['last_revision_time'])) . ' UTC' : '&mdash;'; ?></td>
-                                <td><?php
-                                    $sizeParts = [];
-                                    if ($currentSize !== '') $sizeParts[] = $currentSize;
-                                    if ($currentSupplSize > 0) $sizeParts[] = '+' . $formatSize($currentSupplSize);
-                                    echo !empty($sizeParts) ? implode(' ', $sizeParts) : '&mdash;';
-                                ?></td>
-                                <td><?php echo htmlspecialchars($currentNotes); ?></td>
-                            </tr>
-                            <?php
-                            $revCount = count($revisionHistory);
-                            for ($i = 0; $i < $revCount; $i++):
-                                $rev = $revisionHistory[$i];
-                                $revVer = (int)($rev[0] ?? 0);
-                                $revDate = $rev[1] ?? '';
-                                $revMainSize = (int)($rev[3] ?? 0);
-                                $revSupplSize = (int)($rev[4] ?? 0);
-                                $revNotes = ($i + 1 < $revCount) ? ($revisionHistory[$i + 1][2] ?? '') : '';
-                                $revSizeParts = [];
-                                if ($revMainSize > 0) $revSizeParts[] = $formatSize($revMainSize);
-                                if ($revSupplSize > 0) $revSizeParts[] = '+' . $formatSize($revSupplSize);
-                            ?>
-                                <tr>
-                                    <td>v<?php echo $revVer; ?></td>
-                                    <td><?php echo $revDate ? date('Y-m-d H:i:s', strtotime($revDate)) . ' UTC' : '&mdash;'; ?></td>
-                                    <td><?php echo !empty($revSizeParts) ? implode(' ', $revSizeParts) : '&mdash;'; ?></td>
-                                    <td><?php echo htmlspecialchars($revNotes); ?></td>
-                                </tr>
-                            <?php endfor; ?>
-                        </tbody>
-                    </table>
-                <?php endif; ?>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
 
             <!-- PDF Preview Panel -->
             <?php if ($hasMainFile): ?>
             <div id="panel-pdf" class="doc-tab-panel">
-                <object data="/stream?type=doc&id=<?php echo htmlspecialchars((string)$doc['dID']); ?>"
+                <object data="/stream?id=<?php echo htmlspecialchars((string)$doc['dID']); ?>"
                         type="application/pdf"
                         width="100%"
                         height="800px"
                         class="pdf-frame">
                     <p>
                         Your browser does not support inline PDF viewing.
-                        <a href="/stream?type=doc&id=<?php echo htmlspecialchars((string)$doc['dID']); ?>">Download the PDF</a> to view it.
+                        <a href="/stream?id=<?php echo htmlspecialchars((string)$doc['dID']); ?>">Download the PDF</a> to view it.
                     </p>
                 </object>
             </div>

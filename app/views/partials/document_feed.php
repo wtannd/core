@@ -15,14 +15,15 @@
                 $seq = $n + 1;
                 $dID = (int)$doc['dID'];
                 $doi = $doc['doi'] ?? '';
-                $hasFile = (int)($doc['has_file'] ?? 0);
+                $version = (int)($doc['version'] ?? 0);
+                $verSuppl = (int)($doc['ver_suppl'] ?? 0);
                 $mainPages = (int)($doc['main_pages'] ?? 0);
                 $mainSize = (int)($doc['main_size'] ?? 0);
 
                 // Build the info bracket: [pdf, xx pages, xx KB]
                 $infoParts = [];
-                if ($hasFile >= 1) {
-                    $infoParts[] = '<a href="/stream?type=doc&id=' . $dID . '" class="feed-pdf-link">pdf</a>';
+                if ($version > 0) {
+                    $infoParts[] = '<a href="/stream?id=' . $dID . '" class="feed-pdf-link">pdf</a>';
                 }
                 if ($mainPages > 0) {
                     $infoParts[] = $mainPages . ' page' . ($mainPages !== 1 ? 's' : '');
