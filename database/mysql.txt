@@ -683,11 +683,13 @@ INSERT INTO ExternalSources (sID,ext_type,esname,pattern,publisher,detail) VALUE
 INSERT INTO ExternalSources (sID,ext_type,esname,pattern,publisher,detail) VALUES (9,2,'PRC','10.1103/PhysRevC.','APS','Physical Review C');
 INSERT INTO ExternalSources (sID,ext_type,esname,pattern,publisher,detail) VALUES (10,2,'PRD','10.1103/PhysRevD.','APS','Physical Review D');
 INSERT INTO ExternalSources (sID,ext_type,esname,pattern,publisher,detail) VALUES (11,2,'PRE','10.1103/PhysRevE.','APS','Physical Review E');
-INSERT INTO ExternalSources (sID,ext_type,esname,pattern,publisher,detail) VALUES (12,2,'Int.J.Mod.Phys.D','10.1142/S02182718','World Scientific','International Journal of Modern Physics D');
-INSERT INTO ExternalSources (sID,ext_type,esname,pattern,publisher,detail) VALUES (13,2,'Universe','10.3390/universe','MDPI','Universe');
-INSERT INTO ExternalSources (sID,ext_type,esname,pattern,publisher,detail) VALUES (14,2,'Symmetry','10.3390/sym','MDPI','Symmetry');
-INSERT INTO ExternalSources (sID,ext_type,esname,pattern,detail) VALUES (15,3,'OSF','10.31219/osf.io','OSF Preprints');
-INSERT INTO ExternalSources (sID,ext_type,esname,pattern,detail) VALUES (16,3,'Preprints.org','10.20944/preprints','Preprints.org by MDPI');
+INSERT INTO ExternalSources (sID,ext_type,esname,pattern,publisher,detail) VALUES (12,2,'PLA','10.1016/j.physleta.','Elsevier','Physics Letters A');
+INSERT INTO ExternalSources (sID,ext_type,esname,pattern,publisher,detail) VALUES (13,2,'PLB','10.1016/j.physletb.','Elsevier','Physics Letters B');
+INSERT INTO ExternalSources (sID,ext_type,esname,pattern,publisher,detail) VALUES (14,2,'Int.J.Mod.Phys.D','10.1142/S02182718','World Scientific','International Journal of Modern Physics D');
+INSERT INTO ExternalSources (sID,ext_type,esname,pattern,publisher,detail) VALUES (15,2,'Universe','10.3390/universe','MDPI','Universe');
+INSERT INTO ExternalSources (sID,ext_type,esname,pattern,publisher,detail) VALUES (16,2,'Symmetry','10.3390/sym','MDPI','Symmetry');
+INSERT INTO ExternalSources (sID,ext_type,esname,pattern,detail) VALUES (17,3,'OSF','10.31219/osf.io','OSF Preprints');
+INSERT INTO ExternalSources (sID,ext_type,esname,pattern,detail) VALUES (18,3,'Preprints.org','10.20944/preprints','Preprints.org by MDPI');
 
 CREATE TABLE ExternalDocs ( -- external DOIs/links/sources to documents (typically o/r-docs)
     ID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,

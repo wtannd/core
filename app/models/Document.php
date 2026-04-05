@@ -650,26 +650,39 @@ class Document
     }
 
     /**
-     * Replace external links for a document (delete old, insert new).
+     * Upsert external links for a document.
+     * Updates existing rows by (dID, sID), inserts new ones, deletes orphans.
      */
     public function updateExternalDocs(int $dID, array $links): void
     {
-        $this->deleteExternalDocs($dID);
-
         if (empty($links)) return;
 
-        $sql = "INSERT INTO ExternalDocs (dID, sID, esname, link) VALUES (:dID, :sID, :esname, :link)";
+        $sql = "INSERT INTO ExternalDocs (dID, sID, esname, link) 
+                VALUES (:dID, :sID, :esname, :link) 
+                ON DUPLICATE KEY UPDATE esname = VALUES(esname), link = VALUES(link)";
         $stmt = $this->db->prepare($sql);
 
+        $validSIDs = [];
         foreach ($links as $link) {
             if (isset($link[0], $link[2])) {
+                $sID = (int)$link[0];
+                $validSIDs[] = $sID;
                 $stmt->execute([
                     'dID'    => $dID,
-                    'sID'    => (int)$link[0],
+                    'sID'    => $sID,
                     'esname' => $link[1],
                     'link'   => $link[2]
                 ]);
             }
+        }
+
+        // Delete links not in the valid sID list
+        if (!empty($validSIDs)) {
+            $placeholders = implode(',', array_fill(0, count($validSIDs), '?'));
+            $stmt = $this->db->prepare(
+                "DELETE FROM ExternalDocs WHERE dID = ? AND sID NOT IN ($placeholders)"
+            );
+            $stmt->execute(array_merge([$dID], $validSIDs));
         }
     }
 
