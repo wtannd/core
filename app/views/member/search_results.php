@@ -55,7 +55,7 @@
                             $formattedId = substr($paddedId, 0, 3) . '-' . substr($paddedId, 3, 3) . '-' . substr($paddedId, 6, 3);
                         ?>
                         <div class="member-item">
-                            <a href="/profile?id=<?php echo htmlspecialchars($rawId); ?>" class="member-name">
+                            <a href="/member/<?php echo htmlspecialchars($rawId); ?>" class="member-name">
                                 <?php echo htmlspecialchars($member['display_name']); ?>
                             </a>
                             <span class="member-core-id"><?php echo $formattedId; ?></span>

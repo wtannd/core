@@ -23,10 +23,17 @@ class DocumentRepository
 
     /**
      * Fetch recent documents with visibility filtering and type filtering.
-     * Returns FeedDocument entities for optimized feed display.
+     * Returns ['results' => FeedDocument[], 'total' => int] for consistency.
      */
     public function getRecentDocuments(int $dtID = 1, int $limit = 20, int $mRole = 0): array
     {
+        $countSql = "SELECT COUNT(*) FROM Documents d WHERE d.dtype = :dtID AND :mRole >= d.visibility";
+        $stmt = $this->db->prepare($countSql);
+        $stmt->bindValue(':dtID', $dtID, PDO::PARAM_INT);
+        $stmt->bindValue(':mRole', $mRole, PDO::PARAM_INT);
+        $stmt->execute();
+        $total = (int)$stmt->fetchColumn();
+        
         $sql = "SELECT d.dID, d.doi, d.version, d.ver_suppl, d.main_pages, d.main_size, 
                        d.submission_time, d.author_list, d.abstract, d.title, d.visibility
                 FROM Documents d
@@ -41,7 +48,10 @@ class DocumentRepository
         $stmt->execute();
         
         $rows = $stmt->fetchAll();
-        return array_map(fn($row) => new FeedDocument($row), $rows);
+        return [
+            'results' => array_map(fn($row) => new FeedDocument($row), $rows),
+            'total' => $total
+        ];
     }
 
     /**
@@ -184,12 +194,33 @@ class DocumentRepository
 
     /**
      * Search documents with filters.
-     * Returns FeedDocument entities for optimized feed display.
+     * Returns ['results' => FeedDocument[], 'total' => int] for pagination.
      */
     public function searchDocuments(string $query, array $filters, int $limit, int $offset, int $mRole = 0): array
     {
         $paramIdx = 0;
         $params = [];
+
+        $countSql = "SELECT COUNT(*)
+                     FROM Documents d
+                     WHERE :mRole >= d.visibility";
+
+        if (!empty($query)) {
+            $countSql .= " AND (MATCH(d.title, d.abstract) AGAINST(:query IN BOOLEAN MODE) OR d.title LIKE :likeQuery)";
+            $params['query'] = $query;
+            $params['likeQuery'] = "%$query%";
+        }
+
+        [$whereClause, $params] = $this->buildFilterWhere($filters, $paramIdx, $params);
+        $countSql .= $whereClause;
+
+        $stmt = $this->db->prepare($countSql);
+        $stmt->bindValue(':mRole', $mRole, PDO::PARAM_INT);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue(":$key", $value);
+        }
+        $stmt->execute();
+        $total = (int)$stmt->fetchColumn();
 
         $sql = "SELECT d.dID, d.doi, d.version, d.ver_suppl, d.main_pages, d.main_size, 
                        d.submission_time, d.author_list, d.abstract, d.title, d.visibility
@@ -198,63 +229,70 @@ class DocumentRepository
 
         if (!empty($query)) {
             $sql .= " AND (MATCH(d.title, d.abstract) AGAINST(:query IN BOOLEAN MODE) OR d.title LIKE :likeQuery)";
-            $params['query'] = $query;
-            $params['likeQuery'] = "%$query%";
         }
 
-        [$whereClause, $params] = $this->buildFilterWhere($filters, $paramIdx, $params);
         $sql .= $whereClause;
-
         $sql .= " ORDER BY d.announce_time DESC LIMIT :limit OFFSET :offset";
 
         $stmt = $this->db->prepare($sql);
-        $params['mRole'] = $mRole;
-        $params['limit'] = $limit;
-        $params['offset'] = $offset;
-
+        $stmt->bindValue(':mRole', $mRole, PDO::PARAM_INT);
         foreach ($params as $key => $value) {
-            if (in_array($key, ['limit', 'offset'])) {
-                $stmt->bindValue(":$key", $value, PDO::PARAM_INT);
-            } else {
-                $stmt->bindValue(":$key", $value);
-            }
+            $stmt->bindValue(":$key", $value);
         }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
 
         $rows = $stmt->fetchAll();
-        return array_map(fn($row) => new FeedDocument($row), $rows);
+        return [
+            'results' => array_map(fn($row) => new FeedDocument($row), $rows),
+            'total' => $total
+        ];
     }
 
     /**
      * Get documents by filter (browse without search query).
-     * Returns FeedDocument entities for optimized feed display.
+     * Returns ['results' => FeedDocument[], 'total' => int] for pagination.
      */
     public function getDocumentsByFilter(array $filters, int $limit, int $offset, int $mRole = 0): array
     {
-        $params = ['mRole' => $mRole, 'limit' => $limit, 'offset' => $offset];
+        $params = [];
+
+        [$whereClause, $params] = $this->buildFilterWhere($filters, 0, $params);
+
+        $countSql = "SELECT COUNT(*)
+                     FROM Documents d
+                     WHERE :mRole >= d.visibility" . $whereClause;
+
+        $stmt = $this->db->prepare($countSql);
+        $stmt->bindValue(':mRole', $mRole, PDO::PARAM_INT);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue(":$key", $value);
+        }
+        $stmt->execute();
+        $total = (int)$stmt->fetchColumn();
 
         $sql = "SELECT d.dID, d.doi, d.version, d.ver_suppl, d.main_pages, d.main_size, 
                        d.submission_time, d.author_list, d.abstract, d.title, d.visibility
                 FROM Documents d
-                WHERE :mRole >= d.visibility";
-
-        [$whereClause, $params] = $this->buildFilterWhere($filters, 0, $params);
-        $sql .= $whereClause;
+                WHERE :mRole >= d.visibility" . $whereClause;
 
         $sql .= " ORDER BY d.announce_time DESC LIMIT :limit OFFSET :offset";
 
         $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':mRole', $mRole, PDO::PARAM_INT);
         foreach ($params as $key => $value) {
-            if (in_array($key, ['limit', 'offset'])) {
-                $stmt->bindValue(":$key", $value, PDO::PARAM_INT);
-            } else {
-                $stmt->bindValue(":$key", $value);
-            }
+            $stmt->bindValue(":$key", $value);
         }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
 
         $rows = $stmt->fetchAll();
-        return array_map(fn($row) => new FeedDocument($row), $rows);
+        return [
+            'results' => array_map(fn($row) => new FeedDocument($row), $rows),
+            'total' => $total
+        ];
     }
 
     /**
@@ -314,10 +352,21 @@ class DocumentRepository
 
     /**
      * Get documents by author.
-     * Returns FeedDocument entities for optimized feed display.
+     * Returns ['results' => FeedDocument[], 'total' => int] for pagination.
      */
     public function getDocumentsByAuthor(int $mID, int $mRole, int $limit, int $offset): array
     {
+        $countSql = "SELECT COUNT(*)
+                     FROM Documents d
+                     JOIN DocAuthors da ON d.dID = da.dID
+                     WHERE da.mID = :mID AND :mRole >= d.visibility";
+
+        $stmt = $this->db->prepare($countSql);
+        $stmt->bindValue(':mID', $mID, PDO::PARAM_INT);
+        $stmt->bindValue(':mRole', $mRole, PDO::PARAM_INT);
+        $stmt->execute();
+        $total = (int)$stmt->fetchColumn();
+
         $sql = "SELECT d.dID, d.doi, d.version, d.ver_suppl, d.main_pages, d.main_size, 
                        d.submission_time, d.author_list, d.abstract, d.title, d.visibility
                 FROM Documents d
@@ -334,15 +383,23 @@ class DocumentRepository
         $stmt->execute();
 
         $rows = $stmt->fetchAll();
-        return array_map(fn($row) => new FeedDocument($row), $rows);
+        return [
+            'results' => array_map(fn($row) => new FeedDocument($row), $rows),
+            'total' => $total
+        ];
     }
 
     /**
      * Get documents submitted by a member.
-     * Returns FeedDocument entities for optimized feed display.
+     * Returns ['results' => FeedDocument[], 'total' => int] for consistency.
      */
     public function getMyDocuments(int $mID): array
     {
+        $countSql = "SELECT COUNT(*) FROM Documents d WHERE d.submitter_ID = :mID";
+        $stmt = $this->db->prepare($countSql);
+        $stmt->execute(['mID' => $mID]);
+        $total = (int)$stmt->fetchColumn();
+
         $sql = "SELECT d.dID, d.doi, d.version, d.ver_suppl, d.main_pages, d.main_size, 
                        d.submission_time, d.author_list, d.abstract, d.title, d.visibility
                 FROM Documents d
@@ -352,6 +409,9 @@ class DocumentRepository
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['mID' => $mID]);
         $rows = $stmt->fetchAll();
-        return array_map(fn($row) => new FeedDocument($row), $rows);
+        return [
+            'results' => array_map(fn($row) => new FeedDocument($row), $rows),
+            'total' => $total
+        ];
     }
 }

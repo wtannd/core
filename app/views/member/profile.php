@@ -133,7 +133,7 @@
                     <?php $documents = $authoredDocs; include VIEWS_PATH_TRIMMED . '/partials/document_feed.php'; ?>
                     <?php
                         $buildPageUrl = function (int $p) use ($member) {
-                            return '/profile?id=' . $member['ID_alphanum'] . '&page=' . $p;
+                            return '/member/' . $member['ID_alphanum'] . '?page=' . $p;
                         };
                         include VIEWS_PATH_TRIMMED . '/partials/paginate.php';
                     ?>

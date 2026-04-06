@@ -22,7 +22,7 @@ declare(strict_types=1);
     <main>
         <div class="main-container profile-container">
             <h1>Edit Your Profile</h1>
-<a href="/profile?id=<?php echo htmlspecialchars($user['ID_alphanum']); ?>" class="edit-profile-btn">View Public Profile</a>
+<a href="/member/<?php echo htmlspecialchars($user['ID_alphanum']); ?>" class="edit-profile-btn">View Public Profile</a>
             <?php 
             if (isset($_SESSION['success_message'])) {
                 echo '<div class="alert alert-info">' . htmlspecialchars($_SESSION['success_message']) . '</div>';
@@ -94,7 +94,7 @@ declare(strict_types=1);
 
                 <div class="form-submit">
                     <button type="submit" class="btn btn-primary">Save Changes</button>
-                    <a href="/profile?id=<?php echo $user['ID_alphanum']; ?>" class="btn btn-secondary">Cancel</a> 
+                    <a href="/member/<?php echo $user['ID_alphanum']; ?>" class="btn btn-secondary">Cancel</a> 
                 </div>
             </form>
         </div>

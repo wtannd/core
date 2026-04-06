@@ -196,15 +196,6 @@ switch ($requestUri) {
         exit;
 
     // --- Member Profiles ---
-    case '/profile':
-        $id = $_GET['id'] ?? '';
-        if (empty($id)) {
-            header('Location: /');
-        } else {
-            (new \app\controllers\MemberController())->show($id);
-        }
-        break;
-
     case '/profile/edit':
         if (!$isLoggedIn) {
             header('Location: /login');

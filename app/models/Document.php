@@ -103,7 +103,7 @@ class Document extends FeedDocument
 
     public function getSubmitterProfileUrl(): string
     {
-        return "/profile?id=" . ($this->submitter_coreid ?? $this->submitter_ID);
+        return "/member/" . ($this->submitter_coreid ?? $this->submitter_ID);
     }
 
     public function getFormattedAnnounceTime(): string

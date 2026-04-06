@@ -176,7 +176,7 @@ class MemberController
             // Get alphanum ID for redirect
             $updatedUser = $this->memberModel->findById($mID);
             $_SESSION['success_message'] = "Profile updated successfully!";
-            header('Location: /profile?id=' . $updatedUser['ID_alphanum']);
+            header('Location: /member/' . $updatedUser['ID_alphanum']);
             exit;
         } else {
             $_SESSION['error_message'] = 'Failed to update profile. Please try again.';

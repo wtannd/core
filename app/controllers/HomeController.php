@@ -43,7 +43,8 @@ class HomeController
         $docTypes = $this->docTypeModel->getAllDocTypes();
         $branches = $this->branchModel->getAllBranches();
         $topics = $this->topicModel->getAllTopics();
-        $recentDocs = $this->docRepo->getRecentDocuments(1, 20, (int)$mRole);
+        $result = $this->docRepo->getRecentDocuments(1, 20, (int)$mRole);
+        $recentDocs = $result['results'];
 
         $userWorkAreas = [];
         $userInterestAreas = [];

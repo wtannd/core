@@ -90,7 +90,7 @@ class Member
                 $this->updateAlphanumId($mID);
                 return $mID;
             } else {
-                error_log("Error result=false: " . $sql . "\n" . serialize($data), 3, LOG_PATH_TRIMMED . '/error.log');
+                error_log("Error result=false when creating member: " . $sql . "\n" . serialize($data), 3, LOG_PATH_TRIMMED . '/error.log');
             }
         } catch (PDOException $e) {
             error_log("Error creating member: " . $e->getMessage() . "\n" . $sql . "\n" . serialize($data), 3, LOG_PATH_TRIMMED . '/error.log');

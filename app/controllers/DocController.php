@@ -76,7 +76,8 @@ class DocController
     {
         $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
         $limit = max(1, min(100, (int)($_GET['limit'] ?? 20)));
-        $documents = $this->docRepo->getRecentDocuments(1, $limit, (int)$mRole);
+        $result = $this->docRepo->getRecentDocuments(1, $limit, (int)$mRole);
+        $documents = $result['results'];
         include VIEWS_PATH_TRIMMED . '/repository/feed_page.php';
     }
 
@@ -463,7 +464,8 @@ class DocController
         }
 
         $mID = (int)$_SESSION['mID'];
-        $allDocs = $this->docRepo->getMyDocuments($mID);
+        $result = $this->docRepo->getMyDocuments($mID);
+        $allDocs = $result['results'];
 
         $pendingDocs = [];
         $announcedDocs = [];
