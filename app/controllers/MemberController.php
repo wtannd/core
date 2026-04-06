@@ -43,7 +43,7 @@ class MemberController
         $user = $this->memberModel->getFullEditableProfile($mID);
         if (!$user) {
             http_response_code(404);
-            include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
+            include VIEWS_PATH_TRIMMED . '/errors/404.php';
             exit;
         }
 
@@ -93,7 +93,7 @@ class MemberController
         $institutions = $this->institutionModel->getAllInstitutions();
         $researchBranches = $this->branchModel->getAllBranches();
 
-        include rtrim(VIEWS_PATH, '/') . '/member/edit_profile.php';
+        include VIEWS_PATH_TRIMMED . '/member/edit_profile.php';
     }
 
     /**
@@ -108,7 +108,7 @@ class MemberController
 
         if (!isset($postData['csrf_token']) || $postData['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 
@@ -195,7 +195,7 @@ class MemberController
         if (empty($cleanId)) {
             http_response_code(400);
             $errorMessage = "The provided ID is not a valid CORE-ID.";
-            include rtrim(VIEWS_PATH, '/') . '/errors/400.php';
+            include VIEWS_PATH_TRIMMED . '/errors/400.php';
             exit;
         }
 
@@ -204,7 +204,7 @@ class MemberController
 
         if (!$member) {
             http_response_code(404);
-            include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
+            include VIEWS_PATH_TRIMMED . '/errors/404.php';
             exit;
         }
 
@@ -225,7 +225,7 @@ class MemberController
         $totalPages = max(1, (int)ceil($totalAuthored / $perPage));
 
         // Pass sanitized data to the view
-        include rtrim(VIEWS_PATH, '/') . '/member/profile.php';
+        include VIEWS_PATH_TRIMMED . '/member/profile.php';
     }
 
     /**
@@ -248,7 +248,7 @@ class MemberController
             return '/members?q=' . urlencode($query) . '&page=' . $p;
         };
 
-        include rtrim(VIEWS_PATH, '/') . '/member/search_results.php';
+        include VIEWS_PATH_TRIMMED . '/member/search_results.php';
     }
 }
 

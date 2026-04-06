@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
+    <?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
 
     <main>
         <div class="main-container doc-container">
@@ -29,19 +29,19 @@
             <?php if (!empty($pendingDocs)): ?>
             <section class="docs-group">
                 <h2>Pending Announcement (<?php echo count($pendingDocs); ?>)</h2>
-                <?php $documents = $pendingDocs; include rtrim(VIEWS_PATH, '/') . '/partials/document_feed.php'; ?>
+                <?php $documents = $pendingDocs; include VIEWS_PATH_TRIMMED . '/partials/document_feed.php'; ?>
             </section>
             <?php endif; ?>
 
             <?php if (!empty($announcedDocs)): ?>
             <section class="docs-group">
                 <h2>Announced (<?php echo $totalAnnounced; ?>)</h2>
-                <?php $documents = $announcedDocs; include rtrim(VIEWS_PATH, '/') . '/partials/document_feed.php'; ?>
+                <?php $documents = $announcedDocs; include VIEWS_PATH_TRIMMED . '/partials/document_feed.php'; ?>
                 <?php
                     $currentPage = $page;
                     $totalPages = $totalPages;
                     $buildPageUrl = function (int $p) { return '/mydocs?page=' . $p; };
-                    include rtrim(VIEWS_PATH, '/') . '/partials/paginate.php';
+                    include VIEWS_PATH_TRIMMED . '/partials/paginate.php';
                 ?>
             </section>
             <?php endif; ?>
@@ -52,6 +52,6 @@
         </div>
     </main>
 
-    <?php include rtrim(VIEWS_PATH, '/') . '/partials/footer.php'; ?>
+    <?php include VIEWS_PATH_TRIMMED . '/partials/footer.php'; ?>
 </body>
 </html>

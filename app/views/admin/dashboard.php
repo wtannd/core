@@ -2,11 +2,11 @@
 /**
  * Admin Dashboard View
  */
-include rtrim(VIEWS_PATH, '/') . '/admin/partials/header.php';
+include VIEWS_PATH_TRIMMED . '/admin/partials/header.php';
 ?>
 
 <div class="admin-layout">
-    <?php include rtrim(VIEWS_PATH, '/') . '/admin/partials/sidebar.php'; ?>
+    <?php include VIEWS_PATH_TRIMMED . '/admin/partials/sidebar.php'; ?>
 
     <main class="admin-main">
         <h1>Welcome to the Admin Dashboard</h1>

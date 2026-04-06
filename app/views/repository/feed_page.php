@@ -9,15 +9,15 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
+    <?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
 
     <main>
         <div class="main-container doc-container">
             <h2>Recent ePrints</h2>
-            <?php include rtrim(VIEWS_PATH, '/') . '/partials/document_feed.php'; ?>
+            <?php include VIEWS_PATH_TRIMMED . '/partials/document_feed.php'; ?>
         </div>
     </main>
 
-    <?php include rtrim(VIEWS_PATH, '/') . '/partials/footer.php'; ?>
+    <?php include VIEWS_PATH_TRIMMED . '/partials/footer.php'; ?>
 </body>
 </html>

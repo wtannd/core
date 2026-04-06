@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
+    <?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
 
     <main>
         <div class="main-container auth-container">
@@ -68,13 +68,13 @@
                     <input type="text" id="family_name" name="family_name" required value="<?php echo htmlspecialchars($_POST['family_name'] ?? $preFamilyName); ?>">
                 </div>
 
-                <?php include rtrim(VIEWS_PATH, '/') . '/partials/profile_details_form.php'; ?>
+                <?php include VIEWS_PATH_TRIMMED . '/partials/profile_details_form.php'; ?>
 
                 <button type="submit" class="btn btn-primary">Complete Registration</button>
             </form>
         </div>
     </main>
 
-    <?php include rtrim(VIEWS_PATH, '/') . '/partials/footer.php'; ?>
+    <?php include VIEWS_PATH_TRIMMED . '/partials/footer.php'; ?>
 </body>
 </html>

@@ -20,7 +20,7 @@ class DashboardController
         // 1. Strict Admin Check
         if (empty($_SESSION['admin_role']) || (int)$_SESSION['admin_role'] < ADMIN_ROLE_MIN) {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 
@@ -28,7 +28,7 @@ class DashboardController
         // $stats = ...
 
         // 3. Load admin view
-        include rtrim(VIEWS_PATH, '/') . '/admin/dashboard.php';
+        include VIEWS_PATH_TRIMMED . '/admin/dashboard.php';
     }
 
     /**
@@ -38,7 +38,7 @@ class DashboardController
     {
         if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 

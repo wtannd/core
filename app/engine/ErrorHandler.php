@@ -34,7 +34,7 @@ class ErrorHandler
         );
 
         // Securely log the error to the log file defined in config
-        error_log($message, 3, rtrim(LOG_PATH, '/') . '/error.log');
+        error_log($message, 3, LOG_PATH_TRIMMED . '/error.log');
 
         if (ini_get('display_errors') === '1' || strtolower(ini_get('display_errors')) === 'on') {
             // Display full error details for development

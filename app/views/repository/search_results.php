@@ -30,7 +30,7 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
+    <?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
 
     <main>
         <div class="main-container doc-container">
@@ -118,20 +118,20 @@
             <?php else: ?>
                 <?php
                     $feedDocs = $documents;
-                    include rtrim(VIEWS_PATH, '/') . '/partials/document_feed.php';
+                    include VIEWS_PATH_TRIMMED . '/partials/document_feed.php';
                 ?>
             <?php endif; ?>
 
             <?php if ($totalPages > 1): ?>
                 <?php
                     $currentPage = $page;
-                    include rtrim(VIEWS_PATH, '/') . '/partials/paginate.php';
+                    include VIEWS_PATH_TRIMMED . '/partials/paginate.php';
                 ?>
             <?php endif; ?>
         </div>
     </main>
 
-    <?php include rtrim(VIEWS_PATH, '/') . '/partials/footer.php'; ?>
+    <?php include VIEWS_PATH_TRIMMED . '/partials/footer.php'; ?>
 
     <?php if ($showFilters): ?>
     <script>

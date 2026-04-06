@@ -47,6 +47,11 @@ define('UPLOAD_PATH', __DIR__ . '/../storage/uploads');
 define('LOG_PATH', __DIR__ . '/../storage/logs');
 define('VIEWS_PATH', __DIR__ . '/../app/views');
 
+// Pre-trimmed paths for performance
+define('VIEWS_PATH_TRIMMED', rtrim(VIEWS_PATH, '/'));
+define('UPLOAD_PATH_TRIMMED', rtrim(UPLOAD_PATH, '/'));
+define('LOG_PATH_TRIMMED', rtrim(LOG_PATH, '/'));
+
 // Cookie Settings
 define('REMEMBER_ME_DURATION', 30 * 24 * 60 * 60); // 30 days
 define('COOKIE_DOMAIN', ''); // Default to current domain

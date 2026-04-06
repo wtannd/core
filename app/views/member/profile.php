@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
+    <?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
 
     <main>
         <div class="main-container profile-container">
@@ -130,12 +130,12 @@
                 <?php if (!empty($authoredDocs)): ?>
                 <section class="authored-docs-section">
                     <h2>Authored Documents (<?php echo $totalAuthored; ?>)</h2>
-                    <?php $documents = $authoredDocs; include rtrim(VIEWS_PATH, '/') . '/partials/document_feed.php'; ?>
+                    <?php $documents = $authoredDocs; include VIEWS_PATH_TRIMMED . '/partials/document_feed.php'; ?>
                     <?php
                         $buildPageUrl = function (int $p) use ($member) {
                             return '/profile?id=' . $member['ID_alphanum'] . '&page=' . $p;
                         };
-                        include rtrim(VIEWS_PATH, '/') . '/partials/paginate.php';
+                        include VIEWS_PATH_TRIMMED . '/partials/paginate.php';
                     ?>
                 </section>
                 <?php endif; ?>
@@ -143,6 +143,6 @@
         </div>
     </main>
 
-    <?php include rtrim(VIEWS_PATH, '/') . '/partials/footer.php'; ?>
+    <?php include VIEWS_PATH_TRIMMED . '/partials/footer.php'; ?>
 </body>
 </html>

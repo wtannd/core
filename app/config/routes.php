@@ -60,7 +60,7 @@ switch ($requestUri) {
                 header('Location: ' . (!empty($result['pending']) ? '/complete_profile' : '/'));
             } else {
                 $errorMessage = $result['message'];
-                include rtrim(VIEWS_PATH, '/') . '/errors/general.php';
+                include VIEWS_PATH_TRIMMED . '/errors/general.php';
             }
         }
         break;
@@ -264,7 +264,7 @@ switch ($requestUri) {
         if (empty($id)) {
             http_response_code(400);
             $errorMessage = 'A valid document ID is required to stream the file.';
-            include rtrim(VIEWS_PATH, '/') . '/errors/400.php';
+            include VIEWS_PATH_TRIMMED . '/errors/400.php';
             exit;
         }
         (new \app\controllers\DocController())->streamPdf($type, $id, $suppl, $ver);
@@ -275,7 +275,7 @@ switch ($requestUri) {
     case '/admin/dashboard':
         if (!$isAdmin) {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
         (new \app\controllers\admin\DashboardController())->index();
@@ -284,7 +284,7 @@ switch ($requestUri) {
     case '/admin/update-comments':
         if (!$isAdmin || $requestMethod !== 'POST') {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
         (new \app\controllers\admin\DashboardController())->runUpdateComments();
@@ -298,6 +298,6 @@ switch ($requestUri) {
     // --- 404 Not Found ---
     default:
         http_response_code(404);
-        include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
+        include VIEWS_PATH_TRIMMED . '/errors/404.php';
         break;
 }

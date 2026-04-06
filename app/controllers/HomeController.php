@@ -55,7 +55,7 @@ class HomeController
             }
         }
 
-        include rtrim(VIEWS_PATH, '/') . '/home/index.php';
+        include VIEWS_PATH_TRIMMED . '/home/index.php';
     }
 
     /**

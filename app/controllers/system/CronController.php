@@ -13,14 +13,14 @@ class CronController
         // 1. Early exit if no token provided
         if (empty($_GET['token'])) {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 
         // 2. Securely compare the provided token to the config constant
         if (!hash_equals(CRON_SECRET_TOKEN, $_GET['token'])) {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 

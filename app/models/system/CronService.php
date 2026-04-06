@@ -21,7 +21,7 @@ class CronService
     public function __construct()
     {
         $this->db = Database::getInstance();
-        $this->logFile = rtrim(LOG_PATH, '/') . '/cron.log';
+        $this->logFile = LOG_PATH_TRIMMED . '/cron.log';
     }
 
     public function runDueTasks(): void

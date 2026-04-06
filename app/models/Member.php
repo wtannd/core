@@ -90,10 +90,10 @@ class Member
                 $this->updateAlphanumId($mID);
                 return $mID;
             } else {
-                error_log("Error result=false: " . $sql . "\n" . serialize($data), 3, rtrim(LOG_PATH, '/') . '/error.log');
+                error_log("Error result=false: " . $sql . "\n" . serialize($data), 3, LOG_PATH_TRIMMED . '/error.log');
             }
         } catch (PDOException $e) {
-            error_log("Error creating member: " . $e->getMessage() . "\n" . $sql . "\n" . serialize($data), 3, rtrim(LOG_PATH, '/') . '/error.log');
+            error_log("Error creating member: " . $e->getMessage() . "\n" . $sql . "\n" . serialize($data), 3, LOG_PATH_TRIMMED . '/error.log');
         }
 
         return false;
@@ -138,7 +138,7 @@ class Member
                     ]);
                 }
             } catch (PDOException $e) {
-                error_log("Error adding MemberMeta for mID $mID, key $key: " . $e->getMessage(), 3, rtrim(LOG_PATH, '/') . '/error.log');
+                error_log("Error adding MemberMeta for mID $mID, key $key: " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
             }
         }
     }
@@ -178,7 +178,7 @@ class Member
             $stmt = $this->db->prepare("UPDATE Members SET ORCID = :orcid WHERE mID = :mID");
             return $stmt->execute(['orcid' => $orcid, 'mID' => $mID]);
         } catch (PDOException $e) {
-            error_log("Error linking ORCID for mID $mID: " . $e->getMessage(), 3, rtrim(LOG_PATH, '/') . '/error.log');
+            error_log("Error linking ORCID for mID $mID: " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
             return false;
         }
     }
@@ -295,7 +295,7 @@ class Member
             return true;
         } catch (Exception $e) {
             $this->db->rollBack();
-            error_log("Error updating complete profile for mID $mID: " . $e->getMessage(), 3, rtrim(LOG_PATH, '/') . '/error.log');
+            error_log("Error updating complete profile for mID $mID: " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
             return false;
         }
     }

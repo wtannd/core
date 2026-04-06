@@ -64,7 +64,7 @@ class FeedController
         $docTypes = $this->docTypeModel->getAllDocTypes();
         $branches = $this->branchModel->getAllBranches();
         $topics = $this->topicModel->getAllTopics();
-        include rtrim(VIEWS_PATH, '/') . '/repository/search_results.php';
+        include VIEWS_PATH_TRIMMED . '/repository/search_results.php';
     }
 
     /**
@@ -101,7 +101,7 @@ class FeedController
         $docTypes = $this->docTypeModel->getAllDocTypes();
         $branches = $this->branchModel->getAllBranches();
         $topics = $this->topicModel->getAllTopics();
-        include rtrim(VIEWS_PATH, '/') . '/repository/search_results.php';
+        include VIEWS_PATH_TRIMMED . '/repository/search_results.php';
     }
 
     /**
@@ -142,7 +142,7 @@ class FeedController
         $docTypes = $this->docTypeModel->getAllDocTypes();
         $branches = $this->branchModel->getAllBranches();
         $topics = $this->topicModel->getAllTopics();
-        include rtrim(VIEWS_PATH, '/') . '/repository/search_results.php';
+        include VIEWS_PATH_TRIMMED . '/repository/search_results.php';
     }
 
     /**

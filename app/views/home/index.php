@@ -15,7 +15,7 @@ $isLoggedIn = isset($_SESSION['mID']);
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
+    <?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
 
     <main>
         <div class="dashboard-wrapper">
@@ -131,14 +131,14 @@ $isLoggedIn = isset($_SESSION['mID']);
                 <h2>Recent Original Research</h2>
                 <?php 
                 $documents = $recentDocs;
-                include rtrim(VIEWS_PATH, '/') . '/partials/document_feed.php'; 
+                include VIEWS_PATH_TRIMMED . '/partials/document_feed.php'; 
                 ?>
             </section>
 
         </div>
     </main>
 
-    <?php include rtrim(VIEWS_PATH, '/') . '/partials/footer.php'; ?>
+    <?php include VIEWS_PATH_TRIMMED . '/partials/footer.php'; ?>
 
     <script>
     (function() {

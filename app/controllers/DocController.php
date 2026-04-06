@@ -62,7 +62,7 @@ class DocController
         $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
         $limit = max(1, min(100, (int)($_GET['limit'] ?? 20)));
         $documents = $this->documentModel->getRecentDocuments(1, $limit, (int)$mRole);
-        include rtrim(VIEWS_PATH, '/') . '/repository/feed_page.php';
+        include VIEWS_PATH_TRIMMED . '/repository/feed_page.php';
     }
 
     public function viewDocument(string $id): void
@@ -85,7 +85,7 @@ class DocController
     {
         if (!$doc) {
             http_response_code(404);
-            include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
+            include VIEWS_PATH_TRIMMED . '/errors/404.php';
             exit;
         }
 
@@ -103,7 +103,7 @@ class DocController
             'isOnHold'    => (int)$doc['visibility'] === VISIBILITY_ON_HOLD
         ];
 
-        include rtrim(VIEWS_PATH, '/') . '/repository/view_doc.php';
+        include VIEWS_PATH_TRIMMED . '/repository/view_doc.php';
     }
 
     public function viewDocDraft(string $id): void
@@ -132,7 +132,7 @@ class DocController
 
         if (!$doc) {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 
@@ -145,7 +145,7 @@ class DocController
             'extLinks'       => json_decode($doc['link_list'] ?? '[]', true) ?? [],
         ];
 
-        include rtrim(VIEWS_PATH, '/') . '/repository/view_docdraft.php';
+        include VIEWS_PATH_TRIMMED . '/repository/view_docdraft.php';
     }
 
     // ─────────────────────────────────────────────
@@ -173,7 +173,7 @@ class DocController
 
         if (!$isValidAuthor) {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 
@@ -194,7 +194,7 @@ class DocController
 
         if (!isset($postData['csrf_token']) || $postData['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 
@@ -204,7 +204,7 @@ class DocController
         $draft = $this->documentModel->getDraft($dID, $mID);
         if (!$draft) {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 
@@ -223,7 +223,7 @@ class DocController
             }
 
             // Determine sizes and suppl_ext for submitDocument
-            $draftDir = rtrim(UPLOAD_PATH, '/') . '/docdrafts';
+            $draftDir = UPLOAD_PATH_TRIMMED . '/docdrafts';
             $mainSize = 0;
             $supplSize = 0;
             $supplExt = null;
@@ -274,7 +274,7 @@ class DocController
 
             // Move files from docdrafts/ to YYYY/MM/DD/ with versioned naming
             $path = $this->getPathFromPubdate($pubdate);
-            $targetDir = rtrim(UPLOAD_PATH, '/') . '/' . $path;
+            $targetDir = UPLOAD_PATH_TRIMMED . '/' . $path;
             if (!is_dir($targetDir)) mkdir($targetDir, 0750, true);
 
             if ($mainSize > 0 && file_exists("$draftDir/{$dID}.pdf")) {
@@ -310,7 +310,7 @@ class DocController
 
         } catch (Exception $e) {
             $errorMessage = "Error finalizing draft operation: " . $e->getMessage();
-            include rtrim(VIEWS_PATH, '/') . '/errors/general.php';
+            include VIEWS_PATH_TRIMMED . '/errors/general.php';
             exit;
         }
     }
@@ -329,13 +329,13 @@ class DocController
         if ($isDraft) {
             if ($mID === null) {
                 http_response_code(403);
-                include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+                include VIEWS_PATH_TRIMMED . '/errors/403.php';
                 exit;
             }
             $doc = $this->documentModel->getDraftById((int)$id);
             if (!$doc) {
                 http_response_code(404);
-                include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
+                include VIEWS_PATH_TRIMMED . '/errors/404.php';
                 exit;
             }
             $isOwner = ((int)$doc['submitter_ID'] === (int)$mID);
@@ -350,24 +350,26 @@ class DocController
             }
             if (!$isOwner) {
                 http_response_code(403);
-                include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+                include VIEWS_PATH_TRIMMED . '/errors/403.php';
                 exit;
             }
-            $uploadDir = rtrim(UPLOAD_PATH, '/') . '/docdrafts';
+            $uploadDir = UPLOAD_PATH_TRIMMED . '/docdrafts';
         } else {
             // For published documents, we MUST query the DB if $ver is null to get current versions
             $doc = $this->documentModel->getDocument((int)$id, (int)$mRole, (int)($mID ?? 0));
             if (!$doc) {
                 http_response_code(404);
-                include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
+                include VIEWS_PATH_TRIMMED . '/errors/404.php';
                 exit;
             }
             $path = $this->getPathFromPubdate($doc['submission_time']);
-            $uploadDir = rtrim(UPLOAD_PATH, '/') . '/' . $path;
+            $uploadDir = UPLOAD_PATH_TRIMMED . '/' . $path;
+            $docDoi = $doc['doi'] ?? '';
         }
 
         $filePath = null;
         $contentType = 'application/pdf';
+        $filePrefix = (!empty($docDoi)) ? $docDoi : $id;
 
         if ($isDraft) {
             $hasFile = (int)$doc['has_file'];
@@ -402,24 +404,33 @@ class DocController
                     }
 
                     if ($supplExt === 1) {
-                        $filePath = "$uploadDir/{$id}_suppl_v{$supplVersion}.pdf";
+                        $filePath = "$uploadDir/{$filePrefix}_suppl_v{$supplVersion}.pdf";
                     } elseif ($supplExt === 2) {
-                        $filePath = "$uploadDir/{$id}_suppl_v{$supplVersion}.zip";
+                        $filePath = "$uploadDir/{$filePrefix}_suppl_v{$supplVersion}.zip";
                         $contentType = 'application/zip';
                     }
                 }
             } else {
                 $mainVersion = $ver !== null ? (int)$ver : (int)($doc['version'] ?? 0);
                 if ($mainVersion > 0) {
-                    $filePath = "$uploadDir/{$id}_v{$mainVersion}.pdf";
+                    $filePath = "$uploadDir/{$filePrefix}_v{$mainVersion}.pdf";
                 }
             }
         }
 
         if (!$filePath || !file_exists($filePath)) {
-            http_response_code(404);
-            include rtrim(VIEWS_PATH, '/') . '/errors/404.php';
-            exit;
+            // Fallback: try dID-based path for backwards compatibility
+            if ($filePrefix !== $id && !empty($filePath)) {
+                $dIdBasedPath = str_replace($filePrefix, $id, $filePath);
+                if (file_exists($dIdBasedPath)) {
+                    $filePath = $dIdBasedPath;
+                }
+            }
+            if (!$filePath || !file_exists($filePath)) {
+                http_response_code(404);
+                include VIEWS_PATH_TRIMMED . '/errors/404.php';
+                exit;
+            }
         }
 
         header("Content-Type: $contentType");
@@ -460,7 +471,7 @@ class DocController
         $totalPages = max(1, (int)ceil($totalAnnounced / $perPage));
         $announcedSlice = array_slice($announcedDocs, ($page - 1) * $perPage, $perPage);
 
-        include rtrim(VIEWS_PATH, '/') . '/repository/my_docs.php';
+        include VIEWS_PATH_TRIMMED . '/repository/my_docs.php';
     }
 
     // ─────────────────────────────────────────────
@@ -477,7 +488,7 @@ class DocController
         $mID = (int)$_SESSION['mID'];
         $drafts = $this->documentModel->getMyDrafts($mID);
 
-        include rtrim(VIEWS_PATH, '/') . '/repository/my_drafts.php';
+        include VIEWS_PATH_TRIMMED . '/repository/my_drafts.php';
     }
 
     // ─────────────────────────────────────────────
@@ -502,7 +513,7 @@ class DocController
 
         if (!$draft) {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 
@@ -539,7 +550,7 @@ class DocController
 
         if (!$doc || (int)$doc['submitter_ID'] !== $mID) {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 
@@ -605,7 +616,7 @@ class DocController
             default      => 'Submit Document'
         };
 
-        include rtrim(VIEWS_PATH, '/') . '/repository/upload.php';
+        include VIEWS_PATH_TRIMMED . '/repository/upload.php';
     }
 
     // ─────────────────────────────────────────────
@@ -740,7 +751,7 @@ class DocController
                 
                 $dID = $this->documentModel->saveDraft($docData);
                 $this->documentModel->resetDraftApprovals($dID);
-                $uploadDir = rtrim(UPLOAD_PATH, '/') . '/docdrafts';
+                $uploadDir = UPLOAD_PATH_TRIMMED . '/docdrafts';
 
             } elseif ($isUpload && $action === 'submit') {
                 if ($pubdate === '') {
@@ -750,7 +761,7 @@ class DocController
                 }
                 $dID = $this->documentModel->submitDocument($docData);
                 $path = $this->getPathFromPubdate($pubdate);
-                $uploadDir = rtrim(UPLOAD_PATH, '/') . '/' . $path;
+                $uploadDir = UPLOAD_PATH_TRIMMED . '/' . $path;
 
                 if (!empty($cleanedBranches)) {
                     $this->documentModel->saveBranches($dID, $cleanedBranches);
@@ -769,7 +780,7 @@ class DocController
             } elseif ($isEditDraft) {
                 $this->documentModel->updateDraft($dID, $docData);
                 $this->documentModel->resetDraftApprovals($dID);
-                $uploadDir = rtrim(UPLOAD_PATH, '/') . '/docdrafts';
+                $uploadDir = UPLOAD_PATH_TRIMMED . '/docdrafts';
 
             } elseif ($isReviseDoc) {
                 $res = $this->documentModel->reviseDocument($dID, $docData, $isMainUploaded, $isSupplUploaded);
@@ -792,7 +803,8 @@ class DocController
 
                 $pubdate = $existingDoc['pubdate'] ?? '';
                 $path = $this->getPathFromPubdate($pubdate);
-                $uploadDir = rtrim(UPLOAD_PATH, '/') . '/' . $path;
+                $uploadDir = UPLOAD_PATH_TRIMMED . '/' . $path;
+                $docDoi = $existingDoc['doi'] ?? '';
             }
 
         } catch (Exception $e) {
@@ -808,15 +820,17 @@ class DocController
             $fileErrors = [];
 
             if ($isMainUploaded) {
-                $filename = ($isUpload || $isReviseDoc) ? "{$dID}_v{$newVersion}.pdf" : "{$dID}.pdf";
+                $filePrefix = ($isReviseDoc && !empty($docDoi)) ? $docDoi : (string)$dID;
+                $filename = ($isUpload || $isReviseDoc) ? "{$filePrefix}_v{$newVersion}.pdf" : "{$dID}.pdf";
                 if (!move_uploaded_file($fileData['main_file']['tmp_name'], "$uploadDir/$filename")) {
                     $fileErrors[] = 'Main PDF upload failed.';
                 }
             }
             
             if ($isSupplUploaded) {
+                $filePrefix = ($isReviseDoc && !empty($docDoi)) ? $docDoi : (string)$dID;
                 $ext = ($supplExt === 2 ? 'zip' : 'pdf');
-                $filename = ($isUpload || $isReviseDoc) ? "{$dID}_suppl_v{$newVerSuppl}.{$ext}" : "{$dID}_suppl.{$ext}";
+                $filename = ($isUpload || $isReviseDoc) ? "{$filePrefix}_suppl_v{$newVerSuppl}.{$ext}" : "{$dID}_suppl.{$ext}";
                 if (!move_uploaded_file($fileData['supplemental_file']['tmp_name'], "$uploadDir/$filename")) {
                     $fileErrors[] = 'Supplemental file upload failed.';
                 }

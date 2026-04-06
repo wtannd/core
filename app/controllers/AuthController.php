@@ -66,7 +66,7 @@ class AuthController
         }
         $errors = [];
         $message = '';
-        include rtrim(VIEWS_PATH, '/') . '/auth/login.php';
+        include VIEWS_PATH_TRIMMED . '/auth/login.php';
     }
 
     /**
@@ -81,7 +81,7 @@ class AuthController
         $message = '';
         $institutions = $this->institutionModel->getAllInstitutions();
         $researchBranches = $this->branchModel->getAllBranches();
-        include rtrim(VIEWS_PATH, '/') . '/auth/register.php';
+        include VIEWS_PATH_TRIMMED . '/auth/register.php';
     }
 
     /**
@@ -107,7 +107,7 @@ class AuthController
         $errors = [];
         $institutions = $this->institutionModel->getAllInstitutions();
         $researchBranches = $this->branchModel->getAllBranches();
-        include rtrim(VIEWS_PATH, '/') . '/auth/complete_profile.php';
+        include VIEWS_PATH_TRIMMED . '/auth/complete_profile.php';
     }
 
     /**
@@ -117,7 +117,7 @@ class AuthController
     {
         if (!isset($postData['csrf_token']) || $postData['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 
@@ -132,7 +132,7 @@ class AuthController
             exit;
         } else {
             $errors = ['login' => $result['message']];
-            include rtrim(VIEWS_PATH, '/') . '/auth/login.php';
+            include VIEWS_PATH_TRIMMED . '/auth/login.php';
         }
     }
 
@@ -143,7 +143,7 @@ class AuthController
     {
         if (!isset($postData['csrf_token']) || $postData['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 
@@ -151,12 +151,12 @@ class AuthController
         
         if ($result['success']) {
             $message = $result['message'];
-            include rtrim(VIEWS_PATH, '/') . '/auth/login.php';
+            include VIEWS_PATH_TRIMMED . '/auth/login.php';
         } else {
             $errors = $result['errors'];
             $institutions = $this->institutionModel->getAllInstitutions();
             $researchBranches = $this->branchModel->getAllBranches();
-            include rtrim(VIEWS_PATH, '/') . '/auth/register.php';
+            include VIEWS_PATH_TRIMMED . '/auth/register.php';
         }
     }
 
@@ -167,7 +167,7 @@ class AuthController
     {
         if (!isset($postData['csrf_token']) || $postData['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
             http_response_code(403);
-            include rtrim(VIEWS_PATH, '/') . '/errors/403.php';
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 
@@ -178,7 +178,7 @@ class AuthController
             exit;
         } else {
             $errors = $result['errors'] ?? ['general' => $result['message']];
-            include rtrim(VIEWS_PATH, '/') . '/auth/complete_profile.php';
+            include VIEWS_PATH_TRIMMED . '/auth/complete_profile.php';
         }
     }
 

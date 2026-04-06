@@ -16,20 +16,20 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <?php include rtrim(VIEWS_PATH, '/') . '/partials/header.php'; ?>
+    <?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
 
     <main>
         <div class="main-container doc-container">
             <h1>My Drafts</h1>
 
             <?php if (!empty($drafts)): ?>
-                <?php $documents = $drafts; include rtrim(VIEWS_PATH, '/') . '/partials/draft_feed.php'; ?>
+                <?php $documents = $drafts; include VIEWS_PATH_TRIMMED . '/partials/draft_feed.php'; ?>
             <?php else: ?>
                 <p class="text-muted">You have no drafts yet. <a href="/upload">Upload a document</a> to get started.</p>
             <?php endif; ?>
         </div>
     </main>
 
-    <?php include rtrim(VIEWS_PATH, '/') . '/partials/footer.php'; ?>
+    <?php include VIEWS_PATH_TRIMMED . '/partials/footer.php'; ?>
 </body>
 </html>
