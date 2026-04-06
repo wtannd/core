@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace app\controllers;
 
+use app\models\FeedDocument;
+use app\models\DocumentRepository;
 use app\models\lookups\DocType;
 use app\models\lookups\ResearchBranch;
 use app\models\lookups\ResearchTopic;
-use app\models\Document;
 use app\models\Member;
 
 /**
@@ -20,7 +21,7 @@ class HomeController
     private DocType $docTypeModel;
     private ResearchBranch $branchModel;
     private ResearchTopic $topicModel;
-    private Document $documentModel;
+    private DocumentRepository $docRepo;
     private Member $memberModel;
 
     public function __construct()
@@ -28,7 +29,7 @@ class HomeController
         $this->docTypeModel = new DocType();
         $this->branchModel = new ResearchBranch();
         $this->topicModel = new ResearchTopic();
-        $this->documentModel = new Document();
+        $this->docRepo = new DocumentRepository();
         $this->memberModel = new Member();
     }
 
@@ -42,7 +43,7 @@ class HomeController
         $docTypes = $this->docTypeModel->getAllDocTypes();
         $branches = $this->branchModel->getAllBranches();
         $topics = $this->topicModel->getAllTopics();
-        $recentDocs = $this->documentModel->getRecentDocuments(1, 20, (int)$mRole);
+        $recentDocs = $this->docRepo->getRecentDocuments(1, 20, (int)$mRole);
 
         $userWorkAreas = [];
         $userInterestAreas = [];

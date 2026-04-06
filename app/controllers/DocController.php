@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace app\controllers;
 
 use app\models\Document;
+use app\models\DocumentRepository;
+use app\models\DocumentService;
+use app\models\DraftRepository;
+use app\models\DraftService;
 use app\models\Member;
 use app\models\lookups\Institution;
 use app\models\lookups\ResearchBranch;
@@ -19,12 +23,18 @@ use Exception;
  */
 class DocController
 {
-    private Document $documentModel;
+    private DocumentRepository $docRepo;
+    private DocumentService $docService;
+    private DraftRepository $draftRepo;
+    private DraftService $draftService;
     private Member $memberModel;
 
     public function __construct()
     {
-        $this->documentModel = new Document();
+        $this->docRepo = new DocumentRepository();
+        $this->docService = new DocumentService();
+        $this->draftRepo = new DraftRepository();
+        $this->draftService = new DraftService();
         $this->memberModel = new Member();
     }
 
@@ -48,6 +58,11 @@ class DocController
             }
         }
 
+        $results = [];
+        if (!empty($parsedIds)) {
+            $results = $this->memberModel->findByAlphaIds($parsedIds);
+        }
+
         header('Content-Type: application/json');
         echo json_encode($results);
         exit;
@@ -61,7 +76,7 @@ class DocController
     {
         $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
         $limit = max(1, min(100, (int)($_GET['limit'] ?? 20)));
-        $documents = $this->documentModel->getRecentDocuments(1, $limit, (int)$mRole);
+        $documents = $this->docRepo->getRecentDocuments(1, $limit, (int)$mRole);
         include VIEWS_PATH_TRIMMED . '/repository/feed_page.php';
     }
 
@@ -69,7 +84,7 @@ class DocController
     {
         $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
         $mID = (int)($_SESSION['mID'] ?? 0);
-        $doc = $this->documentModel->getDocument((int)$id, (int)$mRole, $mID);
+        $doc = $this->docRepo->getDocument((int)$id, (int)$mRole, $mID);
         $this->renderDocument($doc);
     }
 
@@ -77,11 +92,11 @@ class DocController
     {
         $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
         $mID = (int)($_SESSION['mID'] ?? 0);
-        $doc = $this->documentModel->getDocumentByDoi($doi, (int)$mRole, $mID);
+        $doc = $this->docRepo->getDocumentByDoi($doi, (int)$mRole, $mID);
         $this->renderDocument($doc);
     }
 
-    private function renderDocument(array|false $doc): void
+    private function renderDocument(Document|false $doc): void
     {
         if (!$doc) {
             http_response_code(404);
@@ -89,18 +104,15 @@ class DocController
             exit;
         }
 
-        $dID = (int)$doc['dID'];
-        $extLinks = $this->documentModel->getExternalLinks($dID);
         $mID = (int)($_SESSION['mID'] ?? 0);
 
         $docData = [
             'document'    => $doc,
-            'authors'     => json_decode($doc['author_list'], true) ?? [],
-            'extLinks'    => $extLinks,
-            'branches'    => $this->documentModel->getDocBranches($dID),
-            'topic'       => $this->documentModel->getDocTopic($dID),
-            'isSubmitter' => $mID > 0 && (int)$doc['submitter_ID'] === $mID,
-            'isOnHold'    => (int)$doc['visibility'] === VISIBILITY_ON_HOLD
+            'extLinks'    => $this->docRepo->getExternalLinks($doc->dID),
+            'branches'    => $this->docRepo->getDocBranches($doc->dID),
+            'topic'       => $this->docRepo->getDocTopic($doc->dID),
+            'isSubmitter' => $doc->isSubmitter($mID),
+            'isOnHold'    => $doc->isOnHold()
         ];
 
         include VIEWS_PATH_TRIMMED . '/repository/view_doc.php';
@@ -114,10 +126,10 @@ class DocController
         }
 
         $mID = (int)$_SESSION['mID'];
-        $doc = $this->documentModel->getDraft((int)$id, $mID);
+        $doc = $this->draftRepo->getDraft((int)$id, $mID);
 
         if (!$doc) {
-            $draftAuthors = $this->documentModel->getDraftAuthors((int)$id);
+            $draftAuthors = $this->draftRepo->getDraftAuthors((int)$id);
             $isCoAuthor = false;
             foreach ($draftAuthors as $da) {
                 if ((int)$da['mID'] === $mID) {
@@ -126,7 +138,7 @@ class DocController
                 }
             }
             if ($isCoAuthor) {
-                $doc = $this->documentModel->getDraftById((int)$id);
+                $doc = $this->draftRepo->getDraftById((int)$id);
             }
         }
 
@@ -138,11 +150,11 @@ class DocController
 
         $docData = [
             'document'       => $doc,
-            'draftAuthors'   => $this->documentModel->getDraftAuthors((int)$id),
-            'isFullyApproved'=> $this->documentModel->isDraftFullyApproved((int)$id),
-            'branches'       => $this->parseBranchesJson($doc['branch_list'] ?? '[]'),
-            'topic'          => !empty($doc['tID']) ? $this->documentModel->getTopicById((int)$doc['tID']) : null,
-            'extLinks'       => json_decode($doc['link_list'] ?? '[]', true) ?? [],
+            'draftAuthors'   => $this->draftRepo->getDraftAuthors((int)$id),
+            'isFullyApproved'=> $this->draftRepo->isDraftFullyApproved((int)$id),
+            'branches'       => $this->parseBranchesJson($doc->branch_list ?? '[]'),
+            'topic'          => !empty($doc->tID) ? $this->docRepo->getTopicById((int)$doc->tID) : null,
+            'extLinks'       => $doc->getExtLinks(),
         ];
 
         include VIEWS_PATH_TRIMMED . '/repository/view_docdraft.php';
@@ -162,7 +174,7 @@ class DocController
         $dID = (int)($postData['dID'] ?? 0);
         $mID = (int)$_SESSION['mID'];
 
-        $draftAuthors = $this->documentModel->getDraftAuthors($dID);
+        $draftAuthors = $this->draftRepo->getDraftAuthors($dID);
         $isValidAuthor = false;
         foreach ($draftAuthors as $da) {
             if ((int)$da['mID'] === $mID) {
@@ -177,7 +189,7 @@ class DocController
             exit;
         }
 
-        if ($this->documentModel->approveDraft($dID, $mID)) {
+        if ($this->draftService->approveDraft($dID, $mID)) {
             $_SESSION['success_message'] = "Draft approved successfully.";
         }
 
@@ -201,22 +213,22 @@ class DocController
         $dID = (int)($postData['dID'] ?? 0);
         $mID = (int)$_SESSION['mID'];
 
-        $draft = $this->documentModel->getDraft($dID, $mID);
+        $draft = $this->draftRepo->getDraft($dID, $mID);
         if (!$draft) {
             http_response_code(403);
             include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 
-        if (!$this->documentModel->isDraftFullyApproved($dID)) {
+        if (!$this->draftRepo->isDraftFullyApproved($dID)) {
             $_SESSION['error_message'] = "Cannot finalize: All co-authors must approve the draft first.";
             header("Location: /docdraft?id=$dID");
             exit;
         }
 
         try {
-            $pubdate = $draft['pubdate'] ?? '';
-            $submissionTime = $draft['submission_time'] ?? date('Y-m-d H:i:s');
+            $pubdate = $draft->pubdate ?? '';
+            $submissionTime = $draft->submission_time ?? date('Y-m-d H:i:s');
             if ($pubdate === '') {
                 $submissionTime = date('Y-m-d H:i:s');
                 $pubdate = date('Ymd', strtotime($submissionTime));
@@ -227,7 +239,7 @@ class DocController
             $mainSize = 0;
             $supplSize = 0;
             $supplExt = null;
-            $hasFile = (int)$draft['has_file'];
+            $hasFile = (int)$draft->has_file;
 
             if ($hasFile >= 1 && file_exists("$draftDir/{$dID}.pdf")) {
                 $mainSize = (int)filesize("$draftDir/{$dID}.pdf");
@@ -242,34 +254,34 @@ class DocController
                 }
             }
 
-            $newDID = $this->documentModel->submitDocument([
+            $newDID = $this->docService->submitDocument([
                 'submitter_ID'    => $mID,
-                'title'           => $draft['title'],
-                'abstract'        => $draft['abstract'],
-                'author_list'     => $draft['author_list'],
+                'title'           => $draft->title,
+                'abstract'        => $draft->abstract,
+                'author_list'     => $draft->author_list,
                 'main_size'       => $mainSize,
                 'suppl_size'      => $supplSize,
                 'suppl_ext'       => $supplExt,
                 'submission_time' => $submissionTime,
                 'pubdate'         => $pubdate,
-                'notes'           => $draft['notes'],
-                'full_text'       => $draft['full_text'],
-                'dtype'           => $draft['dtype'] ?? 1,
-                'link_list_array' => json_decode($draft['link_list'] ?? '[]', true)
+                'notes'           => $draft->notes,
+                'full_text'       => $draft->full_text,
+                'dtype'           => $draft->dtype ?? 1,
+                'link_list_array' => json_decode($draft->link_list ?? '[]', true)
             ]);
 
-            $draftBranches = json_decode($draft['branch_list'] ?? '[]', true) ?? [];
+            $draftBranches = json_decode($draft->branch_list ?? '[]', true) ?? [];
             if (!empty($draftBranches)) {
-                $this->documentModel->saveBranches($newDID, $draftBranches);
+                $this->docService->saveBranches($newDID, $draftBranches);
             }
 
-            if (!empty($draft['tID'])) {
-                $this->documentModel->saveTopic($newDID, (int)$draft['tID']);
+            if (!empty($draft->tID)) {
+                $this->docService->saveTopic($newDID, (int)$draft->tID);
             }
 
             // Save authors to DocAuthors
-            if (!empty($draft['author_list'])) {
-                $this->documentModel->saveAuthorsFromList($newDID, $draft['author_list']);
+            if (!empty($draft->author_list)) {
+                $this->docService->saveAuthorsFromList($newDID, $draft->author_list);
             }
 
             // Move files from docdrafts/ to YYYY/MM/DD/ with versioned naming
@@ -289,10 +301,10 @@ class DocController
             }
 
             // Email co-authors
-            $draftAuthors = $this->documentModel->getDraftAuthors($dID);
+            $draftAuthors = $this->draftRepo->getDraftAuthors($dID);
             $subject = 'Your submission to ' . SITE_TITLE . ' has been received';
             $viewUrl = SITE_URL . "/document?id=" . $newDID;
-            $body = "Your document titled '" . $draft['title'] . "' has been successfully submitted. It will be officially announced and visible on the platform after 24 hours. You can view your submission here: " . $viewUrl;
+            $body = "Your document titled '" . $draft->title . "' has been successfully submitted. It will be officially announced and visible on the platform after 24 hours. You can view your submission here: " . $viewUrl;
             $headers = ['From' => SUBMISSION_EMAIL, 'Reply-To' => SITE_EMAIL, 'X-Mailer' => 'PHP/' . phpversion()];
 
             foreach ($draftAuthors as $author) {
@@ -302,7 +314,7 @@ class DocController
             }
 
             // Remove the draft now that it's published
-            $this->documentModel->deleteDraft($dID);
+            $this->draftService->deleteDraft($dID);
 
             $_SESSION['success_message'] = "Document published successfully!";
             header("Location: /document?id=$newDID");
@@ -332,15 +344,15 @@ class DocController
                 include VIEWS_PATH_TRIMMED . '/errors/403.php';
                 exit;
             }
-            $doc = $this->documentModel->getDraftById((int)$id);
+            $doc = $this->draftRepo->getDraftById((int)$id);
             if (!$doc) {
                 http_response_code(404);
                 include VIEWS_PATH_TRIMMED . '/errors/404.php';
                 exit;
             }
-            $isOwner = ((int)$doc['submitter_ID'] === (int)$mID);
+            $isOwner = ($doc->submitter_ID === $mID);
             if (!$isOwner) {
-                $draftAuthors = $this->documentModel->getDraftAuthors((int)$id);
+                $draftAuthors = $this->draftRepo->getDraftAuthors((int)$id);
                 foreach ($draftAuthors as $da) {
                     if ((int)$da['mID'] === (int)$mID) {
                         $isOwner = true;
@@ -356,15 +368,15 @@ class DocController
             $uploadDir = UPLOAD_PATH_TRIMMED . '/docdrafts';
         } else {
             // For published documents, we MUST query the DB if $ver is null to get current versions
-            $doc = $this->documentModel->getDocument((int)$id, (int)$mRole, (int)($mID ?? 0));
+            $doc = $this->docRepo->getDocument((int)$id, (int)$mRole, (int)($mID ?? 0));
             if (!$doc) {
                 http_response_code(404);
                 include VIEWS_PATH_TRIMMED . '/errors/404.php';
                 exit;
             }
-            $path = $this->getPathFromPubdate($doc['submission_time']);
+            $path = $this->getPathFromPubdate($doc->submission_time);
             $uploadDir = UPLOAD_PATH_TRIMMED . '/' . $path;
-            $docDoi = $doc['doi'] ?? '';
+            $docDoi = $doc->doi ?? '';
         }
 
         $filePath = null;
@@ -372,7 +384,7 @@ class DocController
         $filePrefix = (!empty($docDoi)) ? $docDoi : $id;
 
         if ($isDraft) {
-            $hasFile = (int)$doc['has_file'];
+            $hasFile = (int)$doc->has_file;
             if ($isSuppl) {
                 if ($hasFile === 2) {
                     $filePath = "$uploadDir/{$id}_suppl.pdf";
@@ -388,13 +400,13 @@ class DocController
         } else {
             // Published Document logic
             if ($isSuppl) {
-                $supplVersion = $ver !== null ? (int)$ver : (int)($doc['ver_suppl'] ?? 0);
+                $supplVersion = $ver !== null ? (int)$ver : (int)($doc->ver_suppl ?? 0);
                 if ($supplVersion > 0) {
-                    $supplExt = (int)($doc['suppl_ext'] ?? 0);
+                    $supplExt = (int)($doc->suppl_ext ?? 0);
                     
                     // If requesting an old version, find its suppl_ext in history
-                    if ($ver !== null && $ver < (int)($doc['ver_suppl'] ?? 0)) {
-                        $history = json_decode($doc['revision_history'] ?? '[]', true) ?: [];
+                    if ($ver !== null && $ver < (int)($doc->ver_suppl ?? 0)) {
+                        $history = $doc->revision_history ?? [];
                         foreach ($history as $rev) {
                             if (isset($rev[1]) && (int)$rev[1] === $ver) {
                                 $supplExt = (int)($rev[2] ?? 0);
@@ -411,7 +423,7 @@ class DocController
                     }
                 }
             } else {
-                $mainVersion = $ver !== null ? (int)$ver : (int)($doc['version'] ?? 0);
+                $mainVersion = $ver !== null ? (int)$ver : (int)($doc->version ?? 0);
                 if ($mainVersion > 0) {
                     $filePath = "$uploadDir/{$filePrefix}_v{$mainVersion}.pdf";
                 }
@@ -451,13 +463,13 @@ class DocController
         }
 
         $mID = (int)$_SESSION['mID'];
-        $allDocs = $this->documentModel->getMyDocuments($mID);
+        $allDocs = $this->docRepo->getMyDocuments($mID);
 
         $pendingDocs = [];
         $announcedDocs = [];
 
         foreach ($allDocs as $doc) {
-            if ((int)$doc['visibility'] >= \VISIBILITY_ON_HOLD) {
+            if ((int)$doc->visibility >= VISIBILITY_ON_HOLD) {
                 $pendingDocs[] = $doc;
             } else {
                 $announcedDocs[] = $doc;
@@ -486,7 +498,7 @@ class DocController
         }
 
         $mID = (int)$_SESSION['mID'];
-        $drafts = $this->documentModel->getMyDrafts($mID);
+        $drafts = $this->draftRepo->getMyDrafts($mID);
 
         include VIEWS_PATH_TRIMMED . '/repository/my_drafts.php';
     }
@@ -509,7 +521,7 @@ class DocController
 
         $mID = (int)$_SESSION['mID'];
         $dID = (int)$id;
-        $draft = $this->documentModel->getDraft($dID, $mID);
+        $draft = $this->draftRepo->getDraft($dID, $mID);
 
         if (!$draft) {
             http_response_code(403);
@@ -519,18 +531,18 @@ class DocController
 
         $docData = [
             'dID'             => $dID,
-            'dtype'           => $draft['dtype'],
-            'title'           => $draft['title'],
-            'abstract'        => $draft['abstract'],
-            'notes'           => $draft['notes'] ?? '',
-            'full_text'       => $draft['full_text'] ?? '',
-            'has_file'        => $draft['has_file'],
-            'tID'             => $draft['tID'],
-            'author_list'     => json_decode($draft['author_list'] ?? '{}', true) ?? [],
-            'branches'        => $this->parseBranchesJson($draft['branch_list'] ?? '[]'),
-            'ext_links'       => json_decode($draft['link_list'] ?? '[]', true) ?? [],
-            'pubdate'         => $draft['pubdate'] ?? '',
-            'submission_time' => $draft['submission_time'] ?? '',
+            'dtype'           => $draft->dtype,
+            'title'           => $draft->title,
+            'abstract'        => $draft->abstract,
+            'notes'           => $draft->notes ?? '',
+            'full_text'       => $draft->full_text ?? '',
+            'has_file'        => $draft->has_file,
+            'tID'             => $draft->tID,
+            'author_list'     => $draft->author_list,
+            'branches'        => $draft->branch_list,
+            'ext_links'       => $draft->link_list,
+            'pubdate'         => $draft->pubdate ?? '',
+            'submission_time' => $draft->submission_time ?? '',
         ];
 
         $this->renderForm('edit_draft', $dID, $docData, $errors);
@@ -546,35 +558,35 @@ class DocController
         $mID = (int)$_SESSION['mID'];
         $mRole = (int)($_SESSION['mrole'] ?? GUEST_ROLE);
         $dID = (int)$id;
-        $doc = $this->documentModel->getDocument($dID, $mRole, $mID);
+        $doc = $this->docRepo->getDocument($dID, $mRole, $mID);
 
-        if (!$doc || (int)$doc['submitter_ID'] !== $mID) {
+        if (!$doc || $doc->submitter_ID !== $mID) {
             http_response_code(403);
             include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
 
-        $topic = $this->documentModel->getDocTopic($dID);
+        $topic = $this->docRepo->getDocTopic($dID);
 
         $docData = [
             'dID'             => $dID,
-            'dtype'           => $doc['dtype'],
-            'title'           => $doc['title'],
-            'abstract'        => $doc['abstract'],
-            'notes'           => $doc['notes'] ?? '',
-            'full_text'       => $doc['full_text'] ?? '',
-            'version'         => (int)($doc['version'] ?? 0),
-            'ver_suppl'       => $doc['ver_suppl'],
-            'suppl_ext'       => (int)($doc['suppl_ext'] ?? 0),
+            'dtype'           => $doc->dtype,
+            'title'           => $doc->title,
+            'abstract'        => $doc->abstract,
+            'notes'           => $doc->notes ?? '',
+            'full_text'       => $doc->full_text ?? '',
+            'version'         => (int)($doc->version ?? 0),
+            'ver_suppl'       => $doc->ver_suppl,
+            'suppl_ext'       => (int)($doc->suppl_ext ?? 0),
             'tID'             => $topic ? $topic['tID'] : null,
-            'author_list'     => json_decode($doc['author_list'] ?? '{}', true) ?? [],
-            'branches'        => $this->documentModel->getDocBranches($dID),
-            'ext_links'       => $this->documentModel->getExternalLinks($dID),
-            'pubdate'         => $doc['pubdate'] ?? '',
-            'submission_time' => $doc['submission_time'] ?? '',
-            'main_pages'      => $doc['main_pages'] ?? '',
-            'main_figs'       => $doc['main_figs'] ?? '',
-            'main_tabs'       => $doc['main_tabs'] ?? '',
+            'author_list'     => $doc->author_list,
+            'branches'        => $this->docRepo->getDocBranches($dID),
+            'ext_links'       => $this->docRepo->getExternalLinks($dID),
+            'pubdate'         => $doc->pubdate ?? '',
+            'submission_time' => $doc->submission_time ?? '',
+            'main_pages'      => $doc->main_pages ?? '',
+            'main_figs'       => $doc->main_figs ?? '',
+            'main_tabs'       => $doc->main_tabs ?? '',
         ];
 
         $this->renderForm('revise_doc', $dID, $docData, $errors);
@@ -586,7 +598,7 @@ class DocController
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
 
-        $availableSources = $this->documentModel->getAvailableSources();
+        $availableSources = $this->docRepo->getAvailableSources();
         $institutions = (new Institution())->getAllInstitutions();
         $researchBranches = (new ResearchBranch())->getAllBranches();
         $researchTopics = (new ResearchTopic())->getAllTopics();
@@ -646,19 +658,19 @@ class DocController
         $existingDoc = null;
 
         if ($isEditDraft) {
-            $draft = $this->documentModel->getDraft($dID, $mID);
+            $draft = $this->draftRepo->getDraft($dID, $mID);
             if (!$draft) {
                 return ['success' => false, 'message' => 'Draft not found or access denied.'];
             }
-            $draftHasFile = (int)$draft['has_file'];
+            $draftHasFile = (int)$draft->has_file;
             $existingSupplExt = ($draftHasFile === 3 ? 2 : ($draftHasFile === 2 ? 1 : 0));
         } elseif ($isReviseDoc) {
             $mRole = (int)($_SESSION['mrole'] ?? GUEST_ROLE);
-            $existingDoc = $this->documentModel->getDocument($dID, $mRole, $mID);
-            if (!$existingDoc || (int)$existingDoc['submitter_ID'] !== $mID) {
+            $existingDoc = $this->docRepo->getDocument($dID, $mRole, $mID);
+            if (!$existingDoc || $existingDoc->submitter_ID !== $mID) {
                 return ['success' => false, 'message' => 'Document not found or access denied.'];
             }
-            $existingSupplExt = (int)($existingDoc['suppl_ext'] ?? 0);
+            $existingSupplExt = (int)($existingDoc->suppl_ext ?? 0);
         }
 
         // ── File upload validation ──
@@ -681,7 +693,7 @@ class DocController
         // New upload: check for duplicate external links
         if ($isUpload && $action === 'submit') {
             foreach ($cleanedLinks as $link) {
-                if (isset($link[2]) && $this->documentModel->checkExternalLinkExists(trim($link[2]))) {
+                if (isset($link[2]) && $this->draftService->checkExternalLinkExists(trim($link[2]))) {
                     return ['success' => false, 'message' => 'Validation failed: The link/DOI ' . $link[2] . ' already exists in our database.'];
                 }
             }
@@ -721,7 +733,7 @@ class DocController
             $docData['suppl_ext'] = $supplExt;
         } elseif ($isEditDraft) {
             // Drafts STILL use has_file as per requirement
-            $draftHasFile = $isMainUploaded ? 1 : (int)$draft['has_file'];
+            $draftHasFile = $isMainUploaded ? 1 : (int)$draft->has_file;
             if ($isSupplUploaded) {
                 $draftHasFile = ($supplExt === 2 ? 3 : 2);
             } elseif ($isMainUploaded && $existingSupplExt > 0) {
@@ -749,8 +761,8 @@ class DocController
                 }
                 $docData['has_file'] = $draftHasFile;
                 
-                $dID = $this->documentModel->saveDraft($docData);
-                $this->documentModel->resetDraftApprovals($dID);
+                $dID = $this->draftService->saveDraft($docData);
+                $this->draftService->resetDraftApprovals($dID);
                 $uploadDir = UPLOAD_PATH_TRIMMED . '/docdrafts';
 
             } elseif ($isUpload && $action === 'submit') {
@@ -759,52 +771,52 @@ class DocController
                     $pubdate = date('Ymd', strtotime($docData['submission_time']));
                     $docData['pubdate'] = $pubdate;
                 }
-                $dID = $this->documentModel->submitDocument($docData);
+                $dID = $this->docService->submitDocument($docData);
                 $path = $this->getPathFromPubdate($pubdate);
                 $uploadDir = UPLOAD_PATH_TRIMMED . '/' . $path;
 
                 if (!empty($cleanedBranches)) {
-                    $this->documentModel->saveBranches($dID, $cleanedBranches);
+                    $this->docService->saveBranches($dID, $cleanedBranches);
                 }
                 if ($tID > 0) {
-                    $this->documentModel->saveTopic($dID, $tID);
+                    $this->docService->saveTopic($dID, $tID);
                 }
 
                 if (!empty($docData['author_list'])) {
-                    $this->documentModel->saveAuthorsFromList($dID, $docData['author_list']);
+                    $this->docService->saveAuthorsFromList($dID, $docData['author_list']);
                 }
 
                 $newVersion = 1;
                 $newVerSuppl = $supplSize > 0 ? 1 : null;
 
             } elseif ($isEditDraft) {
-                $this->documentModel->updateDraft($dID, $docData);
-                $this->documentModel->resetDraftApprovals($dID);
+                $this->draftService->updateDraft($dID, $docData);
+                $this->draftService->resetDraftApprovals($dID);
                 $uploadDir = UPLOAD_PATH_TRIMMED . '/docdrafts';
 
             } elseif ($isReviseDoc) {
-                $res = $this->documentModel->reviseDocument($dID, $docData, $isMainUploaded, $isSupplUploaded);
+                $res = $this->docService->reviseDocument($dID, $docData, $isMainUploaded, $isSupplUploaded);
                 $newVersion = $res['version'];
                 $newVerSuppl = $res['ver_suppl'];
                 
-                $this->documentModel->updateExternalDocs($dID, $cleanedLinks);
+                $this->docService->updateExternalDocs($dID, $cleanedLinks);
 
                 if (!empty($cleanedBranches)) {
-                    $this->documentModel->upsertBranches($dID, $cleanedBranches);
+                    $this->docService->upsertBranches($dID, $cleanedBranches);
                 }
 
                 if ($tID > 0) {
-                    $this->documentModel->saveTopic($dID, $tID);
+                    $this->docService->saveTopic($dID, $tID);
                 }
 
                 if (!empty($docData['author_list'])) {
-                    $this->documentModel->upsertAuthorsFromList($dID, $docData['author_list']);
+                    $this->docService->upsertAuthorsFromList($dID, $docData['author_list']);
                 }
 
-                $pubdate = $existingDoc['pubdate'] ?? '';
+                $pubdate = $existingDoc->pubdate ?? '';
                 $path = $this->getPathFromPubdate($pubdate);
                 $uploadDir = UPLOAD_PATH_TRIMMED . '/' . $path;
-                $docDoi = $existingDoc['doi'] ?? '';
+                $docDoi = $existingDoc->doi ?? '';
             }
 
         } catch (Exception $e) {
@@ -883,7 +895,7 @@ class DocController
         if (empty($branchList)) return $branches;
 
         $branchIds = array_column($branchList, 'bID');
-        $branchMap = $this->documentModel->getBranchesByIds($branchIds);
+        $branchMap = $this->docRepo->getBranchesByIds($branchIds);
 
         foreach ($branchList as $bl) {
             $bid = (int)$bl['bID'];

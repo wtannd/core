@@ -1,9 +1,12 @@
 <?php
+
+use app\models\Draft;
+
 /**
  * Document Viewer View (Draft)
  * 
  * Expected $docData keys:
- *   'document'       — DocDrafts row array
+ *   'document'       — Draft entity
  *   'draftAuthors'   — DocDraftAuthors rows
  *   'isFullyApproved'— bool
  *   'branches'       — parsed from branch_list JSON
@@ -11,9 +14,6 @@
  *   'extLinks'       — parsed from link_list JSON
  */
 $doc = $docData['document'];
-$authorData = json_decode($doc['author_list'], true) ?? [];
-$authors = $authorData['authors'] ?? [];
-$affiliations = $authorData['affiliations'] ?? [];
 $branches = $docData['branches'] ?? [];
 $topic = $docData['topic'] ?? false;
 $extLinks = $docData['extLinks'] ?? [];
@@ -21,31 +21,22 @@ $extLinks = $docData['extLinks'] ?? [];
 $draftAuthors = $docData['draftAuthors'] ?? [];
 $isFullyApproved = $docData['isFullyApproved'] ?? true;
 $mID = (int)($_SESSION['mID'] ?? 0);
-$isSubmitter = (int)$doc['submitter_ID'] === $mID;
+$isSubmitter = $doc->isSubmitter($mID);
 
-$hasFileVal = (int)($doc['has_file'] ?? 0);
-$hasMainFile = $hasFileVal > 0;
-$hasSupplFile = ($hasFileVal === 2 || $hasFileVal === 3);
-
-// Check if user needs to approve
 $userApprovalNeeded = false;
 foreach ($draftAuthors as $da) {
-    if ((int)$da['mID'] === $mID && (int)$da['approved'] === 0) {
+    if ((int)($da['mID'] ?? 0) === $mID && (int)($da['approved'] ?? 0) === 0) {
         $userApprovalNeeded = true;
         break;
     }
 }
-
-// Stream type prefix for drafts
-$streamPrefix = 'draft';
-$streamSupplPrefix = 'draft';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo SITE_TITLE; ?> - [Draft] <?php echo htmlspecialchars($doc['title'] ?: '[Untitled]'); ?></title>
+    <title><?php echo SITE_TITLE; ?> - [Draft] <?php echo htmlspecialchars($doc->title ?: '[Untitled]'); ?></title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="alternate icon" type="image/png" href="/favicon.ico">
     <link rel="stylesheet" href="/css/style.css">
@@ -75,7 +66,7 @@ $streamSupplPrefix = 'draft';
             <?php endif; ?>
 
             <!-- Title -->
-            <h1 class="doc-title"><?php echo htmlspecialchars($doc['title'] ?: '[Untitled Draft]'); ?></h1>
+            <h1 class="doc-title"><?php echo htmlspecialchars($doc->title ?: '[Untitled Draft]'); ?></h1>
 
             <!-- Two-Column Layout -->
             <div class="doc-body">
@@ -86,7 +77,7 @@ $streamSupplPrefix = 'draft';
                         <div class="author-names">
                             <?php
                             $authorLinks = [];
-                            foreach ($authors as $author) {
+                            foreach ($doc->getAuthors() as $author) {
                                 $name = htmlspecialchars($author[0]);
                                 $duty = (int)$author[2];
                                 $affilRefs = !empty($author[3]) ? '<sup>' . htmlspecialchars(implode(',', $author[3])) . '</sup>' : '';
@@ -104,11 +95,11 @@ $streamSupplPrefix = 'draft';
                             <?php endif; ?>
                         </div>
 
-                        <?php if (!empty($affiliations)): ?>
+                        <?php if (!empty($doc->getAffiliations())): ?>
                             <ul class="affiliation-list">
                                 <?php
-                                $visibleAffiliations = array_slice($affiliations, 0, 3);
-                                $hiddenAffiliations = array_slice($affiliations, 3);
+                                $visibleAffiliations = array_slice($doc->getAffiliations(), 0, 3);
+                                $hiddenAffiliations = array_slice($doc->getAffiliations(), 3);
 
                                 foreach ($visibleAffiliations as $affil): ?>
                                     <li><?php echo htmlspecialchars((string)$affil[0]) . '. ' . htmlspecialchars($affil[1]); ?></li>
@@ -125,8 +116,8 @@ $streamSupplPrefix = 'draft';
                     </div>
 
                     <!-- Notes -->
-                    <?php if (!empty($doc['notes'])): ?>
-                        <div class="doc-notes"><strong>Notes:</strong> <?php echo nl2br(htmlspecialchars($doc['notes'])); ?></div>
+                    <?php if (!empty($doc->notes)): ?>
+                        <div class="doc-notes"><strong>Notes:</strong> <?php echo nl2br(htmlspecialchars($doc->notes)); ?></div>
                     <?php endif; ?>
                 </div>
 
@@ -135,31 +126,31 @@ $streamSupplPrefix = 'draft';
                     <!-- Draft Saved -->
                     <div class="doc-sidebar-section">
                         <div class="field-label field-label-sm">Draft Saved</div>
-                        <div class="doc-sidebar-value"><?php echo date('M d, Y H:i', strtotime($doc['datetime_added'])); ?> UTC</div>
+                        <div class="doc-sidebar-value"><?php echo $doc->getFormattedDateAdded(); ?></div>
                     </div>
 
-                    <?php if (!empty($doc['pubdate'])): ?>
+                    <?php if (!empty($doc->pubdate)): ?>
                     <div class="doc-sidebar-section">
                         <div class="field-label field-label-sm">Pub Date</div>
-                        <div class="doc-sidebar-value"><?php echo htmlspecialchars($doc['pubdate']); ?></div>
+                        <div class="doc-sidebar-value"><?php echo htmlspecialchars($doc->pubdate); ?></div>
                     </div>
                     <?php endif; ?>
 
                     <hr class="doc-sidebar-divider">
 
                     <!-- Full PDF -->
-                    <?php if ($hasMainFile): ?>
+                    <?php if ($doc->hasMainFile()): ?>
                     <div class="doc-sidebar-section">
                         <div class="field-label field-label-sm">Full Text PDF</div>
-                        <a href="/stream?type=draft&id=<?php echo $doc['dID']; ?>" class="doc-file-link" download>Download</a>
+                        <a href="<?php echo $doc->getMainFileLink(); ?>" class="doc-file-link" download>Download</a>
                     </div>
                     <?php endif; ?>
 
                     <!-- Supplemental File -->
-                    <?php if ($hasSupplFile): ?>
+                    <?php if ($doc->hasSupplFile()): ?>
                     <div class="doc-sidebar-section">
                         <div class="field-label field-label-sm">Supplemental File</div>
-                        <a href="/stream?type=draft&id=<?php echo $doc['dID']; ?>&suppl" class="doc-file-link" download>Download</a>
+                        <a href="<?php echo $doc->getSupplFileLink(); ?>" class="doc-file-link" download>Download</a>
                     </div>
                     <?php endif; ?>
 
@@ -219,7 +210,7 @@ $streamSupplPrefix = 'draft';
                 <?php if ($userApprovalNeeded): ?>
                     <form action="/draft/approve" method="POST" class="approval-form">
                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                        <input type="hidden" name="dID" value="<?php echo $doc['dID']; ?>">
+                        <input type="hidden" name="dID" value="<?php echo $doc->dID; ?>">
                         <button type="submit" class="btn btn-submit">Approve this Draft</button>
                     </form>
                 <?php endif; ?>
@@ -228,7 +219,7 @@ $streamSupplPrefix = 'draft';
                     <div class="action-row">
                         <form action="/draft/finalize" method="POST">
                             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                            <input type="hidden" name="dID" value="<?php echo $doc['dID']; ?>">
+                            <input type="hidden" name="dID" value="<?php echo $doc->dID; ?>">
                             <button type="submit" class="btn btn-submit" <?php echo !$isFullyApproved ? 'disabled' : ''; ?>>
                                 Finalize Submission
                             </button>
@@ -237,7 +228,7 @@ $streamSupplPrefix = 'draft';
                             <small class="text-muted">Waiting for all co-authors to approve.</small>
                         <?php endif; ?>
 
-                        <a href="/edit_draft?id=<?php echo $doc['dID']; ?>" class="btn btn-secondary" onclick="return confirm('Editing this draft will unlock it and reset all current co-author approvals. Continue?');">
+                        <a href="<?php echo $doc->getEditUrl(); ?>" class="btn btn-secondary" onclick="return confirm('Editing this draft will unlock it and reset all current co-author approvals. Continue?');">
                             Edit Draft
                         </a>
                     </div>
@@ -250,7 +241,7 @@ $streamSupplPrefix = 'draft';
                     <button class="doc-tab active" data-panel="panel-abstract">Abstract</button>
                     <button class="doc-tab" data-panel="panel-details">Details</button>
                 </div>
-                <?php if ($hasMainFile): ?>
+                <?php if ($doc->hasMainFile()): ?>
                 <div class="doc-tab-right">
                     <button class="doc-tab" data-panel="panel-pdf">Preview PDF</button>
                 </div>
@@ -260,7 +251,7 @@ $streamSupplPrefix = 'draft';
             <!-- Abstract Panel -->
             <div id="panel-abstract" class="doc-tab-panel active">
                 <div class="doc-abstract">
-                    <?php echo nl2br(htmlspecialchars($doc['abstract'] ?: '[No abstract provided]')); ?>
+                    <?php echo nl2br(htmlspecialchars($doc->abstract ?: '[No abstract provided]')); ?>
                 </div>
             </div>
 
@@ -271,29 +262,29 @@ $streamSupplPrefix = 'draft';
                         <tr><th>Field</th><th>Value</th></tr>
                     </thead>
                     <tbody>
-                        <tr><td>Draft ID</td><td><?php echo $doc['dID']; ?></td></tr>
-                        <tr><td>Document Type</td><td><?php echo (int)$doc['dtype']; ?></td></tr>
-                        <tr><td>Created</td><td><?php echo date('M d, Y H:i:s', strtotime($doc['datetime_added'])); ?> UTC</td></tr>
-                        <tr><td>Last Updated</td><td><?php echo date('M d, Y H:i:s', strtotime($doc['last_update_time'])); ?> UTC</td></tr>
-                        <?php if (!empty($doc['submission_time'])): ?>
-                        <tr><td>Submission Time</td><td><?php echo date('M d, Y H:i:s', strtotime($doc['submission_time'])); ?></td></tr>
+                        <tr><td>Draft ID</td><td><?php echo $doc->dID; ?></td></tr>
+                        <tr><td>Document Type</td><td><?php echo $doc->dtype; ?></td></tr>
+                        <tr><td>Created</td><td><?php echo $doc->getFormattedDateAdded(); ?></td></tr>
+                        <tr><td>Last Updated</td><td><?php echo $doc->getFormattedLastUpdateTime(); ?></td></tr>
+                        <?php if (!empty($doc->submission_time)): ?>
+                        <tr><td>Submission Time</td><td><?php echo $doc->getFormattedSubmissionTime(); ?></td></tr>
                         <?php endif; ?>
-                        <tr><td>Has File</td><td><?php echo ['None', 'Main PDF', 'Main + Suppl PDF', 'Main + Suppl ZIP'][$hasFileVal] ?? 'Unknown'; ?></td></tr>
+                        <tr><td>Has File</td><td><?php echo $doc->getFileTypeLabel(); ?></td></tr>
                     </tbody>
                 </table>
             </div>
 
             <!-- PDF Preview Panel -->
-            <?php if ($hasMainFile): ?>
+            <?php if ($doc->hasMainFile()): ?>
             <div id="panel-pdf" class="doc-tab-panel">
-                <object data="/stream?type=draft&id=<?php echo htmlspecialchars((string)$doc['dID']); ?>"
+                <object data="<?php echo $doc->getMainFileLink(); ?>"
                         type="application/pdf"
                         width="100%"
                         height="800px"
                         class="pdf-frame">
                     <p>
                         Your browser does not support inline PDF viewing.
-                        <a href="/stream?type=draft&id=<?php echo htmlspecialchars((string)$doc['dID']); ?>">Download the PDF</a> to view it.
+                        <a href="<?php echo $doc->getMainFileLink(); ?>">Download the PDF</a> to view it.
                     </p>
                 </object>
             </div>

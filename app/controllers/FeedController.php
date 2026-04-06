@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace app\controllers;
 
-use app\models\Document;
+use app\models\FeedDocument;
+use app\models\DocumentRepository;
 use app\models\lookups\DocType;
 use app\models\lookups\ResearchBranch;
 use app\models\lookups\ResearchTopic;
@@ -16,7 +17,7 @@ use app\models\lookups\ResearchTopic;
  */
 class FeedController
 {
-    private Document $documentModel;
+    private DocumentRepository $docRepo;
     private DocType $docTypeModel;
     private ResearchBranch $branchModel;
     private ResearchTopic $topicModel;
@@ -24,7 +25,7 @@ class FeedController
 
     public function __construct()
     {
-        $this->documentModel = new Document();
+        $this->docRepo = new DocumentRepository();
         $this->docTypeModel = new DocType();
         $this->branchModel = new ResearchBranch();
         $this->topicModel = new ResearchTopic();
@@ -41,7 +42,7 @@ class FeedController
         $offset = ($page - 1) * $this->perPage;
         $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
 
-        $result = $this->documentModel->searchDocuments($query, [], $this->perPage, $offset, (int)$mRole);
+        $result = $this->docRepo->searchDocuments($query, [], $this->perPage, $offset, (int)$mRole);
 
         $documents = $result['results'];
         $totalResults = $result['total'];
@@ -80,7 +81,7 @@ class FeedController
 
         $filters = $this->extractFilters($_GET);
 
-        $result = $this->documentModel->searchDocuments($query, $filters, $this->perPage, $offset, (int)$mRole);
+        $result = $this->docRepo->searchDocuments($query, $filters, $this->perPage, $offset, (int)$mRole);
 
         $documents = $result['results'];
         $totalResults = $result['total'];
@@ -120,7 +121,7 @@ class FeedController
             $filters['range'] = 'month';
         }
 
-        $result = $this->documentModel->getDocumentsByFilter($filters, $this->perPage, $offset, (int)$mRole);
+        $result = $this->docRepo->getDocumentsByFilter($filters, $this->perPage, $offset, (int)$mRole);
 
         $documents = $result['results'];
         $totalResults = $result['total'];

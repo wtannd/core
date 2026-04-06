@@ -4,943 +4,133 @@ declare(strict_types=1);
 
 namespace app\models;
 
-use config\Database;
-use PDO;
-use Exception;
-
 /**
- * Document Model
+ * Document Entity
  * 
- * Handles database interactions for Documents, DocDrafts, and DocAuthors.
+ * Full entity representing a published document.
+ * Extends FeedDocument for common properties and methods.
  */
-class Document
+class Document extends FeedDocument
 {
-    private PDO $db;
+    public int $submitter_ID = 0;
+    public int $dtype = 1;
+    public ?string $notes = null;
+    public ?string $full_text = null;
+    public ?int $suppl_ext = null;
+    public ?string $pubdate = null;
+    public ?string $announce_time = null;
+    public ?string $last_update_time = null;
+    public ?string $last_revision_time = null;
+    public ?string $revision_history = null;
+    public int $main_figs = 0;
+    public int $main_tabs = 0;
+    public int $suppl_size = 0;
 
-    public function __construct()
+    public ?string $submitter_name = null;
+    public ?string $submitter_coreid = null;
+
+    private ?array $decodedAffiliations = null;
+    private ?array $decodedRevisionHistory = null;
+
+    public function __construct(array $data = [])
     {
-        $this->db = Database::getInstance();
+        parent::__construct($data);
+
+        $this->decodeJsonFields();
     }
 
-    /**
-     * Check if a user can view a document based on its visibility settings.
-     */
-    public function canUserView(int $docVisibility, int $mRole): bool
+    private function decodeJsonFields(): void
     {
-        return $mRole >= $docVisibility;
+        $authorData = json_decode($this->author_list ?? '', true) ?? [];
+        $this->decodedAffiliations = $authorData['affiliations'] ?? [];
+
+        $this->decodedRevisionHistory = json_decode($this->revision_history ?? '[]', true) ?: [];
     }
 
-    /**
-     * Save a document draft.
-     */
-    public function saveDraft(array $data): int
+    public function hasSupplFile(): bool
     {
-        $fields = ['submitter_ID', 'title', 'abstract', 'has_file', 'dtype'];
-        $placeholders = [':submitter_ID', ':title', ':abstract', ':has_file', ':dtype'];
-        $params = [
-            'submitter_ID' => $data['submitter_ID'],
-            'title'        => $data['title'],
-            'abstract'     => $data['abstract'],
-            'has_file'     => (int)$data['has_file'],
-            'dtype'        => (int)($data['dtype'] ?? 1)
-        ];
+        return $this->ver_suppl !== null;
+    }
 
-        $optionalFields = ['notes', 'author_list', 'submission_time', 'pubdate', 'full_text', 'link_list', 'branch_list', 'tID'];
-        foreach ($optionalFields as $f) {
-            if (isset($data[$f]) && $data[$f] !== '') {
-                $fields[] = $f;
-                $placeholders[] = ":$f";
-                $params[$f] = $data[$f];
-            }
+    public function getSupplExtLabel(): string
+    {
+        return match ($this->suppl_ext) {
+            1 => 'PDF',
+            2 => 'ZIP',
+            default => '',
+        };
+    }
+
+    public function getAffiliations(): array
+    {
+        return $this->decodedAffiliations ?? [];
+    }
+
+    public function getRevisionHistory(): array
+    {
+        return $this->decodedRevisionHistory ?? [];
+    }
+
+    public function isSubmitter(int $mID): bool
+    {
+        return $this->submitter_ID === $mID;
+    }
+
+    public function isOnHold(): bool
+    {
+        return $this->visibility === VISIBILITY_ON_HOLD;
+    }
+
+    public function getMainFileLink(): string
+    {
+        return "/stream?id={$this->dID}";
+    }
+
+    public function getSupplFileLink(): string
+    {
+        return "/stream?id={$this->dID}&suppl=1";
+    }
+
+    public function getVersionedMainFileLink(int $ver): string
+    {
+        return "/stream?id={$this->dID}&ver={$ver}";
+    }
+
+    public function getVersionedSupplFileLink(int $ver): string
+    {
+        return "/stream?id={$this->dID}&suppl=1&ver={$ver}";
+    }
+
+    public function getSubmitterProfileUrl(): string
+    {
+        return "/profile?id=" . ($this->submitter_coreid ?? $this->submitter_ID);
+    }
+
+    public function getFormattedAnnounceTime(): string
+    {
+        if (empty($this->announce_time)) return '&mdash;';
+        return date('M d, Y', strtotime($this->announce_time));
+    }
+
+    public function getFormattedLastUpdateTime(): string
+    {
+        if (empty($this->last_update_time)) return '';
+        return date('Y-m-d H:i:s', strtotime($this->last_update_time)) . ' UTC';
+    }
+
+    public function getFormattedLastRevisionTime(): string
+    {
+        if (!empty($this->last_revision_time)) {
+            return date('Y-m-d H:i:s', strtotime($this->last_revision_time)) . ' UTC';
         }
-
-        $sql = "INSERT INTO DocDrafts (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-
-        return (int)$this->db->lastInsertId();
-    }
-
-    /**
-     * Submit a final document.
-     */
-    public function submitDocument(array $data): int
-    {
-        $mainSize = isset($data['main_size']) && $data['main_size'] !== '' ? (int)$data['main_size'] : 0;
-        $supplSize = isset($data['suppl_size']) && $data['suppl_size'] !== '' ? (int)$data['suppl_size'] : 0;
-        $supplExt = isset($data['suppl_ext']) ? (int)$data['suppl_ext'] : null;
-
-        // version=1 if main file exists, else 0; ver_suppl=1 if suppl file exists, else NULL
-        $version = $mainSize > 0 ? 1 : 0;
-        $verSuppl = $supplSize > 0 ? 1 : null;
-
-        $fields = ['submitter_ID', 'title', 'abstract', 'dtype', 'version', 'ver_suppl', 'suppl_ext'];
-        $placeholders = [':submitter_ID', ':title', ':abstract', ':dtype', ':version', ':ver_suppl', ':suppl_ext'];
-        $params = [
-            'submitter_ID' => $data['submitter_ID'],
-            'title'        => $data['title'],
-            'abstract'     => $data['abstract'],
-            'dtype'        => (int)($data['dtype'] ?? 1),
-            'version'      => $version,
-            'ver_suppl'    => $verSuppl,
-            'suppl_ext'    => $verSuppl !== null ? $supplExt : null
-        ];
-
-        $optionalFields = ['notes', 'author_list', 'submission_time', 'pubdate', 'full_text', 'main_pages', 'main_figs', 'main_tabs', 'main_size', 'suppl_size'];
-        foreach ($optionalFields as $f) {
-            if (isset($data[$f]) && $data[$f] !== '') {
-                $fields[] = $f;
-                $placeholders[] = ":$f";
-                $params[$f] = $data[$f];
-            }
+        if (!empty($this->submission_time)) {
+            return date('Y-m-d H:i:s', strtotime($this->submission_time)) . ' UTC';
         }
-
-        $sql = "INSERT INTO Documents (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-
-        $dID = (int)$this->db->lastInsertId();
-
-        // Insert external links if provided
-        if (!empty($data['link_list_array'])) {
-            $sqlLink = "INSERT INTO ExternalDocs (dID, sID, esname, link) VALUES (:dID, :sID, :esname, :link)";
-            $stmtLink = $this->db->prepare($sqlLink);
-            foreach ($data['link_list_array'] as $link) {
-                if (isset($link[0], $link[2])) {
-                    $stmtLink->execute([
-                        'dID'    => $dID,
-                        'sID'    => (int)$link[0],
-                        'esname' => $link[1],
-                        'link'   => $link[2]
-                    ]);
-                }
-            }
-        }
-
-        return $dID;
+        return '';
     }
 
-    /**
-     * Check if an external link already exists.
-     */
-    public function checkExternalLinkExists(string $link): bool
+    public function getFormattedSupplSize(): string
     {
-        $sql = "SELECT COUNT(*) FROM ExternalDocs WHERE link = :link";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['link' => $link]);
-        return ((int)$stmt->fetchColumn()) > 0;
-    }
-
-    /**
-     * Get external links for a document.
-     */
-    public function getExternalLinks(int $dID): array
-    {
-        $sql = "SELECT ed.sID, es.esname, ed.link 
-                FROM ExternalDocs ed
-                INNER JOIN ExternalSources es ON ed.sID = es.sID
-                WHERE ed.dID = :dID";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['dID' => $dID]);
-        return $stmt->fetchAll(PDO::FETCH_NUM); // Fetch as indexed array [sID, esname, url]
-    }
-
-    /**
-     * Fetch recent documents with visibility filtering and type filtering.
-     */
-    public function getRecentDocuments(int $dtID = 1, int $limit = 20, int $mRole = 0): array
-    {
-        $sql = "SELECT d.*
-                FROM Documents d
-                WHERE d.dtype = :dtID AND :mRole >= d.visibility
-                ORDER BY d.announce_time DESC
-                LIMIT :limit";
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':dtID', $dtID, PDO::PARAM_INT);
-        $stmt->bindValue(':mRole', $mRole, PDO::PARAM_INT);
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->execute();
-        
-        return $stmt->fetchAll();
-    }
-
-    /**
-     * Fetch a single document by DOI with visibility filtering.
-     * Authors listed in DocAuthors can view regardless of visibility.
-     */
-    public function getDocumentByDoi(string $doi, int $mRole, int $mID = 0): array|bool
-    {
-        $sql = "SELECT d.*, m.pub_name as submitter_name, m.ID_alphanum as submitter_id
-                FROM Documents d
-                JOIN Members m ON d.submitter_ID = m.mID
-                WHERE d.doi = :doi AND (:mRole2 >= d.visibility OR EXISTS (
-                    SELECT 1 FROM DocAuthors da WHERE da.dID = d.dID AND da.mID = :mID
-                ))
-                LIMIT 1";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            'doi'    => $doi,
-            'mRole2' => $mRole,
-            'mID'    => $mID
-        ]);
-
-        return $stmt->fetch();
-    }
-
-    /**
-     * Fetch a single document by dID with visibility filtering.
-     * Authors listed in DocAuthors can view regardless of visibility.
-     */
-    public function getDocument(int $dID, int $mRole, int $mID = 0): array|bool
-    {
-        $sql = "SELECT d.*, m.pub_name as submitter_name, m.ID_alphanum as submitter_id
-                FROM Documents d
-                JOIN Members m ON d.submitter_ID = m.mID
-                WHERE d.dID = :dID AND (:mRole2 >= d.visibility OR EXISTS (
-                    SELECT 1 FROM DocAuthors da WHERE da.dID = d.dID AND da.mID = :mID
-                ))
-                LIMIT 1";
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            'dID'    => $dID,
-            'mRole2' => $mRole,
-            'mID'    => $mID
-        ]);
-        
-        return $stmt->fetch();
-    }
-
-    public function getDraftById(int $dID): array|bool
-    {
-        $sql = "SELECT * FROM DocDrafts WHERE dID = :dID LIMIT 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['dID' => $dID]);
-        return $stmt->fetch();
-    }
-
-    /**
-     * Fetch a draft by dID, ensuring owner access.
-     */
-    public function getDraft(int $dID, int $mID): array|bool
-    {
-        $sql = "SELECT * FROM DocDrafts WHERE dID = :dID AND submitter_ID = :mID LIMIT 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['dID' => $dID, 'mID' => $mID]);
-        return $stmt->fetch();
-    }
-
-    /**
-     * Fetch all authors for a draft.
-     */
-    public function getDraftAuthors(int $dID): array
-    {
-        $sql = "SELECT dda.*, m.email, m.ID_alphanum as CORE_ID
-                FROM DocDraftAuthors dda
-                LEFT JOIN Members m ON dda.mID = m.mID
-                WHERE dda.dID = :dID
-                ORDER BY dda.mID ASC";
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['dID' => $dID]);
-        return $stmt->fetchAll();
-    }
-
-    /**
-     * Approve a draft for a specific member.
-     */
-    public function approveDraft(int $dID, int $mID): bool
-    {
-        $sql = "UPDATE DocDraftAuthors SET is_approved = 1 WHERE dID = :dID AND mID = :mID";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute(['dID' => $dID, 'mID' => $mID]);
-    }
-
-    /**
-     * Reset all approvals for a draft.
-     */
-    public function resetDraftApprovals(int $dID): bool
-    {
-        $sql = "UPDATE DocDraftAuthors SET is_approved = 0 WHERE dID = :dID";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute(['dID' => $dID]);
-    }
-
-    /**
-     * Check if a draft is fully approved by all members.
-     */
-    public function isDraftFullyApproved(int $dID): bool
-    {
-        // Fetch authors who have a valid mID (internal members)
-        $sql = "SELECT COUNT(*) FROM DocDraftAuthors WHERE dID = :dID AND mID IS NOT NULL";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['dID' => $dID]);
-        $totalMembers = (int)$stmt->fetchColumn();
-
-        if ($totalMembers <= 1) {
-            return true; // Single author or no internal members
-        }
-
-        $sqlApproved = "SELECT COUNT(*) FROM DocDraftAuthors WHERE dID = :dID AND mID IS NOT NULL AND is_approved = 1";
-        $stmtApproved = $this->db->prepare($sqlApproved);
-        $stmtApproved->execute(['dID' => $dID]);
-        $approvedCount = (int)$stmtApproved->fetchColumn();
-
-        return $approvedCount === $totalMembers;
-    }
-
-    /**
-     * Get all external sources ordered by name.
-     */
-    public function getAvailableSources(): array
-    {
-        $stmt = $this->db->query("SELECT sID, esname FROM ExternalSources WHERE is_active = 1 ORDER BY esname ASC");
-        return $stmt->fetchAll();
-    }
-
-    /**
-     * Save research branches for a document (DocBranches table).
-     * 
-     * @param int   $dID      The document ID
-     * @param array $branches Array of ['bID' => int, 'num' => int, 'impact' => int]
-     */
-    public function saveBranches(int $dID, array $branches): void
-    {
-        $sql = "INSERT INTO DocBranches (dID, bID, num, impact) 
-                VALUES (:dID, :bID, :num, :impact)";
-        $stmt = $this->db->prepare($sql);
-
-        foreach ($branches as $branch) {
-            $stmt->execute([
-                'dID'    => $dID,
-                'bID'    => (int)$branch['bID'],
-                'num'    => (int)$branch['num'],
-                'impact' => (int)$branch['impact']
-            ]);
-        }
-    }
-
-    /**
-     * Save topic for a document (DocTopics table).
-     */
-    public function saveTopic(int $dID, int $tID): void
-    {
-        $sql = "INSERT INTO DocTopics (dID, tID) VALUES (:dID, :tID)
-                ON DUPLICATE KEY UPDATE tID = VALUES(tID)";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['dID' => $dID, 'tID' => $tID]);
-    }
-
-    /**
-     * Fetch research branches linked to a published document.
-     * 
-     * @return array [['bID'=>int, 'abbr'=>string, 'bname'=>string, 'num'=>int, 'impact'=>int], ...]
-     */
-    public function getDocBranches(int $dID): array
-    {
-        $sql = "SELECT db.bID, rb.abbr, rb.bname, db.num, db.impact
-                FROM DocBranches db
-                INNER JOIN ResearchBranches rb ON db.bID = rb.bID
-                WHERE db.dID = :dID
-                ORDER BY db.num ASC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['dID' => $dID]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * Fetch topic linked to a published document.
-     * 
-     * @return array|false ['tID'=>int, 'abbr'=>string, 'tname'=>string] or false
-     */
-    public function getDocTopic(int $dID): array|false
-    {
-        $sql = "SELECT dt.tID, rt.abbr, rt.tname
-                FROM DocTopics dt
-                INNER JOIN ResearchTopics rt ON dt.tID = rt.tID
-                WHERE dt.dID = :dID
-                LIMIT 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['dID' => $dID]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result ?: false;
-    }
-
-    /**
-     * Fetch topic for a draft by tID.
-     * 
-     * @return array|false ['tID'=>int, 'abbr'=>string, 'tname'=>string] or false
-     */
-    public function getTopicById(int $tID): array|false
-    {
-        $sql = "SELECT tID, abbr, tname FROM ResearchTopics WHERE tID = :tID LIMIT 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['tID' => $tID]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result ?: false;
-    }
-
-    /**
-     * Fetch branches by an array of bIDs.
-     * 
-     * @return array Keyed by bID: [bID => ['bID'=>int, 'abbr'=>string, 'bname'=>string], ...]
-     */
-    public function getBranchesByIds(array $bIDs): array
-    {
-        if (empty($bIDs)) return [];
-        $placeholders = implode(',', array_fill(0, count($bIDs), '?'));
-        $sql = "SELECT bID, abbr, bname FROM ResearchBranches WHERE bID IN ($placeholders)";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(array_values($bIDs));
-        $result = [];
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $b) {
-            $result[(int)$b['bID']] = $b;
-        }
-        return $result;
-    }
-
-    /**
-     * Build shared WHERE clause, JOINs, and params for document filter conditions.
-     * 
-     * Supported filter keys: type, branch, topic, range (day/week/month/all), from, to
-     * 
-     * @return array ['where' => string[], 'joins' => string, 'params' => array, 'paramIdx' => int]
-     */
-    private function buildFilterWhere(array $filters, int $paramIdx = 0): array
-    {
-        $where = [];
-        $joins = '';
-        $params = [];
-
-        if (!empty($filters['type'])) {
-            $idx = $paramIdx++;
-            $where[] = "d.dtype = :f_dtype{$idx}";
-            $params["f_dtype{$idx}"] = (int)$filters['type'];
-        }
-
-        if (!empty($filters['branch'])) {
-            $idx = $paramIdx++;
-            $joins .= " INNER JOIN DocBranches db{$idx} ON d.dID = db{$idx}.dID";
-            $where[] = "db{$idx}.bID = :f_bID{$idx}";
-            $params["f_bID{$idx}"] = (int)$filters['branch'];
-        }
-
-        if (!empty($filters['topic'])) {
-            $idx = $paramIdx++;
-            $joins .= " INNER JOIN DocTopics dt{$idx} ON d.dID = dt{$idx}.dID";
-            $where[] = "dt{$idx}.tID = :f_tID{$idx}";
-            $params["f_tID{$idx}"] = (int)$filters['topic'];
-        }
-
-        // Date range
-        $now = date('Y-m-d H:i:s');
-        if (!empty($filters['from']) || !empty($filters['to'])) {
-            $idx = $paramIdx++;
-            if (!empty($filters['from'])) {
-                $where[] = "d.announce_time >= :f_from{$idx}";
-                $params["f_from{$idx}"] = $filters['from'] . ' 00:00:00';
-            }
-            if (!empty($filters['to'])) {
-                $idx2 = $paramIdx++;
-                $where[] = "d.announce_time <= :f_to{$idx2}";
-                $params["f_to{$idx2}"] = $filters['to'] . ' 23:59:59';
-            }
-        } elseif (!empty($filters['range'])) {
-            $idx = $paramIdx++;
-            $range = strtolower($filters['range']);
-            $interval = match ($range) {
-                'day' => '1 DAY',
-                'week' => '7 DAY',
-                'month' => '30 DAY',
-                default => null
-            };
-            if ($interval !== null) {
-                $where[] = "d.announce_time >= DATE_SUB(:f_now{$idx}, INTERVAL {$interval})";
-                $params["f_now{$idx}"] = $now;
-            }
-        }
-
-        return ['where' => $where, 'joins' => $joins, 'params' => $params, 'paramIdx' => $paramIdx];
-    }
-
-    /**
-     * FULLTEXT search on title + abstract with optional filters.
-     * 
-     * @return array ['results' => array, 'total' => int]
-     */
-    public function searchDocuments(string $query, array $filters, int $limit, int $offset, int $mRole = 0): array
-    {
-        $query = trim($query);
-        $result = ['results' => [], 'total' => 0];
-        if ($query === '') return $result;
-
-        $filter = $this->buildFilterWhere($filters, 0);
-        $whereClauses = array_merge(
-            ["MATCH(d.title, d.abstract) AGAINST (:search_query IN BOOLEAN MODE)"],
-            $filter['where'],
-            [":mRole >= d.visibility"]
-        );
-        $whereSql = implode(' AND ', $whereClauses);
-
-        $params = array_merge(['search_query' => $query, 'mRole' => $mRole], $filter['params']);
-
-        // Count total
-        $countSql = "SELECT COUNT(*) FROM Documents d{$filter['joins']} WHERE {$whereSql}";
-        $stmt = $this->db->prepare($countSql);
-        $stmt->execute($params);
-        $total = (int)$stmt->fetchColumn();
-
-        // Fetch results with relevance score
-        $sql = "SELECT d.*,
-                        MATCH(d.title, d.abstract) AGAINST (:search_query2 IN BOOLEAN MODE) as relevance
-                FROM Documents d
-                {$filter['joins']}
-                WHERE {$whereSql}
-                ORDER BY relevance DESC, d.announce_time DESC
-                LIMIT :limit OFFSET :offset";
-
-        $params['search_query2'] = $query;
-        $stmt = $this->db->prepare($sql);
-        foreach ($params as $key => $value) {
-            if ($key === 'limit' || $key === 'offset') continue;
-            $stmt->bindValue(':' . $key, $value);
-        }
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-
-        return ['results' => $stmt->fetchAll(), 'total' => $total];
-    }
-
-    /**
-     * Filtered document feed (no FULLTEXT query).
-     * 
-     * @return array ['results' => array, 'total' => int]
-     */
-    public function getDocumentsByFilter(array $filters, int $limit, int $offset, int $mRole = 0): array
-    {
-        $result = ['results' => [], 'total' => 0];
-        $filter = $this->buildFilterWhere($filters, 0);
-
-        // Always include visibility filter
-        $filter['where'][] = ":mRole >= d.visibility";
-        $filter['params']['mRole'] = $mRole;
-
-        if (empty($filter['where'])) {
-            return $result;
-        }
-
-        $whereSql = implode(' AND ', $filter['where']);
-        $params = $filter['params'];
-
-        // Count total
-        $countSql = "SELECT COUNT(*) FROM Documents d{$filter['joins']} WHERE {$whereSql}";
-        $stmt = $this->db->prepare($countSql);
-        $stmt->execute($params);
-        $total = (int)$stmt->fetchColumn();
-
-        // Fetch results
-        $sql = "SELECT d.*
-                FROM Documents d
-                {$filter['joins']}
-                WHERE {$whereSql}
-                ORDER BY d.announce_time DESC
-                LIMIT :limit OFFSET :offset";
-
-        $stmt = $this->db->prepare($sql);
-        foreach ($params as $key => $value) {
-            $stmt->bindValue(':' . $key, $value);
-        }
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-
-        return ['results' => $stmt->fetchAll(), 'total' => $total];
-    }
-
-    /**
-     * Update an existing draft.
-     */
-    public function updateDraft(int $dID, array $data): void
-    {
-        $fields = ['title', 'abstract', 'has_file', 'dtype'];
-        $params = [
-            'dID'        => $dID,
-            'title'      => $data['title'],
-            'abstract'   => $data['abstract'],
-            'has_file'   => (int)$data['has_file'],
-            'dtype'      => (int)($data['dtype'] ?? 1)
-        ];
-
-        $optionalFields = ['notes', 'author_list', 'submission_time', 'pubdate', 'full_text', 'link_list', 'branch_list', 'tID'];
-        foreach ($optionalFields as $f) {
-            if (array_key_exists($f, $data)) {
-                $fields[] = $f;
-                $params[$f] = $data[$f] === '' ? null : $data[$f];
-            }
-        }
-
-        $setClauses = array_map(fn($f) => "$f = :$f", $fields);
-        $sql = "UPDATE DocDrafts SET " . implode(', ', $setClauses) . " WHERE dID = :dID";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-    }
-
-    /**
-     * Revise a published document.
-     *
-     * @return int The new version number
-     */
-    public function reviseDocument(int $dID, array $data, bool $mainChanged, bool $supplChanged): int
-    {
-        // Fetch current version info
-        $stmt = $this->db->prepare("SELECT version, ver_suppl, suppl_ext, revision_history, last_revision_time, main_size, suppl_size FROM Documents WHERE dID = :dID");
-        $stmt->execute(['dID' => $dID]);
-        $current = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$current) {
-            return 0;
-        }
-
-        $oldVersion = (int)($current['version'] ?? 0);
-        $oldVerSuppl = $current['ver_suppl'] !== null ? (int)$current['ver_suppl'] : null;
-        $oldSupplExt = $current['suppl_ext'] !== null ? (int)$current['suppl_ext'] : null;
-
-        // Bump versions only for changed files
-        $newVersion = $mainChanged ? $oldVersion + 1 : $oldVersion;
-        $newVerSuppl = $supplChanged ? ($oldVerSuppl !== null ? $oldVerSuppl + 1 : 1) : $oldVerSuppl;
-        $newSupplExt = $supplChanged && isset($data['suppl_ext']) ? (int)$data['suppl_ext'] : $oldSupplExt;
-
-        // Build UPDATE
-        $fields = ['title', 'abstract', 'dtype'];
-        $params = [
-            'dID'      => $dID,
-            'title'    => $data['title'],
-            'abstract' => $data['abstract'],
-            'dtype'    => (int)($data['dtype'] ?? 1),
-        ];
-
-        // Record revision history entry when files change
-        if ($mainChanged || $supplChanged) {
-            $revisionHistory = json_decode($current['revision_history'] ?? '[]', true) ?: [];
-
-            // Append current state to history before updating to new versions
-            // format: [version, ver_suppl, suppl_ext, last_revision_time, revision_notes, main_size, suppl_size]
-            $revisionHistory[] = [
-                $oldVersion,
-                $oldVerSuppl,
-                $oldSupplExt,
-                $current['last_revision_time'],
-                $data['revision_notes'] ?? '',
-                (int)($current['main_size'] ?? 0),
-                (int)($current['suppl_size'] ?? 0)
-            ];
-
-            $fields[] = 'version';
-            $fields[] = 'ver_suppl';
-            $fields[] = 'suppl_ext';
-            $fields[] = 'revision_history';
-            $fields[] = 'last_revision_time';
-            $params['version'] = $newVersion;
-            $params['ver_suppl'] = $newVerSuppl;
-            $params['suppl_ext'] = $newSupplExt;
-            $params['revision_history'] = json_encode($revisionHistory);
-            $params['last_revision_time'] = date('Y-m-d H:i:s');
-            
-            if ($mainChanged) {
-                $fields[] = 'main_size';
-                $params['main_size'] = (int)($data['main_size'] ?? 0);
-            }
-            if ($supplChanged) {
-                $fields[] = 'suppl_size';
-                $params['suppl_size'] = (int)($data['suppl_size'] ?? 0);
-            }
-        }
-
-        $optionalFields = ['notes', 'author_list', 'full_text', 'main_pages', 'main_figs', 'main_tabs'];
-        foreach ($optionalFields as $f) {
-            if (array_key_exists($f, $data)) {
-                $fields[] = $f;
-                $params[$f] = $data[$f] === '' ? null : $data[$f];
-            }
-        }
-
-        $setClauses = array_map(fn($f) => "$f = :$f", $fields);
-        $sql = "UPDATE Documents SET " . implode(', ', $setClauses) . " WHERE dID = :dID";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-
-        return [
-            'version' => $newVersion,
-            'ver_suppl' => $newVerSuppl
-        ];
-    }
-
-    /**
-     * Delete all external links for a document.
-     */
-    public function deleteExternalDocs(int $dID): void
-    {
-        $stmt = $this->db->prepare("DELETE FROM ExternalDocs WHERE dID = :dID");
-        $stmt->execute(['dID' => $dID]);
-    }
-
-    /**
-     * Upsert external links for a document.
-     * Updates existing rows by (dID, sID), inserts new ones, deletes orphans.
-     */
-    public function updateExternalDocs(int $dID, array $links): void
-    {
-        if (empty($links)) return;
-
-        $sql = "INSERT INTO ExternalDocs (dID, sID, esname, link) 
-                VALUES (:dID, :sID, :esname, :link) 
-                ON DUPLICATE KEY UPDATE esname = VALUES(esname), link = VALUES(link)";
-        $stmt = $this->db->prepare($sql);
-
-        $validSIDs = [];
-        foreach ($links as $link) {
-            if (isset($link[0], $link[2])) {
-                $sID = (int)$link[0];
-                $validSIDs[] = $sID;
-                $stmt->execute([
-                    'dID'    => $dID,
-                    'sID'    => $sID,
-                    'esname' => $link[1],
-                    'link'   => $link[2]
-                ]);
-            }
-        }
-
-        // Delete links not in the valid sID list
-        if (!empty($validSIDs)) {
-            $placeholders = implode(',', array_fill(0, count($validSIDs), '?'));
-            $stmt = $this->db->prepare(
-                "DELETE FROM ExternalDocs WHERE dID = ? AND sID NOT IN ($placeholders)"
-            );
-            $stmt->execute(array_merge([$dID], $validSIDs));
-        }
-    }
-
-    /**
-     * Delete all branch associations for a document.
-     */
-    public function deleteDocBranches(int $dID): void
-    {
-        $stmt = $this->db->prepare("DELETE FROM DocBranches WHERE dID = :dID");
-        $stmt->execute(['dID' => $dID]);
-    }
-
-    /**
-     * Delete topic association for a document.
-     */
-    public function deleteDocTopic(int $dID): void
-    {
-        $stmt = $this->db->prepare("DELETE FROM DocTopics WHERE dID = :dID");
-        $stmt->execute(['dID' => $dID]);
-    }
-
-    /**
-     * Delete an entire draft record.
-     */
-    public function deleteDraft(int $dID): void
-    {
-        $stmt = $this->db->prepare("DELETE FROM DocDrafts WHERE dID = :dID");
-        $stmt->execute(['dID' => $dID]);
-    }
-
-    /**
-     * Delete all authors for a document (DocAuthors).
-     */
-    public function deleteAuthors(int $dID): void
-    {
-        $stmt = $this->db->prepare("DELETE FROM DocAuthors WHERE dID = :dID");
-        $stmt->execute(['dID' => $dID]);
-    }
-
-    /**
-     * Insert authors from author_list JSON into DocAuthors.
-     * Only authors with a valid mID are recorded (FK requirement).
-     */
-    public function saveAuthorsFromList(int $dID, string $authorListJson): void
-    {
-        $data = json_decode($authorListJson, true) ?? [];
-        $authors = $data['authors'] ?? [];
-
-        if (empty($authors)) return;
-
-        // Calculate total duty from ALL authors (including those without mID)
-        $totalDuty = 0;
-        foreach ($authors as $author) {
-            $totalDuty += (int)($author[2] ?? 10);
-        }
-        if ($totalDuty === 0) return;
-
-        $sql = "INSERT INTO DocAuthors (dID, mID, duty, frac) VALUES (:dID, :mID, :duty, :frac)";
-        $stmt = $this->db->prepare($sql);
-
-        foreach ($authors as $author) {
-            $mID = (int)($author[1] ?? 0);
-            if ($mID > 0) {
-                $duty = (int)($author[2] ?? 10);
-                $stmt->execute([
-                    'dID'  => $dID,
-                    'mID'  => $mID,
-                    'duty' => $duty,
-                    'frac' => $duty / $totalDuty
-                ]);
-            }
-        }
-    }
-
-    /**
-     * Upsert authors from author_list JSON into DocAuthors.
-     * Updates existing rows, inserts new ones, deletes orphaned mIDs.
-     * totalDuty counts ALL authors including those without mID.
-     */
-    public function upsertAuthorsFromList(int $dID, string $authorListJson): void
-    {
-        $data = json_decode($authorListJson, true) ?? [];
-        $authors = $data['authors'] ?? [];
-
-        if (empty($authors)) return;
-
-        // Calculate total duty from ALL authors (including those without mID)
-        $totalDuty = 0;
-        $validMIDs = [];
-        foreach ($authors as $author) {
-            $totalDuty += (int)($author[2] ?? 10);
-            $mID = (int)($author[1] ?? 0);
-            if ($mID > 0) {
-                $validMIDs[] = $mID;
-            }
-        }
-        if ($totalDuty === 0 || empty($validMIDs)) return;
-
-        // Upsert each valid author
-        $sql = "INSERT INTO DocAuthors (dID, mID, duty, frac) 
-                VALUES (:dID, :mID, :duty, :frac) 
-                ON DUPLICATE KEY UPDATE duty = VALUES(duty), frac = VALUES(frac)";
-        $stmt = $this->db->prepare($sql);
-
-        foreach ($authors as $author) {
-            $mID = (int)($author[1] ?? 0);
-            if ($mID > 0) {
-                $duty = (int)($author[2] ?? 10);
-                $stmt->execute([
-                    'dID'  => $dID,
-                    'mID'  => $mID,
-                    'duty' => $duty,
-                    'frac' => $duty / $totalDuty
-                ]);
-            }
-        }
-
-        // Delete authors not in the valid mID list
-        $placeholders = implode(',', array_fill(0, count($validMIDs), '?'));
-        $stmt = $this->db->prepare(
-            "DELETE FROM DocAuthors WHERE dID = ? AND mID NOT IN ($placeholders)"
-        );
-        $stmt->execute(array_merge([$dID], $validMIDs));
-    }
-
-    /**
-     * Get documents authored by a member with visibility filtering.
-     *
-     * @return array ['results' => array, 'total' => int]
-     */
-    public function getDocumentsByAuthor(int $mID, int $mRole, int $limit, int $offset): array
-    {
-        $result = ['results' => [], 'total' => 0];
-
-        // Count total
-        $countSql = "SELECT COUNT(*) FROM Documents d
-                     INNER JOIN DocAuthors da ON d.dID = da.dID
-                     WHERE da.mID = :mID AND :mRole >= d.visibility";
-        $stmt = $this->db->prepare($countSql);
-        $stmt->execute(['mID' => $mID, 'mRole' => $mRole]);
-        $total = (int)$stmt->fetchColumn();
-
-        if ($total === 0) return $result;
-
-        // Fetch results
-        $sql = "SELECT d.*
-                FROM Documents d
-                INNER JOIN DocAuthors da ON d.dID = da.dID
-                WHERE da.mID = :mID AND :mRole2 >= d.visibility
-                ORDER BY d.submission_time DESC
-                LIMIT :limit OFFSET :offset";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':mID', $mID, PDO::PARAM_INT);
-        $stmt->bindValue(':mRole2', $mRole, PDO::PARAM_INT);
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-
-        return ['results' => $stmt->fetchAll(), 'total' => $total];
-    }
-
-    /**
-     * Get all documents authored by a member (no visibility filter).
-     *
-     * @return array of document rows ordered by submission_time DESC
-     */
-    public function getMyDocuments(int $mID): array
-    {
-        $sql = "SELECT d.*
-                FROM Documents d
-                INNER JOIN DocAuthors da ON d.dID = da.dID
-                WHERE da.mID = :mID
-                ORDER BY d.submission_time DESC";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['mID' => $mID]);
-        return $stmt->fetchAll();
-    }
-
-    /**
-     * Get all drafts submitted by a member.
-     *
-     * @return array of DocDrafts rows ordered by submission_time DESC
-     */
-    public function getMyDrafts(int $mID): array
-    {
-        $sql = "SELECT * FROM DocDrafts WHERE submitter_ID = :mID ORDER BY submission_time DESC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['mID' => $mID]);
-        return $stmt->fetchAll();
-    }
-
-    /**
-     * Upsert branch associations for a document.
-     * Updates existing rows by num, inserts new ones, deletes rows beyond count.
-     */
-    public function upsertBranches(int $dID, array $branches): void
-    {
-        $sql = "INSERT INTO DocBranches (dID, num, bID, impact) 
-                VALUES (:dID, :num, :bID, :impact) 
-                ON DUPLICATE KEY UPDATE bID = VALUES(bID), impact = VALUES(impact)";
-        $stmt = $this->db->prepare($sql);
-
-        foreach ($branches as $b) {
-            $stmt->execute([
-                'dID'    => $dID,
-                'num'    => (int)$b['num'],
-                'bID'    => (int)$b['bID'],
-                'impact' => (int)$b['impact']
-            ]);
-        }
-
-        // Remove rows beyond the count provided, only if 0 < count < max
-        $maxNum = count($branches);
-        if ($maxNum > 0 && $maxNum < DOC_BRANCH_MAX) {
-            $stmt = $this->db->prepare(
-                "DELETE FROM DocBranches WHERE dID = :dID AND num > :maxNum"
-            );
-            $stmt->execute(['dID' => $dID, 'maxNum' => $maxNum]);
-        }
+        return self::formatSize($this->suppl_size);
     }
 }

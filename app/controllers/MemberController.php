@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace app\controllers;
 
-use app\models\Document;
+use app\models\FeedDocument;
+use app\models\DocumentRepository;
 use app\models\Member;
 use app\models\lookups\Institution;
 use app\models\lookups\ResearchBranch;
@@ -19,14 +20,14 @@ class MemberController
     private Member $memberModel;
     private Institution $institutionModel;
     private ResearchBranch $branchModel;
-    private Document $documentModel;
+    private DocumentRepository $docRepo;
 
     public function __construct()
     {
         $this->memberModel = new Member();
         $this->institutionModel = new Institution();
         $this->branchModel = new ResearchBranch();
-        $this->documentModel = new Document();
+        $this->docRepo = new DocumentRepository();
     }
 
     /**
@@ -219,7 +220,7 @@ class MemberController
         $perPage = 10;
         $offset = ($currentPage - 1) * $perPage;
 
-        $authoredResult = $this->documentModel->getDocumentsByAuthor((int)$member['mID'], (int)$mRole, $perPage, $offset);
+        $authoredResult = $this->docRepo->getDocumentsByAuthor((int)$member['mID'], (int)$mRole, $perPage, $offset);
         $authoredDocs = $authoredResult['results'];
         $totalAuthored = $authoredResult['total'];
         $totalPages = max(1, (int)ceil($totalAuthored / $perPage));

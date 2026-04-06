@@ -3,7 +3,7 @@
  * Shared Draft Feed Partial
  * 
  * Renders a list of document drafts.
- * Expects $documents array from controller.
+ * Expects $documents array (Draft entities) from controller.
  */
 ?>
 <div class="doc-list">
@@ -13,41 +13,30 @@
         <?php foreach ($documents as $n => $doc): ?>
             <?php
                 $seq = $n + 1;
-                $dID = (int)$doc['dID'];
-                $hasFile = (int)($doc['has_file'] ?? 0);
-                $mainSize = (int)($doc['main_size'] ?? 0);
+                $dID = $doc->dID;
+                $hasFile = $doc->has_file;
 
-                // Build the info bracket: [pdf, xx KB]
+                // Build the info bracket: [pdf]
                 $infoParts = [];
                 if ($hasFile >= 1) {
                     $infoParts[] = '<a href="/stream?type=draft&id=' . $dID . '" class="feed-pdf-link">pdf</a>';
                 }
-                if ($mainSize > 0) {
-                    $infoParts[] = number_format(round($mainSize / 1024)) . ' KB';
-                }
                 $infoBracket = !empty($infoParts) ? '[' . implode(', ', $infoParts) . ']' : '';
 
                 // Date
-                $dateStr = !empty($doc['submission_time'])
-                    ? date('M d, Y', strtotime($doc['submission_time']))
-                    : '';
+                $dateStr = $doc->getFormattedSubmitTime();
 
-                // Authors from author_list JSON
+                // Authors
                 $authorsArray = [];
-                if (!empty($doc['author_list'])) {
-                    $decoded = json_decode($doc['author_list'], true);
-                    if (is_array($decoded['authors'])) {
-                        foreach ($decoded['authors'] as $a) {
-                            if (is_array($a) && isset($a[0])) {
-                                $authorsArray[] = $a[0];
-                            }
-                        }
+                foreach ($doc->getAuthors() as $a) {
+                    if (is_array($a) && isset($a[0])) {
+                        $authorsArray[] = $a[0];
                     }
                 }
                 $totalAuthors = count($authorsArray);
 
                 // Abstract
-                $abstractRaw = $doc['abstract'] ?? '';
+                $abstractRaw = $doc->abstract ?? '';
                 $abstractFull = htmlspecialchars($abstractRaw);
                 $abstractNeedsToggle = mb_strlen($abstractRaw) > 300;
                 $abstractPreview = $abstractNeedsToggle
@@ -66,7 +55,7 @@
                     <span class="doc-feed-date"><?php echo $dateStr; ?></span>
                 </div>
 
-                <div class="doc-feed-title"><?php echo htmlspecialchars($doc['title']); ?></div>
+                <div class="doc-feed-title"><?php echo htmlspecialchars($doc->title); ?></div>
 
                 <?php if ($totalAuthors > 0): ?>
                     <div class="doc-feed-authors" id="authors-<?php echo $dID; ?>">
