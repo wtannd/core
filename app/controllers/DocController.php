@@ -471,7 +471,7 @@ class DocController
         $announcedDocs = [];
 
         foreach ($allDocs as $doc) {
-            if ((int)$doc->visibility >= VISIBILITY_ON_HOLD) {
+            if ($doc->visibility >= VISIBILITY_ON_HOLD) {
                 $pendingDocs[] = $doc;
             } else {
                 $announcedDocs[] = $doc;

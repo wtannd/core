@@ -338,7 +338,8 @@ CREATE TABLE Members (  -- IT personnel of CORE with CORE-ID <= ZZZ (3 digits); 
     iID INT UNSIGNED NOT NULL default 1,  -- primary institution that the member is affiliated with; default='Independent'
     email VARCHAR(254) COLLATE utf8mb4_general_ci UNIQUE,  -- unique email address for each member
     pass VARCHAR(255),   -- password hash; ORCID authentication only if NULL
-    token VARCHAR(255),  -- for persistent logins; NULL represents an inactive user
+    token VARCHAR(64),  -- for persistent logins; NULL represents an inactive user
+    email_verified TINYINT(1) DEFAULT 0,   -- email verification status
     is_email_public TINYINT(1) NOT NULL default 0,  -- show email to the public or not
     is_good TINYINT(1) NOT NULL default 1,          -- true for good standing
     is_active TINYINT(1) NOT NULL default 1,	    -- true for active member; inactive after a year without login or other reasons
@@ -366,6 +367,15 @@ ALTER TABLE Members AUTO_INCREMENT = 46656;  -- regular members starts with four
 -- after each INSERT, UPDATE Members SET ID_alphanum = CONV(mID,10,36) WHERE ID_alphanum IS NULL;
 -- can log in via ORCID, or ID_alphanum (stripped leading 0s and hyphens) / email + password
 -- to use a nice-looking member-ID in php and web display: wordwrap(str_pad(ID_alphanum,9,"0",STR_PAD_LEFT),3,"-",true), in php ID_alphanum = base_convert(mID,10,36)
+
+CREATE TABLE EmailTokens (  -- sending member an email with token to either verify the email address or to reset password
+    mID BIGINT UNSIGNED NOT NULL,
+    token_hash VARCHAR(64) NOT NULL UNIQUE,  -- make sure no collision is allowed
+    token_type ENUM('verify_email', 'reset_password') NOT NULL,
+    expires_at DATETIME NOT NULL,  -- verify_email expires in 48 hrs while reset_password in 30 minutes
+    PRIMARY KEY (mID, token_type), -- Ensures only one active token per type
+    FOREIGN KEY (mID) REFERENCES Members(mID) ON DELETE CASCADE
+);
 
 CREATE TABLE MemberMetaKeys (  -- optional member information
     ID TINYINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,

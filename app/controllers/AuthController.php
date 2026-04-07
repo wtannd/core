@@ -150,8 +150,8 @@ class AuthController
         $result = $this->register($postData);
         
         if ($result['success']) {
-            $message = $result['message'];
-            include VIEWS_PATH_TRIMMED . '/auth/login.php';
+            header('Location: /registration-success');
+            exit;
         } else {
             $errors = $result['errors'];
             $institutions = $this->institutionModel->getAllInstitutions();
@@ -246,8 +246,16 @@ class AuthController
 
         $mID = $this->memberModel->create($memberData);
         if ($mID) {
-            // Extract and save optional metadata
             $this->saveMemberMeta((int)$mID, $data);
+
+            $token = $this->memberModel->createEmailToken((int)$mID, 'verify_email');
+            if ($token) {
+                $verifyUrl = SITE_URL . '/verify-email?token=' . $token;
+                $subject = 'Verify your ' . SITE_TITLE . ' account';
+                $body = "Click the link below to verify your email address:\n\n$verifyUrl\n\nThis link expires in 48 hours.";
+                $headers = ['From' => SITE_EMAIL, 'Reply-To' => SITE_EMAIL, 'X-Mailer' => 'PHP/' . phpversion()];
+                mail($data['email'], $subject, $body, $headers);
+            }
 
             return ['success' => true, 'message' => 'Registration successful. Please log in.', 'mID' => $mID];
         }
@@ -285,6 +293,11 @@ class AuthController
 
         if (!$member['is_active']) {
             return ['success' => false, 'message' => 'Account is inactive.'];
+        }
+
+        // Check if email verification is required (user has never logged in before)
+        if ($this->memberModel->needsEmailVerification((int)$member['mID']) && empty($member['email_verified'])) {
+            return ['success' => false, 'message' => 'Please verify your email first.'];
         }
 
         // Handle Remember Me
@@ -597,5 +610,144 @@ class AuthController
         if (!empty($metaData)) {
             $this->memberModel->addMemberMeta($mID, $metaData, $data['meta_public'] ?? []);
         }
+    }
+
+    public function verifyEmail(string $token): void
+    {
+        if (empty($token)) {
+            http_response_code(400);
+            include VIEWS_PATH_TRIMMED . '/errors/400.php';
+            exit;
+        }
+
+        $member = $this->memberModel->findByEmailToken($token, 'verify_email');
+
+        if (!$member) {
+            http_response_code(400);
+            echo "Invalid or expired verification link.";
+            exit;
+        }
+
+        $this->memberModel->deleteEmailToken((int)$member['mID'], 'verify_email');
+        $this->memberModel->setEmailVerified((int)$member['mID'], true);
+
+        $this->startSession($member);
+
+        header('Location: /');
+        exit;
+    }
+
+    public function showForgotPassword(): void
+    {
+        include VIEWS_PATH_TRIMMED . '/auth/forgot_password.php';
+    }
+
+    public function processForgotPassword(array $postData): void
+    {
+        if (!isset($postData['csrf_token']) || $postData['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+            http_response_code(403);
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
+            exit;
+        }
+
+        $email = trim($postData['email'] ?? '');
+        $member = $this->memberModel->findByEmail($email);
+
+        if ($member) {
+            $token = $this->memberModel->createEmailToken((int)$member['mID'], 'reset_password');
+            if ($token) {
+                $resetUrl = SITE_URL . '/reset-password?token=' . $token;
+                $subject = 'Reset your ' . SITE_TITLE . ' password';
+                $body = "Click the link below to reset your password:\n\n$resetUrl\n\nThis link expires in 30 minutes.";
+                $headers = ['From' => SITE_EMAIL, 'Reply-To' => SITE_EMAIL, 'X-Mailer' => 'PHP/' . phpversion()];
+                mail($email, $subject, $body, $headers);
+            }
+        }
+
+        $_SESSION['success_message'] = 'If that email exists, you will receive a password reset link.';
+        include VIEWS_PATH_TRIMMED . '/auth/forgot_password.php';
+    }
+
+    public function showResetPassword(string $token): void
+    {
+        if (empty($token)) {
+            http_response_code(400);
+            include VIEWS_PATH_TRIMMED . '/errors/400.php';
+            exit;
+        }
+
+        $member = $this->memberModel->findByEmailToken($token, 'reset_password');
+
+        if (!$member) {
+            http_response_code(400);
+            echo "Invalid or expired reset link.";
+            exit;
+        }
+
+        include VIEWS_PATH_TRIMMED . '/auth/reset_password.php';
+    }
+
+    public function processResetPassword(array $postData): void
+    {
+        if (!isset($postData['csrf_token']) || $postData['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+            http_response_code(403);
+            include VIEWS_PATH_TRIMMED . '/errors/403.php';
+            exit;
+        }
+
+        $token = $postData['token'] ?? '';
+        $password = $postData['password'] ?? '';
+        $confirmPassword = $postData['confirm_password'] ?? '';
+
+        if (empty($token) || empty($password)) {
+            $_SESSION['error_message'] = 'All fields are required.';
+            header('Location: /reset-password?token=' . $token);
+            exit;
+        }
+
+        if ($password !== $confirmPassword) {
+            $_SESSION['error_message'] = 'Passwords do not match.';
+            header('Location: /reset-password?token=' . $token);
+            exit;
+        }
+
+        if (!$this->validatePassword($password)) {
+            $_SESSION['error_message'] = 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.';
+            header('Location: /reset-password?token=' . $token);
+            exit;
+        }
+
+        $member = $this->memberModel->findByEmailToken($token, 'reset_password');
+
+        if (!$member) {
+            http_response_code(400);
+            echo "Invalid or expired reset link.";
+            exit;
+        }
+
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+        $this->memberModel->updatePassword((int)$member['mID'], $hashedPassword);
+
+        $this->memberModel->deleteEmailToken((int)$member['mID'], 'reset_password');
+        $this->memberModel->setEmailVerified((int)$member['mID'], true);
+
+        $this->startSession($member);
+
+        $_SESSION['success_message'] = 'Password reset successful!';
+        header('Location: /');
+        exit;
+    }
+
+    private function startSession(array $member): void
+    {
+        $_SESSION['mID'] = $member['mID'];
+        $_SESSION['email'] = $member['email'];
+        $_SESSION['display_name'] = $member['display_name'];
+        $_SESSION['pub_name'] = $member['pub_name'];
+        $_SESSION['core_id'] = $this->memberModel->formatAlphanumId($member['ID_alphanum'] ?? '');
+        $_SESSION['mrole'] = $member['mrole'];
+        $_SESSION['admin_role'] = $member['admin_role'];
+
+        $this->memberModel->updateLastLogin((int)$_SESSION['mID']);
     }
 }

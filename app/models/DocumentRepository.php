@@ -23,7 +23,7 @@ class DocumentRepository
 
     /**
      * Fetch recent documents with visibility filtering and type filtering.
-     * Returns ['results' => FeedDocument[], 'total' => int] for consistency.
+     * @return array{results: FeedDocument[], total: int}
      */
     public function getRecentDocuments(int $dtID = 1, int $limit = 20, int $mRole = 0): array
     {
@@ -194,7 +194,7 @@ class DocumentRepository
 
     /**
      * Search documents with filters.
-     * Returns ['results' => FeedDocument[], 'total' => int] for pagination.
+     * @return array{results: FeedDocument[], total: int}
      */
     public function searchDocuments(string $query, array $filters, int $limit, int $offset, int $mRole = 0): array
     {
@@ -252,7 +252,7 @@ class DocumentRepository
 
     /**
      * Get documents by filter (browse without search query).
-     * Returns ['results' => FeedDocument[], 'total' => int] for pagination.
+     * @return array{results: FeedDocument[], total: int}
      */
     public function getDocumentsByFilter(array $filters, int $limit, int $offset, int $mRole = 0): array
     {
@@ -352,7 +352,7 @@ class DocumentRepository
 
     /**
      * Get documents by author.
-     * Returns ['results' => FeedDocument[], 'total' => int] for pagination.
+     * @return array{results: FeedDocument[], total: int}
      */
     public function getDocumentsByAuthor(int $mID, int $mRole, int $limit, int $offset): array
     {
@@ -391,7 +391,7 @@ class DocumentRepository
 
     /**
      * Get documents submitted by a member.
-     * Returns ['results' => FeedDocument[], 'total' => int] for consistency.
+     * @return array{results: FeedDocument[], total: int}
      */
     public function getMyDocuments(int $mID): array
     {

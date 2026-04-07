@@ -49,6 +49,32 @@ switch ($requestUri) {
         (new AuthController())->logout();
         break;
 
+    case '/registration-success':
+        include VIEWS_PATH_TRIMMED . '/auth/registration_success.php';
+        break;
+
+    case '/verify-email':
+        (new AuthController())->verifyEmail($_GET['token'] ?? '');
+        break;
+
+    case '/forgot-password':
+        $authController = new AuthController();
+        if ($requestMethod === 'POST') {
+            $authController->processForgotPassword($_POST);
+        } else {
+            $authController->showForgotPassword();
+        }
+        break;
+
+    case '/reset-password':
+        $authController = new AuthController();
+        if ($requestMethod === 'POST') {
+            $authController->processResetPassword($_POST);
+        } else {
+            $authController->showResetPassword($_GET['token'] ?? '');
+        }
+        break;
+
     case '/orcid_login':
         (new AuthController())->orcidLogin();
         break;
