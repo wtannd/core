@@ -9,6 +9,7 @@ use app\models\DocumentRepository;
 use app\models\Member;
 use app\models\lookups\Institution;
 use app\models\lookups\ResearchBranch;
+use app\controllers\AuthController;
 
 /**
  * MemberController
@@ -21,6 +22,7 @@ class MemberController
     private Institution $institutionModel;
     private ResearchBranch $branchModel;
     private DocumentRepository $docRepo;
+    private AuthController $authController;
 
     public function __construct()
     {
@@ -28,6 +30,7 @@ class MemberController
         $this->institutionModel = new Institution();
         $this->branchModel = new ResearchBranch();
         $this->docRepo = new DocumentRepository();
+        $this->authController = new AuthController();
     }
 
     /**
@@ -116,9 +119,25 @@ class MemberController
         $errors = [];
         $currentUser = $this->memberModel->findById($mID);
         
-        // Secure Email Update Logic
-        $newEmail = $postData['email'] ?? '';
-        if ($newEmail !== $currentUser['email']) {
+        // Get form data
+        $newEmail = trim($postData['email'] ?? '');
+        $currentPassword = $postData['current_password'] ?? '';
+        $newPassword = $postData['new_password'] ?? '';
+        $confirmPassword = $postData['confirm_password'] ?? '';
+        $emailChanged = ($newEmail !== $currentUser['email']);
+        $passwordChanging = !empty($newPassword);
+
+        // Require current password for sensitive changes
+        if ($emailChanged || $passwordChanging) {
+            if (empty($currentPassword)) {
+                $errors['current_password'] = 'Current password is required to change email or password.';
+            } elseif (!password_verify($currentPassword, $currentUser['pass'])) {
+                $errors['current_password'] = 'Current password is incorrect.';
+            }
+        }
+
+        // Validate new email format
+        if ($emailChanged) {
             if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
                 $errors['email'] = 'Invalid email format.';
             } else {
@@ -129,12 +148,36 @@ class MemberController
             }
         }
 
+        // Validate new password format
+        if ($passwordChanging) {
+            if (!$this->authController->validatePassword($newPassword)) {
+                $errors['new_password'] = 'Password must be at least 8 characters with uppercase, lowercase, number, and special character.';
+            } elseif ($newPassword !== $confirmPassword) {
+                $errors['confirm_password'] = 'Passwords do not match.';
+            }
+        }
+
         if (!empty($errors)) {
-            // Re-show form with errors
-            // Need to merge postData back into pre-population for sticky form
             $_POST = array_merge($_POST, $postData); 
             $this->editProfile(); 
             return;
+        }
+
+        // Send notification to OLD email if sensitive changes made
+        $sensitiveChange = $emailChanged || $passwordChanging;
+        if ($sensitiveChange) {
+            $oldEmail = $currentUser['email'];
+            if ($passwordChanging) {
+                $subject = 'Your ' . SITE_TITLE . ' password was changed';
+                $body = "Your password was changed on " . SITE_TITLE . ".\n\nIf you did not make this change, please reset your password immediately.";
+                $headers = ['From' => SITE_EMAIL, 'Reply-To' => SITE_EMAIL, 'X-Mailer' => 'PHP/' . phpversion()];
+                mail($oldEmail, $subject, $body, $headers);
+            } elseif ($emailChanged) {
+                $subject = 'Your ' . SITE_TITLE . ' email was changed';
+                $body = "Your email was changed to: $newEmail\n\nIf you did not make this change, please contact support immediately.";
+                $headers = ['From' => SITE_EMAIL, 'Reply-To' => SITE_EMAIL, 'X-Mailer' => 'PHP/' . phpversion()];
+                mail($oldEmail, $subject, $body, $headers);
+            }
         }
 
         // Process research areas strings
@@ -167,15 +210,37 @@ class MemberController
         }
 
         if ($this->memberModel->updateCompleteProfile($mID, $baseData, $metaData, $postData['meta_public'] ?? [])) {
+            // Handle password change (AFTER email is updated in case email changed)
+            if ($passwordChanging) {
+                $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+                $this->memberModel->updatePassword($mID, $hashedPassword);
+                // Do NOT change email_verified
+            }
+
+            // Handle email change with verification (AFTER password change)
+            if ($emailChanged) {
+                $this->memberModel->setEmailVerified($mID, false);
+                $token = $this->memberModel->createEmailToken($mID, 'verify_email');
+                if ($token) {
+                    $verifyUrl = SITE_URL . '/verify-email?token=' . $token;
+                    $subject = 'Verify your new ' . SITE_TITLE . ' email';
+                    $body = "Your email was changed. Click to verify your new email:\n\n$verifyUrl\n\nThis link expires in 48 hours.";
+                    $headers = ['From' => SITE_EMAIL, 'Reply-To' => SITE_EMAIL, 'X-Mailer' => 'PHP/' . phpversion()];
+                    mail($newEmail, $subject, $body, $headers);
+                }
+                $_SESSION['warning_message'] = 'Profile updated! Please verify your new email.';
+            } else {
+                $_SESSION['success_message'] = 'Profile updated successfully!';
+            }
+
             // Refresh session data if needed
             $_SESSION['display_name'] = $baseData['display_name'];
-            if ($newEmail !== $currentUser['email']) {
+            if ($emailChanged) {
                 $_SESSION['email'] = $newEmail;
             }
             
             // Get alphanum ID for redirect
             $updatedUser = $this->memberModel->findById($mID);
-            $_SESSION['success_message'] = "Profile updated successfully!";
             header('Location: /member/' . $updatedUser['ID_alphanum']);
             exit;
         } else {

@@ -54,6 +54,12 @@ class HomeController
             if ($user) {
                 $userWorkAreas = $this->parseAreasForDisplay($user['work_areas'] ?? '', $branches);
                 $userInterestAreas = $this->parseAreasForDisplay($user['interest_areas'] ?? '', $branches);
+
+                // Check if email verification reminder should be shown
+                // Show if: user has logged in before (last_login exists) but email_verified = 0
+                if (!empty($user['last_login']) && empty($user['email_verified'])) {
+                    $_SESSION['warning_message'] = 'Please verify your email to access all features.';
+                }
             }
         }
 

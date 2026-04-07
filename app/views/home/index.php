@@ -20,6 +20,12 @@ $isLoggedIn = isset($_SESSION['mID']);
     <main>
         <div class="dashboard-wrapper">
             
+            <?php if (isset($_SESSION['warning_message'])): ?>
+                <div class="alert alert-warning">
+                    <?php echo htmlspecialchars($_SESSION['warning_message']); unset($_SESSION['warning_message']); ?>
+                </div>
+            <?php endif; ?>
+
             <div class="intro-block">
                 <?php if ($isLoggedIn): ?>
                     Welcome back to <?php echo SITE_TITLE; ?>. Explore the latest original research, publish your own work, evaluate peer contributions, and track your Achievement Level (AL) and Earned Credit Points (ECP) to advance within your community.

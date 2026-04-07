@@ -317,15 +317,7 @@ class AuthController
         }
 
         // Start session and store member info
-        $_SESSION['mID'] = $member['mID'];
-        $_SESSION['email'] = $member['email'];
-        $_SESSION['display_name'] = $member['display_name'];
-        $_SESSION['pub_name'] = $member['pub_name'];
-        $_SESSION['core_id'] = $this->memberModel->formatAlphanumId($member['ID_alphanum'] ?? '');
-        $_SESSION['mrole'] = $member['mrole'];
-        $_SESSION['admin_role'] = $member['admin_role'];
-
-        $this->memberModel->updateLastLogin((int)$_SESSION['mID']);
+        $this->startSession($member);
 
         return ['success' => true, 'member' => $member];
     }
@@ -431,15 +423,7 @@ class AuthController
         // Existing user - Log the user in
         $this->setRememberMe((int)$member['mID']);
 
-        $_SESSION['mID'] = $member['mID'];
-        $_SESSION['email'] = $member['email'] ?? '';
-        $_SESSION['display_name'] = $member['display_name'];
-        $_SESSION['pub_name'] = $member['pub_name'];
-        $_SESSION['core_id'] = $this->memberModel->formatAlphanumId($member['ID_alphanum'] ?? '');
-        $_SESSION['mrole'] = $member['mrole'];
-        $_SESSION['admin_role'] = $member['admin_role'];
-
-        $this->memberModel->updateLastLogin((int)$_SESSION['mID']);
+        $this->startSession($member);
 
         return ['success' => true];
     }
@@ -515,7 +499,18 @@ class AuthController
         // Extract and save optional metadata
         $this->saveMemberMeta((int)$mID, $data);
 
-        // 6. Clear the pending session data
+        // 6. Send verification email for the provided email (not ORCID-verified)
+        $this->memberModel->setEmailVerified((int)$mID, false);
+        $token = $this->memberModel->createEmailToken((int)$mID, 'verify_email');
+        if ($token) {
+            $verifyUrl = SITE_URL . '/verify-email?token=' . $token;
+            $subject = 'Verify your ' . SITE_TITLE . ' account';
+            $body = "Click the link below to verify your email address:\n\n$verifyUrl\n\nThis link expires in 48 hours.";
+            $headers = ['From' => SITE_EMAIL, 'Reply-To' => SITE_EMAIL, 'X-Mailer' => 'PHP/' . phpversion()];
+            mail($data['email'], $subject, $body, $headers);
+        }
+
+        // 7. Clear the pending session data
         unset($_SESSION['pending_orcid_registration']);
 
         // 7. Log the user in and redirect to dashboard
@@ -523,15 +518,7 @@ class AuthController
 
         $this->setRememberMe((int)$member['mID']);
 
-        $_SESSION['mID'] = $member['mID'];
-        $_SESSION['email'] = $member['email'];
-        $_SESSION['display_name'] = $member['display_name'];
-        $_SESSION['pub_name'] = $member['pub_name'];
-        $_SESSION['core_id'] = $this->memberModel->formatAlphanumId($member['ID_alphanum'] ?? '');
-        $_SESSION['mrole'] = $member['mrole'];
-        $_SESSION['admin_role'] = $member['admin_role'];
-
-        $this->memberModel->updateLastLogin((int)$_SESSION['mID']);
+        $this->startSession($member);
 
         header('Location: /');
         exit;
@@ -560,12 +547,12 @@ class AuthController
     }
 
     /**
-     * Validate strong password requirements.
+     * Validate password strength.
      *
      * @param string $password
      * @return bool
      */
-    private function validatePassword(string $password): bool
+    public function validatePassword(string $password): bool
     {
         return mb_strlen($password) >= 8
             && preg_match('/[A-Z]/', $password)
@@ -651,6 +638,31 @@ class AuthController
         }
 
         $email = trim($postData['email'] ?? '');
+
+        // Rate limiting: max 3 requests per hour per email
+        $rateLimitFile = LOG_PATH_TRIMMED . '/password_reset_rates.json';
+        $now = time();
+        $rates = [];
+
+        if (file_exists($rateLimitFile)) {
+            $rates = json_decode(file_get_contents($rateLimitFile), true) ?: [];
+        }
+
+        // Clean old entries (older than 1 hour)
+        $rates = array_filter($rates, fn($timestamp) => ($now - $timestamp) < 3600);
+        $emailKey = strtolower($email);
+
+        // Check if email has reached limit
+        if (isset($rates[$emailKey]) && $rates[$emailKey] >= 3) {
+            $_SESSION['error_message'] = 'Too many reset attempts. Please try again in 1 hour.';
+            include VIEWS_PATH_TRIMMED . '/auth/forgot_password.php';
+            exit;
+        }
+
+        // Increment rate counter
+        $rates[$emailKey] = ($rates[$emailKey] ?? 0) + 1;
+        file_put_contents($rateLimitFile, json_encode($rates));
+
         $member = $this->memberModel->findByEmail($email);
 
         if ($member) {

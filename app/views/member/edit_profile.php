@@ -28,6 +28,10 @@ declare(strict_types=1);
                 echo '<div class="alert alert-info">' . htmlspecialchars($_SESSION['success_message']) . '</div>';
                 unset($_SESSION['success_message']);
             }
+            if (isset($_SESSION['warning_message'])) {
+                echo '<div class="alert alert-warning">' . htmlspecialchars($_SESSION['warning_message']) . '</div>';
+                unset($_SESSION['warning_message']);
+            }
             if (isset($_SESSION['error_message'])) {
                 echo '<div class="alert alert-danger">' . htmlspecialchars($_SESSION['error_message']) . '</div>';
                 unset($_SESSION['error_message']);
@@ -86,7 +90,24 @@ declare(strict_types=1);
                         <input type="checkbox" id="is_email_public" name="is_email_public" value="1" <?php echo (isset($_POST['is_email_public']) && $_POST['is_email_public'] == '1') ? 'checked' : ''; ?>>
                         <label for="is_email_public">Make my email address public</label>
                     </div>
-                    <p><small class="text-muted">Changing this will update the email you use to log in.</small></p>
+                    <p><small class="text-muted">Changing this will update the email you use to log in. You must enter your current password to change email or password.</small></p>
+                </div>
+
+                <!-- Password Change -->
+                <div class="form-group">
+                    <label for="current_password">Current Password (required to change email or password):</label>
+                    <input type="password" id="current_password" name="current_password" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="new_password">New Password:</label>
+                    <input type="password" id="new_password" name="new_password" class="form-control">
+                    <small class="form-hint">At least 8 characters with uppercase, lowercase, number, and special character.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm_password">Confirm New Password:</label>
+                    <input type="password" id="confirm_password" name="confirm_password" class="form-control">
                 </div>
 
                 <!-- Shared Form Details Partial -->
