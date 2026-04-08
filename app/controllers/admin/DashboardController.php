@@ -5,30 +5,24 @@ declare(strict_types=1);
 namespace app\controllers\admin;
 
 use Exception;
-
+use app\controllers\BaseController;
 use app\models\Member;
-// ... other models ...
 
 /**
  * DashboardController
- * * Handles administrative routes and logic.
+ * Handles administrative routes and logic.
  */
-class DashboardController
+class DashboardController extends BaseController
 {
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
     public function index(): void
     {
-        // 1. Strict Admin Check
-        if (empty($_SESSION['admin_role']) || (int)$_SESSION['admin_role'] < ADMIN_ROLE_MIN) {
-            http_response_code(403);
-            include VIEWS_PATH_TRIMMED . '/errors/403.php';
-            exit;
-        }
-
-        // 2. Fetch admin data
-        // $stats = ...
-
-        // 3. Load admin view
-        include VIEWS_PATH_TRIMMED . '/admin/dashboard.php';
+        $this->requireAdmin();
+        $this->render('admin/dashboard.php');
     }
 
     /**
@@ -36,11 +30,7 @@ class DashboardController
      */
     public function runUpdateComments(): void
     {
-        if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-            http_response_code(403);
-            include VIEWS_PATH_TRIMMED . '/errors/403.php';
-            exit;
-        }
+        $this->validateCsrf($_POST);
 
         try {
             $db = \config\Database::getInstance();

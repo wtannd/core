@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace app\controllers\system;
 
+use app\models\RateLimiter;
 use app\models\system\CronService;
 
 class CronController
@@ -22,6 +23,12 @@ class CronController
             http_response_code(403);
             include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
+        }
+
+        // 3. Functional Rate Limit: Only allow this script to run ONCE per minute maximum!
+        // Notice we don't append an IP address to the key. It's a global lock.
+        if (!RateLimiter::checkAndIncrement('global_cron_execution', 1, 60)) {
+            die("Cron already ran less than a minute ago. Skipping to prevent overlap.");
         }
 
         // 3. FastCGI trick: Send immediate success response to the authorized caller

@@ -15,7 +15,7 @@ use app\models\lookups\ResearchBranch;
  * 
  * Handles public member profile requests and personal profile edits.
  */
-class MemberController
+class MemberController extends BaseController
 {
     private Member $memberModel;
     private Institution $institutionModel;
@@ -24,6 +24,7 @@ class MemberController
 
     public function __construct()
     {
+        parent::__construct();
         $this->memberModel = new Member();
         $this->institutionModel = new Institution();
         $this->branchModel = new ResearchBranch();
@@ -36,16 +37,12 @@ class MemberController
      */
     public function editProfile(array $stickyData = []): void
     {
-        $mID = (int)($_SESSION['mID'] ?? 0);
-        if ($mID === 0) {
-            header('Location: /login');
-            exit;
-        }
+        $mID = $this->requireLogin();
 
         $user = $this->memberModel->getFullEditableProfile($mID);
         if (!$user) {
             http_response_code(404);
-            include VIEWS_PATH_TRIMMED . '/errors/404.php';
+            $this->render('errors/404.php');
             exit;
         }
 
@@ -97,7 +94,7 @@ class MemberController
         $institutions = $this->institutionModel->getAllInstitutions();
         $researchBranches = $this->branchModel->getAllBranches();
 
-        include VIEWS_PATH_TRIMMED . '/member/edit_profile.php';
+        $this->render('member/edit_profile.php', ['formData' => $formData, 'institutions' => $institutions, 'researchBranches' => $researchBranches]);
     }
 
     /**
@@ -107,14 +104,9 @@ class MemberController
      */
     public function updateProfile(array $postData): void
     {
-        $mID = (int)($_SESSION['mID'] ?? 0);
-        if ($mID === 0) exit;
+        $mID = $this->requireLogin();
 
-        if (!isset($postData['csrf_token']) || $postData['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-            http_response_code(403);
-            include VIEWS_PATH_TRIMMED . '/errors/403.php';
-            exit;
-        }
+        $this->validateCsrf($postData);
 
         $errors = [];
         $currentUser = $this->memberModel->findById($mID);
@@ -260,7 +252,7 @@ class MemberController
         if (empty($cleanId)) {
             http_response_code(400);
             $errorMessage = "The provided ID is not a valid CORE-ID.";
-            include VIEWS_PATH_TRIMMED . '/errors/400.php';
+            $this->render('errors/400.php', ['errorMessage' => $errorMessage]);
             exit;
         }
 
@@ -269,7 +261,7 @@ class MemberController
 
         if (!$member) {
             http_response_code(404);
-            include VIEWS_PATH_TRIMMED . '/errors/404.php';
+            $this->render('errors/404.php');
             exit;
         }
 
@@ -279,18 +271,17 @@ class MemberController
         }
 
         // 3. Fetch authored documents with pagination
-        $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
+        $mRole = $this->getCurrentUserRole();
         $currentPage = max(1, (int)($_GET['page'] ?? 1));
         $perPage = 10;
         $offset = ($currentPage - 1) * $perPage;
 
-        $authoredResult = $this->docRepo->getDocumentsByAuthor((int)$member['mID'], (int)$mRole, $perPage, $offset);
+        $authoredResult = $this->docRepo->getDocumentsByAuthor((int)$member['mID'], $mRole, $perPage, $offset);
         $authoredDocs = $authoredResult['results'];
         $totalAuthored = $authoredResult['total'];
         $totalPages = max(1, (int)ceil($totalAuthored / $perPage));
 
-        // Pass sanitized data to the view
-        include VIEWS_PATH_TRIMMED . '/member/profile.php';
+        $this->render('member/profile.php', ['member' => $member, 'authoredDocs' => $authoredDocs, 'currentPage' => $currentPage, 'totalPages' => $totalPages]);
     }
 
     /**
@@ -313,7 +304,6 @@ class MemberController
             return '/members?q=' . urlencode($query) . '&page=' . $p;
         };
 
-        include VIEWS_PATH_TRIMMED . '/member/search_results.php';
+        $this->render('member/search_results.php', ['members' => $members, 'query' => $query, 'totalResults' => $totalResults, 'totalPages' => $totalPages, 'currentPage' => $page]);
     }
 }
-

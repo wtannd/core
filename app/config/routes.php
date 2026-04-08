@@ -77,13 +77,7 @@ switch ($requestUri) {
 
     case '/orcid_callback':
         if (isset($_GET['code'])) {
-            $result = (new AuthController())->orcidCallback($_GET['code']);
-            if ($result['success']) {
-                header('Location: ' . (!empty($result['pending']) ? '/complete_profile' : '/'));
-            } else {
-                $errorMessage = $result['message'];
-                include VIEWS_PATH_TRIMMED . '/errors/general.php';
-            }
+            (new AuthController())->orcidCallback($_GET['code']);
         }
         break;
 

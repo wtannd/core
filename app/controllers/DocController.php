@@ -21,7 +21,7 @@ use Exception;
  * 
  * Handles document-related business logic.
  */
-class DocController
+class DocController extends BaseController
 {
     private DocumentRepository $docRepo;
     private DocumentService $docService;
@@ -31,6 +31,7 @@ class DocController
 
     public function __construct()
     {
+        parent::__construct();
         $this->docRepo = new DocumentRepository();
         $this->docService = new DocumentService();
         $this->draftRepo = new DraftRepository();
@@ -63,9 +64,7 @@ class DocController
             $results = $this->memberModel->findByAlphaIds($parsedIds);
         }
 
-        header('Content-Type: application/json');
-        echo json_encode($results);
-        exit;
+        $this->jsonResponse($results);
     }
 
     // ─────────────────────────────────────────────
@@ -74,26 +73,26 @@ class DocController
 
     public function feed(): void
     {
-        $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
+        $mRole = $this->getCurrentUserRole();
         $limit = max(1, min(100, (int)($_GET['limit'] ?? 20)));
-        $result = $this->docRepo->getRecentDocuments(1, $limit, (int)$mRole);
+        $result = $this->docRepo->getRecentDocuments(1, $limit, $mRole);
         $documents = $result['results'];
-        include VIEWS_PATH_TRIMMED . '/repository/feed_page.php';
+        $this->render('repository/feed_page.php', ['documents' => $documents, 'limit' => $limit]);
     }
 
     public function viewDocument(string $id): void
     {
-        $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
-        $mID = (int)($_SESSION['mID'] ?? 0);
-        $doc = $this->docRepo->getDocument((int)$id, (int)$mRole, $mID);
+        $mRole = $this->getCurrentUserRole();
+        $mID = $this->getCurrentUserId();
+        $doc = $this->docRepo->getDocument((int)$id, $mRole, $mID);
         $this->renderDocument($doc);
     }
 
     public function viewDocDoi(string $doi): void
     {
-        $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
-        $mID = (int)($_SESSION['mID'] ?? 0);
-        $doc = $this->docRepo->getDocumentByDoi($doi, (int)$mRole, $mID);
+        $mRole = $this->getCurrentUserRole();
+        $mID = $this->getCurrentUserId();
+        $doc = $this->docRepo->getDocumentByDoi($doi, $mRole, $mID);
         $this->renderDocument($doc);
     }
 
@@ -101,11 +100,11 @@ class DocController
     {
         if (!$doc) {
             http_response_code(404);
-            include VIEWS_PATH_TRIMMED . '/errors/404.php';
+            $this->render('errors/404.php');
             exit;
         }
 
-        $mID = (int)($_SESSION['mID'] ?? 0);
+        $mID = $this->getCurrentUserId();
 
         $docData = [
             'document'    => $doc,
@@ -116,17 +115,13 @@ class DocController
             'isOnHold'    => $doc->isOnHold()
         ];
 
-        include VIEWS_PATH_TRIMMED . '/repository/view_doc.php';
+        $this->render('repository/view_doc.php', $docData);
     }
 
     public function viewDocDraft(string $id): void
     {
-        if (!isset($_SESSION['mID'])) {
-            header('Location: /login');
-            exit;
-        }
-
-        $mID = (int)$_SESSION['mID'];
+        $mID = $this->requireLogin();
+        
         $doc = $this->draftRepo->getDraft((int)$id, $mID);
 
         if (!$doc) {
@@ -145,7 +140,7 @@ class DocController
 
         if (!$doc) {
             http_response_code(403);
-            include VIEWS_PATH_TRIMMED . '/errors/403.php';
+            $this->render('errors/403.php');
             exit;
         }
 
@@ -156,9 +151,10 @@ class DocController
             'branches'       => $this->parseBranchesJson($doc->branch_list ?? '[]'),
             'topic'          => !empty($doc->tID) ? $this->docRepo->getTopicById((int)$doc->tID) : null,
             'extLinks'       => $doc->getExtLinks(),
+            'canEdit'        => $doc->isSubmitter($mID)
         ];
 
-        include VIEWS_PATH_TRIMMED . '/repository/view_docdraft.php';
+        $this->render('repository/view_docdraft.php', $docData);
     }
 
     // ─────────────────────────────────────────────
@@ -167,13 +163,9 @@ class DocController
 
     public function approveDraft(array $postData): void
     {
-        if (!isset($_SESSION['mID'])) {
-            header('Location: /login');
-            exit;
-        }
-
+        $mID = $this->requireLogin();
+        
         $dID = (int)($postData['dID'] ?? 0);
-        $mID = (int)$_SESSION['mID'];
 
         $draftAuthors = $this->draftRepo->getDraftAuthors($dID);
         $isValidAuthor = false;
@@ -186,7 +178,7 @@ class DocController
 
         if (!$isValidAuthor) {
             http_response_code(403);
-            include VIEWS_PATH_TRIMMED . '/errors/403.php';
+            $this->render('errors/403.php');
             exit;
         }
 
@@ -200,24 +192,16 @@ class DocController
 
     public function finalizeDraft(array $postData): void
     {
-        if (!isset($_SESSION['mID'])) {
-            header('Location: /login');
-            exit;
-        }
-
-        if (!isset($postData['csrf_token']) || $postData['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-            http_response_code(403);
-            include VIEWS_PATH_TRIMMED . '/errors/403.php';
-            exit;
-        }
+        $mID = $this->requireLogin();
+        
+        $this->validateCsrf($postData);
 
         $dID = (int)($postData['dID'] ?? 0);
-        $mID = (int)$_SESSION['mID'];
 
         $draft = $this->draftRepo->getDraft($dID, $mID);
         if (!$draft) {
             http_response_code(403);
-            include VIEWS_PATH_TRIMMED . '/errors/403.php';
+            $this->render('errors/403.php');
             exit;
         }
 
@@ -323,7 +307,7 @@ class DocController
 
         } catch (Exception $e) {
             $errorMessage = "Error finalizing draft operation: " . $e->getMessage();
-            include VIEWS_PATH_TRIMMED . '/errors/general.php';
+            $this->render('errors/general.php', ['errorMessage' => $errorMessage]);
             exit;
         }
     }
@@ -333,7 +317,7 @@ class DocController
 
     public function streamPdf(string $type, string $id, bool $isSuppl = false, ?int $ver = null): void
     {
-        $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
+        $mRole = $this->getCurrentUserRole();
         $mID = $_SESSION['mID'] ?? null;
 
         $isDraft = ($type === 'draft' || $type === 'draft_suppl');
@@ -342,13 +326,13 @@ class DocController
         if ($isDraft) {
             if ($mID === null) {
                 http_response_code(403);
-                include VIEWS_PATH_TRIMMED . '/errors/403.php';
+                $this->render('errors/403.php');
                 exit;
             }
             $doc = $this->draftRepo->getDraftById((int)$id);
             if (!$doc) {
                 http_response_code(404);
-                include VIEWS_PATH_TRIMMED . '/errors/404.php';
+                $this->render('errors/404.php');
                 exit;
             }
             $isOwner = ($doc->submitter_ID === $mID);
@@ -363,16 +347,15 @@ class DocController
             }
             if (!$isOwner) {
                 http_response_code(403);
-                include VIEWS_PATH_TRIMMED . '/errors/403.php';
+                $this->render('errors/403.php');
                 exit;
             }
             $uploadDir = UPLOAD_PATH_TRIMMED . '/docdrafts';
         } else {
-            // For published documents, we MUST query the DB if $ver is null to get current versions
             $doc = $this->docRepo->getDocument((int)$id, (int)$mRole, (int)($mID ?? 0));
             if (!$doc) {
                 http_response_code(404);
-                include VIEWS_PATH_TRIMMED . '/errors/404.php';
+                $this->render('errors/404.php');
                 exit;
             }
             $path = $this->getPathFromPubdate($doc->submission_time);
@@ -441,7 +424,7 @@ class DocController
             }
             if (!$filePath || !file_exists($filePath)) {
                 http_response_code(404);
-                include VIEWS_PATH_TRIMMED . '/errors/404.php';
+                $this->render('errors/404.php');
                 exit;
             }
         }
@@ -458,12 +441,8 @@ class DocController
 
     public function myDocuments(): void
     {
-        if (!isset($_SESSION['mID'])) {
-            header('Location: /login');
-            exit;
-        }
-
-        $mID = (int)$_SESSION['mID'];
+        $mID = $this->requireLogin();
+        
         $result = $this->docRepo->getMyDocuments($mID);
         $allDocs = $result['results'];
 
@@ -485,7 +464,7 @@ class DocController
         $totalPages = max(1, (int)ceil($totalAnnounced / $perPage));
         $announcedSlice = array_slice($announcedDocs, ($page - 1) * $perPage, $perPage);
 
-        include VIEWS_PATH_TRIMMED . '/repository/my_docs.php';
+        $this->render('repository/my_docs.php', ['announcedDocs' => $announcedSlice, 'pendingDocs' => $pendingDocs, 'totalAnnounced' => $totalAnnounced, 'totalPages' => $totalPages, 'currentPage' => $page]);
     }
 
     // ─────────────────────────────────────────────
@@ -494,15 +473,11 @@ class DocController
 
     public function myDrafts(): void
     {
-        if (!isset($_SESSION['mID'])) {
-            header('Location: /login');
-            exit;
-        }
-
-        $mID = (int)$_SESSION['mID'];
+        $mID = $this->requireLogin();
+        
         $drafts = $this->draftRepo->getMyDrafts($mID);
 
-        include VIEWS_PATH_TRIMMED . '/repository/my_drafts.php';
+        $this->render('repository/my_drafts.php', ['drafts' => $drafts]);
     }
 
     // ─────────────────────────────────────────────
@@ -516,18 +491,14 @@ class DocController
 
     public function editDraft(string $id, ?array $errors = null): void
     {
-        if (!isset($_SESSION['mID'])) {
-            header('Location: /login');
-            exit;
-        }
-
-        $mID = (int)$_SESSION['mID'];
+        $mID = $this->requireLogin();
+        
         $dID = (int)$id;
         $draft = $this->draftRepo->getDraft($dID, $mID);
 
         if (!$draft) {
             http_response_code(403);
-            include VIEWS_PATH_TRIMMED . '/errors/403.php';
+            $this->render('errors/403.php');
             exit;
         }
 
@@ -552,19 +523,15 @@ class DocController
 
     public function reviseDoc(string $id, ?array $errors = null): void
     {
-        if (!isset($_SESSION['mID'])) {
-            header('Location: /login');
-            exit;
-        }
-
-        $mID = (int)$_SESSION['mID'];
-        $mRole = (int)($_SESSION['mrole'] ?? GUEST_ROLE);
+        $mID = $this->requireLogin();
+        
+        $mRole = $this->getCurrentUserRole();
         $dID = (int)$id;
         $doc = $this->docRepo->getDocument($dID, $mRole, $mID);
 
         if (!$doc || $doc->submitter_ID !== $mID) {
             http_response_code(403);
-            include VIEWS_PATH_TRIMMED . '/errors/403.php';
+            $this->render('errors/403.php');
             exit;
         }
 
@@ -596,10 +563,6 @@ class DocController
 
     private function renderForm(string $mode, int $dID, ?array $docData = null, ?array $errors = null): void
     {
-        if (empty($_SESSION['csrf_token'])) {
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        }
-
         $availableSources = $this->docRepo->getAvailableSources();
         $institutions = (new Institution())->getAllInstitutions();
         $researchBranches = (new ResearchBranch())->getAllBranches();
@@ -630,7 +593,21 @@ class DocController
             default      => 'Submit Document'
         };
 
-        include VIEWS_PATH_TRIMMED . '/repository/upload.php';
+        $this->render('repository/upload.php', [
+            'mode' => $mode,
+            'dID' => $dID,
+            'docData' => $docData,
+            'errors' => $errors,
+            'availableSources' => $availableSources,
+            'institutions' => $institutions,
+            'researchBranches' => $researchBranches,
+            'researchTopics' => $researchTopics,
+            'docTypes' => $docTypes,
+            'pageTitle' => $pageTitle,
+            'actionUrl' => $actionUrl,
+            'cancelUrl' => $cancelUrl,
+            'submitLabel' => $submitLabel
+        ]);
     }
 
     // ─────────────────────────────────────────────
@@ -643,11 +620,8 @@ class DocController
      */
     public function processFormSubmission(array $postData, array $fileData): array
     {
-        if (!isset($_SESSION['mID'])) {
-            return ['success' => false, 'message' => 'Not authenticated.'];
-        }
-
-        $mID = (int)$_SESSION['mID'];
+        $mID = $this->requireLogin();
+        
         $mode = $postData['form_mode'] ?? 'upload';
         $dID = (int)($postData['dID'] ?? 0);
         $action = $postData['action'] ?? ($mode === 'revise_doc' ? 'update' : 'draft');
@@ -667,7 +641,7 @@ class DocController
             $draftHasFile = (int)$draft->has_file;
             $existingSupplExt = ($draftHasFile === 3 ? 2 : ($draftHasFile === 2 ? 1 : 0));
         } elseif ($isReviseDoc) {
-            $mRole = (int)($_SESSION['mrole'] ?? GUEST_ROLE);
+            $mRole = $this->getCurrentUserRole();
             $existingDoc = $this->docRepo->getDocument($dID, $mRole, $mID);
             if (!$existingDoc || $existingDoc->submitter_ID !== $mID) {
                 return ['success' => false, 'message' => 'Document not found or access denied.'];

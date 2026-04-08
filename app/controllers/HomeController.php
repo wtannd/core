@@ -16,7 +16,7 @@ use app\models\Member;
  * 
  * Handles the main dashboard and home page.
  */
-class HomeController
+class HomeController extends BaseController
 {
     private DocType $docTypeModel;
     private ResearchBranch $branchModel;
@@ -26,6 +26,7 @@ class HomeController
 
     public function __construct()
     {
+        parent::__construct();
         $this->docTypeModel = new DocType();
         $this->branchModel = new ResearchBranch();
         $this->topicModel = new ResearchTopic();
@@ -38,53 +39,41 @@ class HomeController
      */
     public function index(): void
     {
-        $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
+        $mRole = $this->getCurrentUserRole();
         
         $docTypes = $this->docTypeModel->getAllDocTypes();
         $branches = $this->branchModel->getAllBranches();
         $topics = $this->topicModel->getAllTopics();
-        $result = $this->docRepo->getRecentDocuments(1, 20, (int)$mRole);
+        $result = $this->docRepo->getRecentDocuments(1, 20, $mRole);
         $recentDocs = $result['results'];
 
         $userWorkAreas = [];
         $userInterestAreas = [];
 
-        if (isset($_SESSION['mID'])) {
-            $user = $this->memberModel->findById((int)$_SESSION['mID']);
+        $currentUserId = $this->getCurrentUserId();
+        if ($currentUserId > 0) {
+            $user = $this->memberModel->findById($currentUserId);
             if ($user) {
                 $userWorkAreas = $this->parseAreasForDisplay($user['work_areas'] ?? '', $branches);
                 $userInterestAreas = $this->parseAreasForDisplay($user['interest_areas'] ?? '', $branches);
 
-                // Check if email verification reminder should be shown
-                // Show if: user has logged in before (last_login exists) but email_verified = 0
                 if (!empty($user['last_login']) && empty($user['email_verified'])) {
                     $_SESSION['warning_message'] = 'Please verify your email to access all features.';
                 }
             }
         }
 
-        include VIEWS_PATH_TRIMMED . '/home/index.php';
+        $this->render('home/index.php', ['docTypes' => $docTypes, 'branches' => $branches, 'topics' => $topics, 'recentDocs' => $recentDocs, 'userWorkAreas' => $userWorkAreas, 'userInterestAreas' => $userInterestAreas]);
     }
 
-    /**
-     * Parse semicolon-separated area IDs into structured display data.
-     * 
-     * @return array [['bID' => int, 'label' => string], ...]
-     */
     private function parseAreasForDisplay(string $areasStr, array $branches): array
     {
-        if (empty($areasStr)) return [];
-
-        $branchMap = [];
-        foreach ($branches as $b) {
-            $branchMap[(int)$b['bID']] = $b;
-        }
-
         $result = [];
         foreach (explode(';', $areasStr) as $part) {
             $id = abs((int)trim($part));
-            if ($id === 0 || !isset($branchMap[$id])) continue;
-            $b = $branchMap[$id];
+            if ($id === 0) continue;
+            $b = $branches[$id] ?? null;
+            if (!$b) continue;
             $result[] = [
                 'bID'   => $id,
                 'label' => $b['abbr'] . ' (' . $b['bname'] . ')',

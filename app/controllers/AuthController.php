@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace app\controllers;
 
-use app\models\RateLimiter;
 use app\models\Member;
 use app\models\AuthService;
 use app\models\lookups\Institution;
@@ -15,7 +14,7 @@ use app\models\lookups\ResearchBranch;
  * 
  * Logic for registration and login.
  */
-class AuthController
+class AuthController extends BaseController
 {
     private Member $memberModel;
     private Institution $institutionModel;
@@ -24,6 +23,7 @@ class AuthController
 
     public function __construct()
     {
+        parent::__construct();
         $this->memberModel = new Member();
         $this->institutionModel = new Institution();
         $this->branchModel = new ResearchBranch();
@@ -65,12 +65,9 @@ class AuthController
      */
     public function showLogin(): void
     {
-        if (empty($_SESSION['csrf_token'])) {
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        }
         $errors = [];
         $message = '';
-        include VIEWS_PATH_TRIMMED . '/auth/login.php';
+        $this->render('auth/login.php', ['errors' => $errors, 'message' => $message]);
     }
 
     /**
@@ -78,14 +75,11 @@ class AuthController
      */
     public function showRegister(): void
     {
-        if (empty($_SESSION['csrf_token'])) {
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        }
         $errors = [];
         $message = '';
         $institutions = $this->institutionModel->getAllInstitutions();
         $researchBranches = $this->branchModel->getAllBranches();
-        include VIEWS_PATH_TRIMMED . '/auth/register.php';
+        $this->render('auth/register.php', ['errors' => $errors, 'message' => $message, 'institutions' => $institutions, 'researchBranches' => $researchBranches]);
     }
 
     /**
@@ -93,17 +87,12 @@ class AuthController
      */
     public function showCompleteProfile(): void
     {
-        if (empty($_SESSION['csrf_token'])) {
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        }
-        
         $pending = $_SESSION['pending_orcid_registration'] ?? null;
         if (!$pending) {
             header('Location: /login');
             exit;
         }
 
-        // Split ORCID name into First and Last name for pre-filling
         $parts = explode(' ', $pending['name'], 2);
         $preFirstName = count($parts) > 1 ? $parts[0] : '';
         $preFamilyName = count($parts) > 1 ? $parts[1] : $parts[0];
@@ -111,7 +100,7 @@ class AuthController
         $errors = [];
         $institutions = $this->institutionModel->getAllInstitutions();
         $researchBranches = $this->branchModel->getAllBranches();
-        include VIEWS_PATH_TRIMMED . '/auth/complete_profile.php';
+        $this->render('auth/complete_profile.php', ['errors' => $errors, 'institutions' => $institutions, 'researchBranches' => $researchBranches]);
     }
 
     /**
@@ -119,13 +108,8 @@ class AuthController
      */
     public function processLogin(array $postData): void
     {
-        if (!isset($postData['csrf_token']) || $postData['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-            http_response_code(403);
-            include VIEWS_PATH_TRIMMED . '/errors/403.php';
-            exit;
-        }
+        $this->validateCsrf($postData);
 
-        // Rate limiting: max 16 attempts per hour per IP to prevent brute force
         $this->rateLimit("login", 16);
 
         $email = trim(strtolower($postData['email'] ?? ''));
@@ -157,11 +141,10 @@ class AuthController
             }
 
             $this->startSession($member);
-            header('Location: /');
-            exit;
+            $this->safeRedirect();
         } else {
             $errors = ['login' => $result['message']];
-            include VIEWS_PATH_TRIMMED . '/auth/login.php';
+            $this->render('auth/login.php', ['errors' => $errors]);
         }
     }
 
@@ -170,11 +153,7 @@ class AuthController
      */
     public function processRegister(array $postData): void
     {
-        if (!isset($postData['csrf_token']) || $postData['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-            http_response_code(403);
-            include VIEWS_PATH_TRIMMED . '/errors/403.php';
-            exit;
-        }
+        $this->validateCsrf($postData);
 
         $result = $this->authService->register($postData);
         
@@ -186,7 +165,7 @@ class AuthController
             $errors = $result['errors'];
             $institutions = $this->institutionModel->getAllInstitutions();
             $researchBranches = $this->branchModel->getAllBranches();
-            include VIEWS_PATH_TRIMMED . '/auth/register.php';
+            $this->render('auth/register.php', ['errors' => $errors, 'institutions' => $institutions, 'researchBranches' => $researchBranches]);
         }
     }
 
@@ -195,16 +174,12 @@ class AuthController
      */
     public function processCompleteProfile(array $postData): void
     {
-        if (!isset($postData['csrf_token']) || $postData['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-            http_response_code(403);
-            include VIEWS_PATH_TRIMMED . '/errors/403.php';
-            exit;
-        }
+        $this->validateCsrf($postData);
 
         $pending = $_SESSION['pending_orcid_registration'] ?? null;
         if (!$pending) {
             $errors = ['general' => 'No pending ORCID registration found.'];
-            include VIEWS_PATH_TRIMMED . '/auth/complete_profile.php';
+            $this->render('auth/complete_profile.php', ['errors' => $errors]);
             exit;
         }
 
@@ -221,7 +196,7 @@ class AuthController
             exit;
         } else {
             $errors = $result['errors'] ?? ['general' => $result['message']];
-            include VIEWS_PATH_TRIMMED . '/auth/complete_profile.php';
+            $this->render('auth/complete_profile.php', ['errors' => $errors]);
         }
     }
 
@@ -242,9 +217,9 @@ class AuthController
      * Handle ORCID callback logic.
      *
      * @param string $code
-     * @return array
+     * @return void
      */
-    public function orcidCallback(string $code): array
+    public function orcidCallback(string $code): void
     {
         $client_id     = ORCID_CLIENT_ID;
         $client_secret = ORCID_CLIENT_SECRET;
@@ -267,7 +242,8 @@ class AuthController
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
         if ($http_code !== 200) {
-            return ['success' => false, 'message' => 'Failed to exchange code for token.'];
+            $this->render('errors/general.php', ['errorMessage' => 'Failed to exchange code for token.']);
+            exit
         }
 
         $data = json_decode($response, true);
@@ -293,15 +269,15 @@ class AuthController
                 'orcid' => $orcid,
                 'name'  => $name
             ];
-            return ['success' => true, 'pending' => true];
+            header('Location: /complete_profile');
+            exit;
         }
 
         // Existing user - Log the user in
         $this->setRememberMe((int)$member['mID']);
 
         $this->startSession($member);
-
-        return ['success' => true];
+        $this->safeRedirect();
     }
 
     /**
@@ -330,11 +306,10 @@ class AuthController
     {
         if (empty($token)) {
             http_response_code(400);
-            include VIEWS_PATH_TRIMMED . '/errors/400.php';
+            $this->render('errors/400.php');
             exit;
         }
 
-        // Rate limiting: max 32 attempts per hour per IP to prevent DB spam
         $this->rateLimit("verify_email", 32);
 
         $member = $this->memberModel->findByEmailToken($token, 'verify_email');
@@ -342,7 +317,7 @@ class AuthController
         if (!$member) {
             http_response_code(400);
             $errorMessage = 'Verification link is invalid or has expired.';
-            include VIEWS_PATH_TRIMMED . '/errors/general.php';
+            $this->render('errors/general.php', ['errorMessage' => $errorMessage]);
             exit;
         }
 
@@ -357,29 +332,23 @@ class AuthController
 
     public function showForgotPassword(): void
     {
-        include VIEWS_PATH_TRIMMED . '/auth/forgot_password.php';
+        $this->render('auth/forgot_password.php');
     }
 
     public function processForgotPassword(array $postData): void
     {
-        if (!isset($postData['csrf_token']) || $postData['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-            http_response_code(403);
-            include VIEWS_PATH_TRIMMED . '/errors/403.php';
-            exit;
-        }
+        $this->validateCsrf($postData);
 
-        // HARD LIMIT: Max 10 password reset attempts per IP address per hour to prevent SMTP spam.
         $this->rateLimit("pwd_forgot", 10);
 
         $email = trim(strtolower($postData['email'] ?? ''));
 
         if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $_SESSION['error_message'] = 'Please enter a valid email address.';
-            include VIEWS_PATH_TRIMMED . '/auth/forgot_password.php';
+            $this->render('auth/forgot_password.php');
             exit;
         }
 
-        // USER LIMIT: Max 3 password reset attempts per specific Email per hour to protect user.
         $this->rateLimit("pwd_forgot", 3, $email);
 
         $member = $this->memberModel->findByEmail($email);
@@ -396,18 +365,17 @@ class AuthController
         }
 
         $_SESSION['success_message'] = 'If that email exists, you will receive a password reset link.';
-        include VIEWS_PATH_TRIMMED . '/auth/forgot_password.php';
+        $this->render('auth/forgot_password.php');
     }
 
     public function showResetPassword(string $token): void
     {
         if (empty($token)) {
             http_response_code(400);
-            include VIEWS_PATH_TRIMMED . '/errors/400.php';
+            $this->render('errors/400.php');
             exit;
         }
 
-        // Rate limiting: max 32 attempts per hour per IP to prevent DB spam
         $this->rateLimit("show_pwd_reset", 32);
 
         $member = $this->memberModel->findByEmailToken($token, 'reset_password');
@@ -415,22 +383,17 @@ class AuthController
         if (!$member) {
             http_response_code(400);
             $errorMessage = 'Invalid or expired reset link.';
-            include VIEWS_PATH_TRIMMED . '/errors/general.php';
+            $this->render('errors/general.php', ['errorMessage' => $errorMessage]);
             exit;
         }
 
-        include VIEWS_PATH_TRIMMED . '/auth/reset_password.php';
+        $this->render('auth/reset_password.php');
     }
 
     public function processResetPassword(array $postData): void
     {
-        if (!isset($postData['csrf_token']) || $postData['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-            http_response_code(403);
-            include VIEWS_PATH_TRIMMED . '/errors/403.php';
-            exit;
-        }
+        $this->validateCsrf($postData);
 
-        // Rate limiting: max 8 attempts per hour per IP to prevent CPU spam
         $this->rateLimit("process_pwd_reset", 8);
 
         $token = $postData['token'] ?? '';
@@ -460,7 +423,7 @@ class AuthController
         if (!$member) {
             http_response_code(400);
             $errorMessage = 'Invalid or expired reset link.';
-            include VIEWS_PATH_TRIMMED . '/errors/general.php';
+            $this->render('errors/general.php', ['errorMessage' => $errorMessage]);
             exit;
         }
 
@@ -475,22 +438,6 @@ class AuthController
         $_SESSION['success_message'] = 'Password reset successful!';
         header('Location: /');
         exit;
-    }
-
-    // Set access rate limits by IP or email
-    public function rateLimit(string $actionHeader, int $maxAttempts=32, string $email=''): void
-    {
-        if (empty($email)) {
-            $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown'; $header = $actionHeader . "_ip_{$ip}"; $errmess = "from this device";
-        } else {
-            $header = $actionHeader . "_email_{$email}"; $errmess = "using this email address";
-        }
-        if (!RateLimiter::checkAndIncrement($header, $maxAttempts, 3600)) {
-            http_response_code(429);
-            $errorMessage = 'Too many attempts ' . $errmess . '. Please try again later.';
-            include VIEWS_PATH_TRIMMED . '/errors/general.php';
-            exit;
-        }
     }
 
     private function startSession(array $member): void

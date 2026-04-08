@@ -15,7 +15,7 @@ use app\models\lookups\ResearchTopic;
  * 
  * Handles all document search, matching, and filtered feeds.
  */
-class FeedController
+class FeedController extends BaseController
 {
     private DocumentRepository $docRepo;
     private DocType $docTypeModel;
@@ -25,6 +25,7 @@ class FeedController
 
     public function __construct()
     {
+        parent::__construct();
         $this->docRepo = new DocumentRepository();
         $this->docTypeModel = new DocType();
         $this->branchModel = new ResearchBranch();
@@ -40,20 +41,14 @@ class FeedController
         $query = trim($_GET['q'] ?? '');
         $page = max(1, (int)($_GET['page'] ?? 1));
         $offset = ($page - 1) * $this->perPage;
-        $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
+        $mRole = $this->getCurrentUserRole();
 
-        $result = $this->docRepo->searchDocuments($query, [], $this->perPage, $offset, (int)$mRole);
+        $result = $this->docRepo->searchDocuments($query, [], $this->perPage, $offset, $mRole);
 
         $documents = $result['results'];
         $totalResults = $result['total'];
         $totalPages = max(1, (int)ceil($totalResults / $this->perPage));
 
-        // Build pagination URL
-        $buildPageUrl = function (int $p) use ($query) {
-            return '/search?q=' . urlencode($query) . '&page=' . $p;
-        };
-
-        // View data
         $pageTitle = 'Search: ' . htmlspecialchars($query);
         $pageHeading = 'Search Results';
         $searchQuery = $query;
@@ -65,7 +60,22 @@ class FeedController
         $docTypes = $this->docTypeModel->getAllDocTypes();
         $branches = $this->branchModel->getAllBranches();
         $topics = $this->topicModel->getAllTopics();
-        include VIEWS_PATH_TRIMMED . '/repository/search_results.php';
+        $this->render('repository/search_results.php', [
+            'documents' => $documents,
+            'totalResults' => $totalResults,
+            'totalPages' => $totalPages,
+            'currentPage' => $page,
+            'pageTitle' => $pageTitle,
+            'pageHeading' => $pageHeading,
+            'searchQuery' => $searchQuery,
+            'filters' => $filters,
+            'showFilters' => $showFilters,
+            'filterAction' => $filterAction,
+            'filterMethod' => $filterMethod,
+            'docTypes' => $docTypes,
+            'branches' => $branches,
+            'topics' => $topics
+        ]);
     }
 
     /**
@@ -77,20 +87,15 @@ class FeedController
         $query = trim($_GET['q'] ?? '');
         $page = max(1, (int)($_GET['page'] ?? 1));
         $offset = ($page - 1) * $this->perPage;
-        $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
+        $mRole = $this->getCurrentUserRole();
 
         $filters = $this->extractFilters($_GET);
 
-        $result = $this->docRepo->searchDocuments($query, $filters, $this->perPage, $offset, (int)$mRole);
+        $result = $this->docRepo->searchDocuments($query, $filters, $this->perPage, $offset, $mRole);
 
         $documents = $result['results'];
         $totalResults = $result['total'];
         $totalPages = max(1, (int)ceil($totalResults / $this->perPage));
-
-        $buildPageUrl = function (int $p) use ($query, $filters) {
-            $params = array_merge(['q' => $query, 'page' => $p], array_filter($filters));
-            return '/match?' . http_build_query($params);
-        };
 
         $pageTitle = 'Match: ' . htmlspecialchars($query);
         $pageHeading = 'Match Results';
@@ -102,7 +107,22 @@ class FeedController
         $docTypes = $this->docTypeModel->getAllDocTypes();
         $branches = $this->branchModel->getAllBranches();
         $topics = $this->topicModel->getAllTopics();
-        include VIEWS_PATH_TRIMMED . '/repository/search_results.php';
+        $this->render('repository/search_results.php', [
+            'documents' => $documents,
+            'totalResults' => $totalResults,
+            'totalPages' => $totalPages,
+            'currentPage' => $page,
+            'pageTitle' => $pageTitle,
+            'pageHeading' => $pageHeading,
+            'searchQuery' => $searchQuery,
+            'filters' => $filters,
+            'showFilters' => $showFilters,
+            'filterAction' => $filterAction,
+            'filterMethod' => $filterMethod,
+            'docTypes' => $docTypes,
+            'branches' => $branches,
+            'topics' => $topics
+        ]);
     }
 
     /**
@@ -113,7 +133,7 @@ class FeedController
     {
         $page = max(1, (int)($_GET['page'] ?? 1));
         $offset = ($page - 1) * $this->perPage;
-        $mRole = $_SESSION['mrole'] ?? GUEST_ROLE;
+        $mRole = $this->getCurrentUserRole();
 
         $filters = $this->extractFilters($_GET);
 
@@ -121,16 +141,11 @@ class FeedController
             $filters['range'] = 'month';
         }
 
-        $result = $this->docRepo->getDocumentsByFilter($filters, $this->perPage, $offset, (int)$mRole);
+        $result = $this->docRepo->getDocumentsByFilter($filters, $this->perPage, $offset, $mRole);
 
         $documents = $result['results'];
         $totalResults = $result['total'];
         $totalPages = max(1, (int)ceil($totalResults / $this->perPage));
-
-        $buildPageUrl = function (int $p) use ($filters) {
-            $params = array_merge(['page' => $p], array_filter($filters));
-            return '/browse?' . http_build_query($params);
-        };
 
         $filterDesc = $this->describeFilters($filters);
         $pageTitle = 'Browse: ' . $filterDesc;
@@ -143,7 +158,22 @@ class FeedController
         $docTypes = $this->docTypeModel->getAllDocTypes();
         $branches = $this->branchModel->getAllBranches();
         $topics = $this->topicModel->getAllTopics();
-        include VIEWS_PATH_TRIMMED . '/repository/search_results.php';
+        $this->render('repository/search_results.php', [
+            'documents' => $documents,
+            'totalResults' => $totalResults,
+            'totalPages' => $totalPages,
+            'currentPage' => $page,
+            'pageTitle' => $pageTitle,
+            'pageHeading' => $pageHeading,
+            'searchQuery' => $searchQuery,
+            'filters' => $filters,
+            'showFilters' => $showFilters,
+            'filterAction' => $filterAction,
+            'filterMethod' => $filterMethod,
+            'docTypes' => $docTypes,
+            'branches' => $branches,
+            'topics' => $topics
+        ]);
     }
 
     /**
