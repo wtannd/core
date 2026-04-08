@@ -75,25 +75,19 @@ class Member
      */
     public function create(array $data): int|bool
     {
-        try {
-            $fields = array_keys($data);
-            $placeholders = array_map(fn($f) => ":$f", $fields);
-            
-            $sql = "INSERT INTO Members (" . implode(', ', $fields) . ") 
-                    VALUES (" . implode(', ', $placeholders) . ")";
+        $fields = array_keys($data);
+        $placeholders = array_map(fn($f) => ":$f", $fields);
+        
+        $sql = "INSERT INTO Members (" . implode(', ', $fields) . ") 
+                VALUES (" . implode(', ', $placeholders) . ")";
 
-            $stmt = $this->db->prepare($sql);
-            $result = $stmt->execute($data);
+        $stmt = $this->db->prepare($sql);
+        $result = $stmt->execute($data);
 
-            if ($result) {
-                $mID = (int)$this->db->lastInsertId();
-                $this->updateAlphanumId($mID);
-                return $mID;
-            } else {
-                error_log("Error result=false when creating member: " . $sql . "\n" . serialize($data), 3, LOG_PATH_TRIMMED . '/error.log');
-            }
-        } catch (PDOException $e) {
-            error_log("Error creating member: " . $e->getMessage() . "\n" . $sql . "\n" . serialize($data), 3, LOG_PATH_TRIMMED . '/error.log');
+        if ($result) {
+            $mID = (int)$this->db->lastInsertId();
+            $this->updateAlphanumId($mID);
+            return $mID;
         }
 
         return false;
@@ -109,37 +103,32 @@ class Member
      */
     public function addMemberMeta(int $mID, array $metaData, array $metaPublicFlags = []): void
     {
+        if (empty($metaData)) {
+            return;
+        }
+
+        $stmt = $this->db->query("SELECT mkname, ID FROM MemberMetaKeys WHERE is_active = 1");
+        $keyMap = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        $insertStmt = $this->db->prepare("
+            INSERT INTO MemberMeta (mID, meta_ID, meta_value, is_public) 
+            VALUES (:mID, :meta_ID, :meta_value, :is_public)
+            ON DUPLICATE KEY UPDATE meta_value = VALUES(meta_value), is_public = VALUES(is_public)
+        ");
+
         foreach ($metaData as $key => $value) {
-            // Only insert if value is not empty
-            if ($value === null || $value === '') {
+            if ($value === null || $value === '' || !isset($keyMap[$key])) {
                 continue;
             }
 
             $isPublic = (isset($metaPublicFlags[$key]) && $metaPublicFlags[$key] === '1') ? 1 : 0;
-
-            try {
-                // Fetch kID (ID) from MemberMetaKeys where mkname equals the key
-                $stmt = $this->db->prepare("SELECT ID FROM MemberMetaKeys WHERE mkname = :mkname AND is_active = 1 LIMIT 1");
-                $stmt->execute(['mkname' => $key]);
-                $kID = $stmt->fetchColumn();
-
-                if ($kID !== false) {
-                    // Insert into MemberMeta
-                    $stmt = $this->db->prepare("
-                        INSERT INTO MemberMeta (mID, meta_ID, meta_value, is_public) 
-                        VALUES (:mID, :meta_ID, :meta_value, :is_public)
-                        ON DUPLICATE KEY UPDATE meta_value = VALUES(meta_value), is_public = VALUES(is_public)
-                    ");
-                    $stmt->execute([
-                        'mID' => $mID,
-                        'meta_ID' => $kID,
-                        'meta_value' => (string)$value,
-                        'is_public' => $isPublic
-                    ]);
-                }
-            } catch (PDOException $e) {
-                error_log("Error adding MemberMeta for mID $mID, key $key: " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
-            }
+            
+            $insertStmt->execute([
+                'mID' => $mID,
+                'meta_ID' => $keyMap[$key],
+                'meta_value' => (string)$value,
+                'is_public' => $isPublic
+            ]);
         }
     }
 
@@ -538,23 +527,18 @@ class Member
         $tokenHash = hash('sha256', $token);
         $expiry = self::TOKEN_EXPIRY[$type] ?? self::TOKEN_EXPIRY['verify_email'];
 
-        try {
-            $stmt = $this->db->prepare("
-                INSERT INTO EmailTokens (mID, token_hash, token_type, expires_at)
-                VALUES (:mID, :tokenHash, :type, DATE_ADD(NOW(), INTERVAL $expiry))
-                ON DUPLICATE KEY UPDATE token_hash = :tokenHash, expires_at = DATE_ADD(NOW(), INTERVAL $expiry)
-            ");
-            $result = $stmt->execute([
-                'mID' => $mID,
-                'tokenHash' => $tokenHash,
-                'type' => $type
-            ]);
+        $stmt = $this->db->prepare("
+            INSERT INTO EmailTokens (mID, token_hash, token_type, expires_at)
+            VALUES (:mID, :tokenHash, :type, DATE_ADD(NOW(), INTERVAL $expiry))
+            ON DUPLICATE KEY UPDATE token_hash = VALUES(token_hash), expires_at = DATE_ADD(NOW(), INTERVAL $expiry)
+        ");
+        $result = $stmt->execute([
+            'mID' => $mID,
+            'tokenHash' => $tokenHash,
+            'type' => $type
+        ]);
 
-            return $result ? $token : false;
-        } catch (PDOException $e) {
-            error_log("Error creating email token for mID $mID: " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
-            return false;
-        }
+        return $result ? $token : false;
     }
 
     public function findByEmailToken(string $token, string $type): array|false
@@ -606,5 +590,58 @@ class Member
     {
         $stmt = $this->db->prepare("UPDATE Members SET pass = :pass WHERE mID = :mID");
         return $stmt->execute(['pass' => $hashedPassword, 'mID' => $mID]);
+    }
+
+    public static function validatePassword(string $password): bool
+    {
+        return mb_strlen($password) >= 8
+            && preg_match('/[A-Z]/', $password)
+            && preg_match('/[a-z]/', $password)
+            && preg_match('/[0-9]/', $password)
+            && preg_match('/[^A-Za-z0-9]/', $password);
+    }
+
+    public function createWithMeta(array $data, array $metaData = [], array $metaPublicFlags = [], bool $sendVerificationEmail = true): int|bool
+    {
+        $this->db->beginTransaction();
+
+        try {
+            $mID = $this->create($data);
+            if (!$mID) {
+                throw new Exception('Failed to create member');
+            }
+
+            if (!empty($metaData)) {
+                $this->addMemberMeta($mID, $metaData, $metaPublicFlags);
+            }
+
+            $token = null;
+            if ($sendVerificationEmail) {
+                $this->setEmailVerified($mID, false);
+                $token = $this->createEmailToken($mID, 'verify_email');
+            }
+
+            $this->db->commit();
+
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            error_log("Error in createWithMeta: " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
+            return false;
+        }
+
+        // Email sending outside transaction - won't block DB
+        if ($sendVerificationEmail && $token) {
+            try {
+                $verifyUrl = SITE_URL . '/verify-email?token=' . $token;
+                $subject = 'Verify your ' . SITE_TITLE . ' account';
+                $body = "Click the link below to verify your email address:\n\n$verifyUrl\n\nThis link expires in 48 hours.";
+                $headers = ['From' => SITE_EMAIL, 'Reply-To' => SITE_EMAIL, 'X-Mailer' => 'PHP/' . phpversion()];
+                mail($data['email'], $subject, $body, $headers);
+            } catch (Exception $e) {
+                error_log("Error sending verification email: " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
+            }
+        }
+
+        return $mID;
     }
 }

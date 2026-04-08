@@ -1729,9 +1729,9 @@ CREATE TABLE News (   -- announcements from CORE
 -- Cron / System Tasks Table
 
 CREATE TABLE SystemTasks (
-    task_id INT AUTO_INCREMENT PRIMARY KEY,
+    task_id SMALLINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     task_name VARCHAR(50) COLLATE utf8mb4_general_ci NOT NULL UNIQUE,  -- e.g., 'calculate_ecp', 'send_emails', 'announce_doc', 'announce_com'
-    freq_minutes INT NOT NULL,         -- e.g., 60 (run every hour)
+    freq_minutes SMALLINT UNSIGNED NOT NULL,         -- e.g., 60 (run every hour)
     last_run DATETIME DEFAULT CURRENT_TIMESTAMP,
     is_running TINYINT(1) DEFAULT 0,   -- lock to prevent overlapping runs
     last_error DATETIME,  -- last time when task failed
@@ -1744,6 +1744,13 @@ INSERT INTO SystemTasks (task_name, freq_minutes) VALUES
 ('calc_als', 10080),  -- Run weekly
 ('move_logs',20160),  -- Run bi-weekly
 ('check_misc', 60);   -- Run hourly
+
+CREATE TABLE `RateLimits` (
+    `action_key` VARCHAR(128) COLLATE utf8mb4_general_ci NOT NULL,
+    `attempts` TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    `first_attempt_time` INT UNSIGNED NOT NULL,
+    PRIMARY KEY (`action_key`)
+)
 
 
 -- -------------------------------------------------------------------------------------------

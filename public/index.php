@@ -42,7 +42,7 @@ spl_autoload_register(function ($class) {
 
 use app\controllers\AuthController;
 
-// Check for Remember Me token (can be moved to AuthController if needed, but keeping logic for now)
+// Check for Remember Me token
 AuthController::checkRememberMe();
 
 // Define global auth flags to be used by routes and views

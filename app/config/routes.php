@@ -49,10 +49,6 @@ switch ($requestUri) {
         (new AuthController())->logout();
         break;
 
-    case '/registration-success':
-        include VIEWS_PATH_TRIMMED . '/auth/registration_success.php';
-        break;
-
     case '/verify-email':
         (new AuthController())->verifyEmail($_GET['token'] ?? '');
         break;

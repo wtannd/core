@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace app\controllers;
 
+use app\models\RateLimiter;
 use app\models\Member;
+use app\models\AuthService;
 use app\models\lookups\Institution;
 use app\models\lookups\ResearchBranch;
 
@@ -18,12 +20,14 @@ class AuthController
     private Member $memberModel;
     private Institution $institutionModel;
     private ResearchBranch $branchModel;
+    private AuthService $authService;
 
     public function __construct()
     {
         $this->memberModel = new Member();
         $this->institutionModel = new Institution();
         $this->branchModel = new ResearchBranch();
+        $this->authService = new AuthService();
     }
 
     /**
@@ -121,13 +125,38 @@ class AuthController
             exit;
         }
 
-        $email = $postData['email'] ?? '';
+        // Rate limiting: max 16 attempts per hour per IP to prevent brute force
+        $this->rateLimit("login", 16);
+
+        $email = trim(strtolower($postData['email'] ?? ''));
+        // Rate limiting: max 5 attempts per hour per email address to prevent brute force
+        if (!empty($email)) $this->rateLimit("login", 5, $email);
+
         $password = $postData['password'] ?? '';
         $rememberMe = isset($postData['remember_me']);
 
-        $result = $this->login($email, $password, $rememberMe);
+        $result = $this->authService->login($email, $password, $rememberMe);
         
         if ($result['success']) {
+            $member = $result['member'];
+            
+            // Handle Remember Me
+            if ($rememberMe) {
+                $token = bin2hex(random_bytes(32));
+                if ($this->memberModel->updateToken((int)$member['mID'], $token)) {
+                    $expiry = time() + REMEMBER_ME_DURATION;
+                    setcookie('remember_token', $token, [
+                        'expires' => $expiry,
+                        'path' => '/',
+                        'domain' => defined('COOKIE_DOMAIN') ? COOKIE_DOMAIN : '',
+                        'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+                        'httponly' => true,
+                        'samesite' => 'Strict'
+                    ]);
+                }
+            }
+
+            $this->startSession($member);
             header('Location: /');
             exit;
         } else {
@@ -147,10 +176,11 @@ class AuthController
             exit;
         }
 
-        $result = $this->register($postData);
+        $result = $this->authService->register($postData);
         
         if ($result['success']) {
-            header('Location: /registration-success');
+            $_SESSION['success_message'] = 'Registration successful! Please check your email to verify your account before login.';
+            header('Location: /login');
             exit;
         } else {
             $errors = $result['errors'];
@@ -171,182 +201,28 @@ class AuthController
             exit;
         }
 
-        $result = $this->finalizeOrcidRegistration($postData);
+        $pending = $_SESSION['pending_orcid_registration'] ?? null;
+        if (!$pending) {
+            $errors = ['general' => 'No pending ORCID registration found.'];
+            include VIEWS_PATH_TRIMMED . '/auth/complete_profile.php';
+            exit;
+        }
+
+        $result = $this->authService->finalizeOrcidRegistration($postData, $pending);
         
         if ($result['success']) {
+            unset($_SESSION['pending_orcid_registration']);
+            
+            $member = $result['member'];
+            $this->setRememberMe((int)$member['mID']);
+            $this->startSession($member);
+            
             header('Location: /');
             exit;
         } else {
             $errors = $result['errors'] ?? ['general' => $result['message']];
             include VIEWS_PATH_TRIMMED . '/auth/complete_profile.php';
         }
-    }
-
-    /**
-     * Handle registration.
-     *
-     * @param array $data
-     * @return array Array with success status and message/errors.
-     */
-    public function register(array $data): array
-    {
-        $errors = $this->validateRegistration($data);
-        if (!empty($errors)) {
-            return ['success' => false, 'errors' => $errors];
-        }
-
-        // Check for existing email
-        if ($this->memberModel->findByEmail($data['email'])) {
-            return ['success' => false, 'errors' => ['email' => 'Email already registered.']];
-        }
-
-        // Check for strong password
-        if (!$this->validatePassword($data['password'])) {
-            return [
-                'success' => false, 
-                'errors' => ['password' => 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.']
-            ];
-        }
-
-        // Prepare member data
-        $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
-        
-        $firstName = $data['first_name'] ?? '';
-        $familyName = $data['family_name'];
-        if (empty($data['display_name'])) {
-            $displayName = ($firstName === '' ? $familyName : $firstName . ' ' . $familyName);
-        } else {
-            $displayName = $data['display_name'];
-        }
-        if (empty($data['pub_name'])) {
-            $pubName = ($firstName === '' ? $familyName : substr($firstName, 0, 1) . '. ' . $familyName);
-        } else {
-            $pubName = $data['pub_name'];
-        }
-        
-        // Process work and interest areas
-        $workAreasStr = Member::processAreas($data['work_areas'] ?? [], $data['work_areas_public'] ?? []);
-        $interestAreasStr = Member::processAreas($data['interest_areas'] ?? [], $data['interest_areas_public'] ?? []);
-        $mailAreasStr = implode(';', $data['mail_areas'] ?? []);
-
-        $memberData = [
-            'family_name'      => $familyName,
-            'first_name'       => $firstName,
-            'display_name'     => $displayName,
-            'pub_name'         => $pubName,
-            'email'            => $data['email'],
-            'pass'             => $hashedPassword,
-            'iID'              => (int)($data['iID'] ?? 1),
-            'work_areas'       => $workAreasStr,
-            'interest_areas'   => $interestAreasStr,
-            'mail_areas'       => $mailAreasStr,
-            'timezone'         => $data['timezone'] ?? 'UTC',
-            'is_email_public'  => (int)(isset($data['is_email_public']) ? 1 : 0)
-        ];
-
-        $mID = $this->memberModel->create($memberData);
-        if ($mID) {
-            $this->saveMemberMeta((int)$mID, $data);
-
-            $token = $this->memberModel->createEmailToken((int)$mID, 'verify_email');
-            if ($token) {
-                $verifyUrl = SITE_URL . '/verify-email?token=' . $token;
-                $subject = 'Verify your ' . SITE_TITLE . ' account';
-                $body = "Click the link below to verify your email address:\n\n$verifyUrl\n\nThis link expires in 48 hours.";
-                $headers = ['From' => SITE_EMAIL, 'Reply-To' => SITE_EMAIL, 'X-Mailer' => 'PHP/' . phpversion()];
-                mail($data['email'], $subject, $body, $headers);
-            }
-
-            return ['success' => true, 'message' => 'Registration successful. Please log in.', 'mID' => $mID];
-        }
-
-        return ['success' => false, 'errors' => ['general' => 'Registration failed. Please try again.']];
-    }
-
-    /**
-     * Handle login.
-     *
-     * @param string $email
-     * @param string $password
-     * @param bool $rememberMe
-     * @return array Array with success status and member data or errors.
-     */
-    public function login(string $email, string $password, bool $rememberMe = false): array
-    {
-        $member = $this->memberModel->findByEmail($email);
-
-        if (!$member) {
-            return ['success' => false, 'message' => 'Invalid email or password.'];
-        }
-
-        // Check for ORCID-only accounts
-        if (empty($member['pass'])) {
-            return [
-                'success' => false, 
-                'message' => 'This account is linked to ORCID and does not have a local password. Please use the Sign in with ORCID button.'
-            ];
-        }
-
-        if (!password_verify($password, $member['pass'])) {
-            return ['success' => false, 'message' => 'Invalid email or password.'];
-        }
-
-        if (!$member['is_active']) {
-            return ['success' => false, 'message' => 'Account is inactive.'];
-        }
-
-        // Check if email verification is required (user has never logged in before)
-        if ($this->memberModel->needsEmailVerification((int)$member['mID']) && empty($member['email_verified'])) {
-            return ['success' => false, 'message' => 'Please verify your email first.'];
-        }
-
-        // Handle Remember Me
-        if ($rememberMe) {
-            $token = bin2hex(random_bytes(32));
-            if ($this->memberModel->updateToken((int)$member['mID'], $token)) {
-                $expiry = time() + REMEMBER_ME_DURATION;
-                setcookie('remember_token', $token, [
-                    'expires' => $expiry,
-                    'path' => '/',
-                    'domain' => defined('COOKIE_DOMAIN') ? COOKIE_DOMAIN : '',
-                    'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
-                    'httponly' => true,
-                    'samesite' => 'Strict'
-                ]);
-            }
-        }
-
-        // Start session and store member info
-        $this->startSession($member);
-
-        return ['success' => true, 'member' => $member];
-    }
-
-    /**
-     * Handle logout.
-     */
-    public function logout(): void
-    {
-        if (isset($_SESSION['mID'])) {
-            $this->memberModel->updateToken((int)$_SESSION['mID'], null);
-        }
-
-        // Clear session
-        $_SESSION = [];
-        if (ini_get("session.use_cookies")) {
-            $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000,
-                $params["path"], $params["domain"],
-                $params["secure"], $params["httponly"]
-            );
-        }
-        session_destroy();
-
-        // Clear remember_token cookie
-        setcookie('remember_token', '', time() - 3600, '/', '', true, true);
-
-        header('Location: /login');
-        exit;
     }
 
     /**
@@ -429,102 +305,6 @@ class AuthController
     }
 
     /**
-     * Finalize registration for an ORCID user.
-     * 
-     * @param array $data
-     * @return array
-     */
-    public function finalizeOrcidRegistration(array $data): array
-    {
-        // 1. Verify the CSRF token
-        if (!isset($data['csrf_token']) || $data['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-            return ['success' => false, 'message' => 'CSRF token validation failed.'];
-        }
-
-        // 2. Retrieve ORCID iD and Name from $_SESSION['pending_orcid_registration']
-        $pending = $_SESSION['pending_orcid_registration'] ?? null;
-        if (!$pending) {
-            return ['success' => false, 'message' => 'No pending ORCID registration found.'];
-        }
-
-        // 3. Validate email
-        if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-            return ['success' => false, 'errors' => ['email' => 'Valid email is required.']];
-        }
-        if ($this->memberModel->findByEmail($data['email'])) {
-            return ['success' => false, 'errors' => ['email' => 'This email is already registered.']];
-        }
-
-        // 4. Hash password
-        $hashedPassword = null;
-        if (!empty($data['password'])) {
-            if (!$this->validatePassword($data['password'])) {
-                return [
-                    'success' => false, 
-                    'errors' => ['password' => 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.']
-                ];
-            }
-            $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
-        }
-
-        // 5. Insert the new Member into the database
-        $parts = explode(' ', $pending['name'], 2);
-        $firstName = $data['first_name'] ?? (count($parts) > 1 ? $parts[0] : '');
-        $familyName = $data['family_name'] ?? (count($parts) > 1 ? $parts[1] : $parts[0]);
-
-        // Process work and interest areas
-        $workAreasStr = Member::processAreas($data['work_areas'] ?? [], $data['work_areas_public'] ?? []);
-        $interestAreasStr = Member::processAreas($data['interest_areas'] ?? [], $data['interest_areas_public'] ?? []);
-
-        $memberData = [
-            'ORCID'            => $pending['orcid'],
-            'family_name'      => $familyName,
-            'first_name'       => $firstName,
-            'display_name'     => $data['display_name'] ?? ($firstName === '' ? $familyName : $firstName . ' ' . $familyName),
-            'pub_name'         => $data['pub_name'] ?? ($firstName === '' ? $familyName : substr($firstName, 0, 1) . '. ' . $familyName),
-            'email'            => $data['email'],
-            'pass'             => $hashedPassword,
-            'iID'              => (int)($data['iID'] ?? 1),
-            'work_areas'       => $workAreasStr,
-            'interest_areas'   => $interestAreasStr,
-            'timezone'         => $data['timezone'] ?? 'UTC',
-            'is_email_public'  => (int)(isset($data['is_email_public']) ? 1 : 0)
-        ];
-
-        $mID = $this->memberModel->create($memberData);
-        if (!$mID) {
-            return ['success' => false, 'message' => 'Failed to finalize registration.'];
-        }
-
-        // Extract and save optional metadata
-        $this->saveMemberMeta((int)$mID, $data);
-
-        // 6. Send verification email for the provided email (not ORCID-verified)
-        $this->memberModel->setEmailVerified((int)$mID, false);
-        $token = $this->memberModel->createEmailToken((int)$mID, 'verify_email');
-        if ($token) {
-            $verifyUrl = SITE_URL . '/verify-email?token=' . $token;
-            $subject = 'Verify your ' . SITE_TITLE . ' account';
-            $body = "Click the link below to verify your email address:\n\n$verifyUrl\n\nThis link expires in 48 hours.";
-            $headers = ['From' => SITE_EMAIL, 'Reply-To' => SITE_EMAIL, 'X-Mailer' => 'PHP/' . phpversion()];
-            mail($data['email'], $subject, $body, $headers);
-        }
-
-        // 7. Clear the pending session data
-        unset($_SESSION['pending_orcid_registration']);
-
-        // 7. Log the user in and redirect to dashboard
-        $member = $this->memberModel->findById((int)$mID);
-
-        $this->setRememberMe((int)$member['mID']);
-
-        $this->startSession($member);
-
-        header('Location: /');
-        exit;
-    }
-
-    /**
      * Helper to set Remember Me token and cookie.
      *
      * @param int $mID
@@ -546,59 +326,6 @@ class AuthController
         }
     }
 
-    /**
-     * Validate password strength.
-     *
-     * @param string $password
-     * @return bool
-     */
-    public function validatePassword(string $password): bool
-    {
-        return mb_strlen($password) >= 8
-            && preg_match('/[A-Z]/', $password)
-            && preg_match('/[a-z]/', $password)
-            && preg_match('/[0-9]/', $password)
-            && preg_match('/[^A-Za-z0-9]/', $password);
-    }
-
-    /**
-     * Basic validation for registration data.
-     */
-    private function validateRegistration(array $data): array
-    {
-        $errors = [];
-        if (empty($data['family_name'])) $errors['family_name'] = 'Family name is required.';
-        if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) $errors['email'] = 'Valid email is required.';
-        if (empty($data['password']) || strlen($data['password']) < 8) $errors['password'] = 'Password must be at least 8 characters.';
-        
-        if (!empty($data['password']) && ($data['password'] !== ($data['confirm_password'] ?? ''))) {
-            $errors['confirm_password'] = 'Passwords do not match.';
-        }
-
-        return $errors;
-    }
-
-    /**
-     * Extract and save member metadata from registration/profile data.
-     */
-    private function saveMemberMeta(int $mID, array $data): void
-    {
-        $metaKeys = [
-            'full_name', 'other_names', 'prefix', 'suffix', 'position',
-            'affiliations', 'address', 'url1', 'url2', 'education',
-            'cv', 'research_statement', 'other_interests', 'mstatus'
-        ];
-        $metaData = [];
-        foreach ($metaKeys as $key) {
-            if (!empty($data[$key])) {
-                $metaData[$key] = $data[$key];
-            }
-        }
-        if (!empty($metaData)) {
-            $this->memberModel->addMemberMeta($mID, $metaData, $data['meta_public'] ?? []);
-        }
-    }
-
     public function verifyEmail(string $token): void
     {
         if (empty($token)) {
@@ -607,11 +334,15 @@ class AuthController
             exit;
         }
 
+        // Rate limiting: max 32 attempts per hour per IP to prevent DB spam
+        $this->rateLimit("verify_email", 32);
+
         $member = $this->memberModel->findByEmailToken($token, 'verify_email');
 
         if (!$member) {
             http_response_code(400);
-            echo "Invalid or expired verification link.";
+            $errorMessage = 'Verification link is invalid or has expired.';
+            include VIEWS_PATH_TRIMMED . '/errors/general.php';
             exit;
         }
 
@@ -637,31 +368,19 @@ class AuthController
             exit;
         }
 
-        $email = trim($postData['email'] ?? '');
+        // HARD LIMIT: Max 10 password reset attempts per IP address per hour to prevent SMTP spam.
+        $this->rateLimit("pwd_forgot", 10);
 
-        // Rate limiting: max 3 requests per hour per email
-        $rateLimitFile = LOG_PATH_TRIMMED . '/password_reset_rates.json';
-        $now = time();
-        $rates = [];
+        $email = trim(strtolower($postData['email'] ?? ''));
 
-        if (file_exists($rateLimitFile)) {
-            $rates = json_decode(file_get_contents($rateLimitFile), true) ?: [];
-        }
-
-        // Clean old entries (older than 1 hour)
-        $rates = array_filter($rates, fn($timestamp) => ($now - $timestamp) < 3600);
-        $emailKey = strtolower($email);
-
-        // Check if email has reached limit
-        if (isset($rates[$emailKey]) && $rates[$emailKey] >= 3) {
-            $_SESSION['error_message'] = 'Too many reset attempts. Please try again in 1 hour.';
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $_SESSION['error_message'] = 'Please enter a valid email address.';
             include VIEWS_PATH_TRIMMED . '/auth/forgot_password.php';
             exit;
         }
 
-        // Increment rate counter
-        $rates[$emailKey] = ($rates[$emailKey] ?? 0) + 1;
-        file_put_contents($rateLimitFile, json_encode($rates));
+        // USER LIMIT: Max 3 password reset attempts per specific Email per hour to protect user.
+        $this->rateLimit("pwd_forgot", 3, $email);
 
         $member = $this->memberModel->findByEmail($email);
 
@@ -688,11 +407,15 @@ class AuthController
             exit;
         }
 
+        // Rate limiting: max 32 attempts per hour per IP to prevent DB spam
+        $this->rateLimit("show_pwd_reset", 32);
+
         $member = $this->memberModel->findByEmailToken($token, 'reset_password');
 
         if (!$member) {
             http_response_code(400);
-            echo "Invalid or expired reset link.";
+            $errorMessage = 'Invalid or expired reset link.';
+            include VIEWS_PATH_TRIMMED . '/errors/general.php';
             exit;
         }
 
@@ -706,6 +429,9 @@ class AuthController
             include VIEWS_PATH_TRIMMED . '/errors/403.php';
             exit;
         }
+
+        // Rate limiting: max 8 attempts per hour per IP to prevent CPU spam
+        $this->rateLimit("process_pwd_reset", 8);
 
         $token = $postData['token'] ?? '';
         $password = $postData['password'] ?? '';
@@ -723,7 +449,7 @@ class AuthController
             exit;
         }
 
-        if (!$this->validatePassword($password)) {
+        if (!Member::validatePassword($password)) {
             $_SESSION['error_message'] = 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.';
             header('Location: /reset-password?token=' . $token);
             exit;
@@ -733,7 +459,8 @@ class AuthController
 
         if (!$member) {
             http_response_code(400);
-            echo "Invalid or expired reset link.";
+            $errorMessage = 'Invalid or expired reset link.';
+            include VIEWS_PATH_TRIMMED . '/errors/general.php';
             exit;
         }
 
@@ -748,6 +475,22 @@ class AuthController
         $_SESSION['success_message'] = 'Password reset successful!';
         header('Location: /');
         exit;
+    }
+
+    // Set access rate limits by IP or email
+    public function rateLimit(string $actionHeader, int $maxAttempts=32, string $email=''): void
+    {
+        if (empty($email)) {
+            $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown'; $header = $actionHeader . "_ip_{$ip}"; $errmess = "from this device";
+        } else {
+            $header = $actionHeader . "_email_{$email}"; $errmess = "using this email address";
+        }
+        if (!RateLimiter::checkAndIncrement($header, $maxAttempts, 3600)) {
+            http_response_code(429);
+            $errorMessage = 'Too many attempts ' . $errmess . '. Please try again later.';
+            include VIEWS_PATH_TRIMMED . '/errors/general.php';
+            exit;
+        }
     }
 
     private function startSession(array $member): void

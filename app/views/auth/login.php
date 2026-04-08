@@ -20,6 +20,12 @@
         <div class="main-container auth-container">
             <h1>Login to OpenArxiv (CORE)</h1>
             
+            <?php if (isset($_SESSION['success_message'])): ?>
+                <div class="alert alert-success">
+                    <?php echo htmlspecialchars($_SESSION['success_message']); unset($_SESSION['success_message']); ?>
+                </div>
+            <?php endif; ?>
+
             <?php if (!empty($message)): ?>
                 <div class="alert alert-info">
                     <?php echo htmlspecialchars($message); ?>

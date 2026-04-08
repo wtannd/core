@@ -9,7 +9,6 @@ use app\models\DocumentRepository;
 use app\models\Member;
 use app\models\lookups\Institution;
 use app\models\lookups\ResearchBranch;
-use app\controllers\AuthController;
 
 /**
  * MemberController
@@ -22,7 +21,6 @@ class MemberController
     private Institution $institutionModel;
     private ResearchBranch $branchModel;
     private DocumentRepository $docRepo;
-    private AuthController $authController;
 
     public function __construct()
     {
@@ -30,13 +28,13 @@ class MemberController
         $this->institutionModel = new Institution();
         $this->branchModel = new ResearchBranch();
         $this->docRepo = new DocumentRepository();
-        $this->authController = new AuthController();
     }
 
     /**
      * Show the edit profile form for the logged-in user.
+     * @param array $stickyData Optional data from failed submission
      */
-    public function editProfile(): void
+    public function editProfile(array $stickyData = []): void
     {
         $mID = (int)($_SESSION['mID'] ?? 0);
         if ($mID === 0) {
@@ -51,47 +49,49 @@ class MemberController
             exit;
         }
 
-        // Pre-populate $_POST for the partial to auto-fill
-        $_POST['first_name'] = $user['first_name'];
-        $_POST['family_name'] = $user['family_name'];
-        $_POST['display_name'] = $user['display_name'];
-        $_POST['pub_name'] = $user['pub_name'];
-        $_POST['iID'] = $user['iID'];
-        $_POST['timezone'] = $user['timezone'];
-        $_POST['is_email_public'] = $user['is_email_public'] ? '1' : null;
+        // Pre-populate form data for the view
+        $formData = [
+            'first_name' => $user['first_name'],
+            'family_name' => $user['family_name'],
+            'display_name' => $user['display_name'],
+            'pub_name' => $user['pub_name'],
+            'iID' => $user['iID'],
+            'timezone' => $user['timezone'],
+            'is_email_public' => $user['is_email_public'] ? '1' : null,
+        ];
 
         // Map semicolon-separated areas back to checkbox arrays for the partial
-        $_POST['work_areas'] = [];
-        $_POST['work_areas_public'] = [];
+        $formData['work_areas'] = [];
+        $formData['work_areas_public'] = [];
         foreach (explode(';', $user['work_areas'] ?? '') as $wa) {
             if ($wa === '') continue;
             $id = (int)$wa;
             $absId = (string)abs($id);
-            $_POST['work_areas'][] = $absId;
-            if ($id > 0) $_POST['work_areas_public'][] = $absId;
+            $formData['work_areas'][] = $absId;
+            if ($id > 0) $formData['work_areas_public'][] = $absId;
         }
 
-        $_POST['interest_areas'] = [];
-        $_POST['interest_areas_public'] = [];
+        $formData['interest_areas'] = [];
+        $formData['interest_areas_public'] = [];
         foreach (explode(';', $user['interest_areas'] ?? '') as $ia) {
             if ($ia === '') continue;
             $id = (int)$ia;
             $absId = (string)abs($id);
-            $_POST['interest_areas'][] = $absId;
-            if ($id > 0) $_POST['interest_areas_public'][] = $absId;
+            $formData['interest_areas'][] = $absId;
+            if ($id > 0) $formData['interest_areas_public'][] = $absId;
         }
 
-        $_POST['mail_areas'] = [];
+        $formData['mail_areas'] = [];
         foreach (explode(';', $user['mail_areas'] ?? '') as $ma) {
-            if ($ma !== '') $_POST['mail_areas'][] = (string)$ma;
+            if ($ma !== '') $formData['mail_areas'][] = (string)$ma;
         }
 
         // Pre-populate metadata fields
         foreach ($user['meta'] as $key => $val) {
-            $_POST[$key] = $val;
+            $formData[$key] = $val;
         }
         foreach ($user['meta_public'] as $key => $isPub) {
-            if ($isPub) $_POST['meta_public'][$key] = '1';
+            if ($isPub) $formData['meta_public'][$key] = '1';
         }
 
         $institutions = $this->institutionModel->getAllInstitutions();
@@ -150,7 +150,7 @@ class MemberController
 
         // Validate new password format
         if ($passwordChanging) {
-            if (!$this->authController->validatePassword($newPassword)) {
+            if (!Member::validatePassword($newPassword)) {
                 $errors['new_password'] = 'Password must be at least 8 characters with uppercase, lowercase, number, and special character.';
             } elseif ($newPassword !== $confirmPassword) {
                 $errors['confirm_password'] = 'Passwords do not match.';
@@ -158,8 +158,7 @@ class MemberController
         }
 
         if (!empty($errors)) {
-            $_POST = array_merge($_POST, $postData); 
-            $this->editProfile(); 
+            $this->editProfile($postData); 
             return;
         }
 

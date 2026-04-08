@@ -23,8 +23,8 @@
             <?php if (!empty($errors)): ?>
                 <div class="alert alert-danger">
                     <ul>
-                        <?php foreach ($errors as $error): ?>
-                            <li><?php echo htmlspecialchars($error); ?></li>
+                        <?php foreach ($errors as $errkey => $error): ?>
+                            <li><?php echo htmlspecialchars($errkey: $error); ?></li>
                         <?php endforeach; ?>
                     </ul>
                 </div>

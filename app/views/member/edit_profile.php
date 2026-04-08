@@ -74,12 +74,12 @@ declare(strict_types=1);
                 <!-- Base Fields -->
                 <div class="form-group">
                     <label for="first_name">First Name:</label>
-                    <input type="text" id="first_name" name="first_name" value="<?php echo htmlspecialchars($_POST['first_name'] ?? ''); ?>">
+                    <input type="text" id="first_name" name="first_name" value="<?php echo htmlspecialchars($formData['first_name'] ?? ''); ?>">
                 </div>
 
                 <div class="form-group">
                     <label for="family_name">Family Name (Required):</label>
-                    <input type="text" id="family_name" name="family_name" required value="<?php echo htmlspecialchars($_POST['family_name'] ?? ''); ?>">
+                    <input type="text" id="family_name" name="family_name" required value="<?php echo htmlspecialchars($formData['family_name'] ?? ''); ?>">
                 </div>
 
                 <!-- Email & Privacy -->
@@ -87,7 +87,7 @@ declare(strict_types=1);
                     <label for="email">Email Address:</label>
                     <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required class="form-control">
                     <div class="checkbox-group">
-                        <input type="checkbox" id="is_email_public" name="is_email_public" value="1" <?php echo (isset($_POST['is_email_public']) && $_POST['is_email_public'] == '1') ? 'checked' : ''; ?>>
+                        <input type="checkbox" id="is_email_public" name="is_email_public" value="1" <?php echo (isset($formData['is_email_public']) && $formData['is_email_public'] == '1') ? 'checked' : ''; ?>>
                         <label for="is_email_public">Make my email address public</label>
                     </div>
                     <p><small class="text-muted">Changing this will update the email you use to log in. You must enter your current password to change email or password.</small></p>
