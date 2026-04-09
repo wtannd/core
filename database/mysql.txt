@@ -1743,6 +1743,7 @@ INSERT INTO SystemTasks (task_name, freq_minutes) VALUES
 ('calc_ecp', 1440),   -- Run daily
 ('calc_als', 10080),  -- Run weekly
 ('move_logs',20160),  -- Run bi-weekly
+('cleanup_ratelimits', 1440),   -- Run daily
 ('check_misc', 60);   -- Run hourly
 
 CREATE TABLE `RateLimits` (

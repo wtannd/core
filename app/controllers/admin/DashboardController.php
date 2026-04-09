@@ -30,6 +30,7 @@ class DashboardController extends BaseController
      */
     public function runUpdateComments(): void
     {
+        $this->requireAdmin();
         $this->validateCsrf($_POST);
 
         try {

@@ -274,7 +274,12 @@ switch ($requestUri) {
             include VIEWS_PATH_TRIMMED . '/errors/400.php';
             exit;
         }
-        (new \app\controllers\DocController())->streamPdf($type, $id, $suppl, $ver);
+        $controller = new \app\controllers\DocController();
+        if ($type === 'draft' || $type === 'draft_suppl') {
+            $controller->streamDraftPdf($id, $type === 'draft_suppl');
+        } else {
+            $controller->streamDocPdf($id, $suppl, $ver);
+        }
         break;
 
     // --- Admin Routes ---

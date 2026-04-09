@@ -27,7 +27,7 @@ abstract class BaseController
      */
     protected function validateCsrf(array $postData): void
     {
-        if (!hash_equals($_SESSION['csrf_token'], $postData['csrf_token'] ?? '')) {
+        if (!hash_equals($_SESSION['csrf_token'] ?? '', (string)($postData['csrf_token'] ?? ''))) {
             http_response_code(403);
             $this->render('errors/403.php');
             exit;
@@ -95,7 +95,7 @@ abstract class BaseController
     }
 
     // The first line of every admin controller method should be: $mID = $this->requireAdmin();
-    protected function requireAdmin(int $minRole = ADMIN_ROLE_MIN): void
+    protected function requireAdmin(int $minRole = ADMIN_ROLE_MIN): int
     {
         $mID = $this->requireLogin(); // Ensure they are logged in first
 
@@ -157,6 +157,17 @@ abstract class BaseController
         http_response_code($statusCode);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode($data);
+        exit;
+    }
+
+    /**
+     * Serve a file with appropriate headers.
+     */
+    protected function serveFile(string $filePath, string $contentType): void
+    {
+        header("Content-Type: $contentType");
+        header('Content-Disposition: inline; filename="' . basename($filePath) . '"');
+        readfile($filePath);
         exit;
     }
 }

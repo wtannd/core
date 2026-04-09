@@ -55,53 +55,41 @@ class DocumentRepository
     }
 
     /**
-     * Fetch a single document by DOI with visibility filtering.
+     * Fetch a single document by dID or DOI with visibility filtering.
      * Authors listed in DocAuthors can view regardless of visibility.
+     *
+     * @param string $column - The column to search by ('dID' or 'doi')
+     * @param mixed $idValue - The value to search for
+     * @param int $mRole - User's role for visibility check
+     * @param int $mID - User's member ID for author check
+     * @return Document|null
+     * @throws \InvalidArgumentException If column is not 'dID' or 'doi'
      */
-    public function getDocumentByDoi(string $doi, int $mRole, int $mID = 0): Document|false
+    public function getDocument(string $column, mixed $idValue, int $mRole, int $mID = 0): ?Document
     {
+        // Security check: Only allow specific columns to prevent SQL Injection
+        $allowedColumns = ['dID', 'doi'];
+        if (!in_array($column, $allowedColumns, true)) {
+            throw new \InvalidArgumentException("Invalid search column.");
+        }
+
         $sql = "SELECT d.*, m.pub_name as submitter_name, m.ID_alphanum as submitter_coreid
                 FROM Documents d
                 JOIN Members m ON d.submitter_ID = m.mID
-                WHERE d.doi = :doi AND (:mRole2 >= d.visibility OR EXISTS (
+                WHERE d.$column = :idValue AND (:mRole2 >= d.visibility OR EXISTS (
                     SELECT 1 FROM DocAuthors da WHERE da.dID = d.dID AND da.mID = :mID
                 ))
                 LIMIT 1";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
-            'doi'    => $doi,
+            'idValue' => $idValue,
             'mRole2' => $mRole,
             'mID'    => $mID
         ]);
 
         $row = $stmt->fetch();
-        return $row ? new Document($row) : false;
-    }
-
-    /**
-     * Fetch a single document by dID with visibility filtering.
-     * Authors listed in DocAuthors can view regardless of visibility.
-     */
-    public function getDocument(int $dID, int $mRole, int $mID = 0): Document|false
-    {
-        $sql = "SELECT d.*, m.pub_name as submitter_name, m.ID_alphanum as submitter_coreid
-                FROM Documents d
-                JOIN Members m ON d.submitter_ID = m.mID
-                WHERE d.dID = :dID AND (:mRole2 >= d.visibility OR EXISTS (
-                    SELECT 1 FROM DocAuthors da WHERE da.dID = d.dID AND da.mID = :mID
-                ))
-                LIMIT 1";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            'dID'    => $dID,
-            'mRole2' => $mRole,
-            'mID'    => $mID
-        ]);
-
-        $row = $stmt->fetch();
-        return $row ? new Document($row) : false;
+        return $row ? new Document($row) : null;
     }
 
     /**
@@ -143,17 +131,6 @@ class DocumentRepository
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['dID' => $dID]);
-        return $stmt->fetch();
-    }
-
-    /**
-     * Fetch a topic by ID.
-     */
-    public function getTopicById(int $tID): array|false
-    {
-        $sql = "SELECT * FROM ResearchTopics WHERE tID = :tID LIMIT 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['tID' => $tID]);
         return $stmt->fetch();
     }
 

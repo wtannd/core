@@ -76,10 +76,10 @@ class CronService
         try {
             switch ($task['task_name']) {
                 case 'announce_comment':
-                    // (new \app\models\CommentManager())->announce();
+                    // (new \app\models\CommentService())->announce();
                     break;
                 case 'announce_doc':
-                    (new \app\models\DocumentManager())->announce();
+                    (new \app\models\DocumentService())->announceDoc();
                     break;
                 case 'calc_ecp':
                     // (new \app\models\evaluations\EcpRecord())->calculateAll();
@@ -90,6 +90,8 @@ class CronService
                 case 'move_logs':
                     // (new System())->moveLogs();
                     break;
+                case 'cleanup_ratelimits':
+                    \app\models\RateLimiter::cleanup(86400);
                 case 'check_misc':
                     // Run other checks
                     break;

@@ -243,7 +243,7 @@ class AuthController extends BaseController
 
         if ($http_code !== 200) {
             $this->render('errors/general.php', ['errorMessage' => 'Failed to exchange code for token.']);
-            exit
+            exit;
         }
 
         $data = json_decode($response, true);

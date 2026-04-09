@@ -28,6 +28,7 @@ class DocController extends BaseController
     private DraftRepository $draftRepo;
     private DraftService $draftService;
     private Member $memberModel;
+    private ResearchTopic $topicModel;
 
     public function __construct()
     {
@@ -37,6 +38,7 @@ class DocController extends BaseController
         $this->draftRepo = new DraftRepository();
         $this->draftService = new DraftService();
         $this->memberModel = new Member();
+        $this->topicModel = new ResearchTopic();
     }
 
     // ─────────────────────────────────────────────
@@ -45,7 +47,7 @@ class DocController extends BaseController
 
     public function lookupAuthors(): void
     {
-        $json = json_decode(file_get_contents('php://input'), true);
+        $json = json_decode(file_get_contents('php://input'), true) ?? [];
         $rawText = $json['text'] ?? '';
 
         $rawIds = preg_split('/[\n\r,;]+/', $rawText, -1, PREG_SPLIT_NO_EMPTY);
@@ -84,7 +86,7 @@ class DocController extends BaseController
     {
         $mRole = $this->getCurrentUserRole();
         $mID = $this->getCurrentUserId();
-        $doc = $this->docRepo->getDocument((int)$id, $mRole, $mID);
+        $doc = $this->docRepo->getDocument('dID', (int)$id, $mRole, $mID);
         $this->renderDocument($doc);
     }
 
@@ -92,11 +94,11 @@ class DocController extends BaseController
     {
         $mRole = $this->getCurrentUserRole();
         $mID = $this->getCurrentUserId();
-        $doc = $this->docRepo->getDocumentByDoi($doi, $mRole, $mID);
+        $doc = $this->docRepo->getDocument('doi', $doi, $mRole, $mID);
         $this->renderDocument($doc);
     }
 
-    private function renderDocument(Document|false $doc): void
+    private function renderDocument(?Document $doc): void
     {
         if (!$doc) {
             http_response_code(404);
@@ -149,7 +151,7 @@ class DocController extends BaseController
             'draftAuthors'   => $this->draftRepo->getDraftAuthors((int)$id),
             'isFullyApproved'=> $this->draftRepo->isDraftFullyApproved((int)$id),
             'branches'       => $this->parseBranchesJson($doc->branch_list ?? '[]'),
-            'topic'          => !empty($doc->tID) ? $this->docRepo->getTopicById((int)$doc->tID) : null,
+            'topic'          => !empty($doc->tID) ? $this->topicModel->getTopicById((int)$doc->tID) : null,
             'extLinks'       => $doc->getExtLinks(),
             'canEdit'        => $doc->isSubmitter($mID)
         ];
@@ -314,108 +316,62 @@ class DocController extends BaseController
     // ─────────────────────────────────────────────
     // File Streaming
     // ─────────────────────────────────────────────
+    // File Streaming
+    // ─────────────────────────────────────────────
 
-    public function streamPdf(string $type, string $id, bool $isSuppl = false, ?int $ver = null): void
+    /**
+     * Stream a published document PDF or supplemental file.
+     */
+    public function streamDocPdf(string $id, bool $isSuppl = false, ?int $ver = null): void
     {
         $mRole = $this->getCurrentUserRole();
-        $mID = $_SESSION['mID'] ?? null;
+        $mID = $this->getCurrentUserId();
 
-        $isDraft = ($type === 'draft' || $type === 'draft_suppl');
-        $isSuppl = ($type === 'suppl' || $type === 'draft_suppl' || $isSuppl);
-
-        if ($isDraft) {
-            if ($mID === null) {
-                http_response_code(403);
-                $this->render('errors/403.php');
-                exit;
-            }
-            $doc = $this->draftRepo->getDraftById((int)$id);
-            if (!$doc) {
-                http_response_code(404);
-                $this->render('errors/404.php');
-                exit;
-            }
-            $isOwner = ($doc->submitter_ID === $mID);
-            if (!$isOwner) {
-                $draftAuthors = $this->draftRepo->getDraftAuthors((int)$id);
-                foreach ($draftAuthors as $da) {
-                    if ((int)$da['mID'] === (int)$mID) {
-                        $isOwner = true;
-                        break;
-                    }
-                }
-            }
-            if (!$isOwner) {
-                http_response_code(403);
-                $this->render('errors/403.php');
-                exit;
-            }
-            $uploadDir = UPLOAD_PATH_TRIMMED . '/docdrafts';
-        } else {
-            $doc = $this->docRepo->getDocument((int)$id, (int)$mRole, (int)($mID ?? 0));
-            if (!$doc) {
-                http_response_code(404);
-                $this->render('errors/404.php');
-                exit;
-            }
-            $path = $this->getPathFromPubdate($doc->submission_time);
-            $uploadDir = UPLOAD_PATH_TRIMMED . '/' . $path;
-            $docDoi = $doc->doi ?? '';
+        $doc = $this->docRepo->getDocument('dID', (int)$id, $mRole, $mID);
+        if (!$doc) {
+            http_response_code(404);
+            $this->render('errors/404.php');
+            exit;
         }
+
+        $path = $this->getPathFromPubdate($doc->submission_time);
+        $uploadDir = UPLOAD_PATH_TRIMMED . '/' . $path;
+        $docDoi = $doc->doi ?? '';
 
         $filePath = null;
         $contentType = 'application/pdf';
         $filePrefix = (!empty($docDoi)) ? $docDoi : $id;
 
-        if ($isDraft) {
-            $hasFile = (int)$doc->has_file;
-            if ($isSuppl) {
-                if ($hasFile === 2) {
-                    $filePath = "$uploadDir/{$id}_suppl.pdf";
-                } elseif ($hasFile === 3) {
-                    $filePath = "$uploadDir/{$id}_suppl.zip";
-                    $contentType = 'application/zip';
+        if ($isSuppl) {
+            $supplVersion = $ver !== null ? (int)$ver : (int)($doc->ver_suppl ?? 0);
+            if ($supplVersion > 0) {
+                $supplExt = (int)($doc->suppl_ext ?? 0);
+                
+                if ($ver !== null && $ver < (int)($doc->ver_suppl ?? 0)) {
+                    $history = $doc->revision_history ?? [];
+                    foreach ($history as $rev) {
+                        if (isset($rev[1]) && (int)$rev[1] === $ver) {
+                            $supplExt = (int)($rev[2] ?? 0);
+                            break;
+                        }
+                    }
                 }
-            } else {
-                if ($hasFile >= 1) {
-                    $filePath = "$uploadDir/{$id}.pdf";
+
+                if ($supplExt === 1) {
+                    $filePath = "$uploadDir/{$filePrefix}_suppl_v{$supplVersion}.pdf";
+                } elseif ($supplExt === 2) {
+                    $filePath = "$uploadDir/{$filePrefix}_suppl_v{$supplVersion}.zip";
+                    $contentType = 'application/zip';
                 }
             }
         } else {
-            // Published Document logic
-            if ($isSuppl) {
-                $supplVersion = $ver !== null ? (int)$ver : (int)($doc->ver_suppl ?? 0);
-                if ($supplVersion > 0) {
-                    $supplExt = (int)($doc->suppl_ext ?? 0);
-                    
-                    // If requesting an old version, find its suppl_ext in history
-                    if ($ver !== null && $ver < (int)($doc->ver_suppl ?? 0)) {
-                        $history = $doc->revision_history ?? [];
-                        foreach ($history as $rev) {
-                            if (isset($rev[1]) && (int)$rev[1] === $ver) {
-                                $supplExt = (int)($rev[2] ?? 0);
-                                break;
-                            }
-                        }
-                    }
-
-                    if ($supplExt === 1) {
-                        $filePath = "$uploadDir/{$filePrefix}_suppl_v{$supplVersion}.pdf";
-                    } elseif ($supplExt === 2) {
-                        $filePath = "$uploadDir/{$filePrefix}_suppl_v{$supplVersion}.zip";
-                        $contentType = 'application/zip';
-                    }
-                }
-            } else {
-                $mainVersion = $ver !== null ? (int)$ver : (int)($doc->version ?? 0);
-                if ($mainVersion > 0) {
-                    $filePath = "$uploadDir/{$filePrefix}_v{$mainVersion}.pdf";
-                }
+            $mainVersion = $ver !== null ? (int)$ver : (int)($doc->version ?? 0);
+            if ($mainVersion > 0) {
+                $filePath = "$uploadDir/{$filePrefix}_v{$mainVersion}.pdf";
             }
         }
 
         if (!$filePath || !file_exists($filePath)) {
-            // Fallback: try dID-based path for backwards compatibility
             if ($filePrefix !== $id && !empty($filePath)) {
                 $dIdBasedPath = str_replace($filePrefix, $id, $filePath);
                 if (file_exists($dIdBasedPath)) {
@@ -429,10 +385,64 @@ class DocController extends BaseController
             }
         }
 
-        header("Content-Type: $contentType");
-        header('Content-Disposition: inline; filename="' . basename($filePath) . '"');
-        readfile($filePath);
-        exit;
+        $this->serveFile($filePath, $contentType);
+    }
+
+    /**
+     * Stream a draft PDF or supplemental file.
+     */
+    public function streamDraftPdf(string $id, bool $isSuppl = false): void
+    {
+        $mID = $this->requireLogin();
+
+        $doc = $this->draftRepo->getDraftById((int)$id);
+        if (!$doc) {
+            http_response_code(404);
+            $this->render('errors/404.php');
+            exit;
+        }
+
+        $isOwner = ($doc->submitter_ID === $mID);
+        if (!$isOwner) {
+            $draftAuthors = $this->draftRepo->getDraftAuthors((int)$id);
+            foreach ($draftAuthors as $da) {
+                if ((int)$da['mID'] === $mID) {
+                    $isOwner = true;
+                    break;
+                }
+            }
+        }
+        if (!$isOwner) {
+            http_response_code(403);
+            $this->render('errors/403.php');
+            exit;
+        }
+
+        $uploadDir = UPLOAD_PATH_TRIMMED . '/docdrafts';
+        $filePath = null;
+        $contentType = 'application/pdf';
+        $hasFile = (int)$doc->has_file;
+
+        if ($isSuppl) {
+            if ($hasFile === 2) {
+                $filePath = "$uploadDir/{$id}_suppl.pdf";
+            } elseif ($hasFile === 3) {
+                $filePath = "$uploadDir/{$id}_suppl.zip";
+                $contentType = 'application/zip';
+            }
+        } else {
+            if ($hasFile >= 1) {
+                $filePath = "$uploadDir/{$id}.pdf";
+            }
+        }
+
+        if (!$filePath || !file_exists($filePath)) {
+            http_response_code(404);
+            $this->render('errors/404.php');
+            exit;
+        }
+
+        $this->serveFile($filePath, $contentType);
     }
 
     // ─────────────────────────────────────────────
@@ -527,7 +537,7 @@ class DocController extends BaseController
         
         $mRole = $this->getCurrentUserRole();
         $dID = (int)$id;
-        $doc = $this->docRepo->getDocument($dID, $mRole, $mID);
+        $doc = $this->docRepo->getDocument('dID', $dID, $mRole, $mID);
 
         if (!$doc || $doc->submitter_ID !== $mID) {
             http_response_code(403);
@@ -642,7 +652,7 @@ class DocController extends BaseController
             $existingSupplExt = ($draftHasFile === 3 ? 2 : ($draftHasFile === 2 ? 1 : 0));
         } elseif ($isReviseDoc) {
             $mRole = $this->getCurrentUserRole();
-            $existingDoc = $this->docRepo->getDocument($dID, $mRole, $mID);
+            $existingDoc = $this->docRepo->getDocument('dID', $dID, $mRole, $mID);
             if (!$existingDoc || $existingDoc->submitter_ID !== $mID) {
                 return ['success' => false, 'message' => 'Document not found or access denied.'];
             }
