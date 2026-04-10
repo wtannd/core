@@ -1,22 +1,15 @@
 <?php
-
-use app\models\Document;
-
 /**
  * Document Viewer View (Published)
  * 
  * Expected $docData keys:
- *   'document'  — Document entity
+ *   'doc'  — Document entity
  *   'extLinks'  — from ExternalDocs
  *   'branches'  — from DocBranches+ResearchBranches
  *   'topic'     — from DocTopics+ResearchTopics or false
  *   'isSubmitter' — bool
  *   'isOnHold'    — bool
  */
-$doc = $docData['document'];
-$branches = $docData['branches'] ?? [];
-$topic = $docData['topic'] ?? false;
-$extLinks = $docData['extLinks'] ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -35,17 +28,17 @@ $extLinks = $docData['extLinks'] ?? [];
     <div class="main-container doc-container">
             <!-- Branch/Topic Labels -->
             <div class="doc-labels">
-                <?php if (!empty($branches) || $topic): ?>
+                <?php if (!empty($branches)): ?>
                 <?php foreach ($branches as $b): ?>
                     <a href="/browse?branch=<?php echo $b['bID']; ?>&range=week" class="label-pill label-branch" title="<?php echo htmlspecialchars($b['bname']); ?>">
                         <?php echo htmlspecialchars($b['abbr']); ?>
                     </a>
                 <?php endforeach; ?>
+                <?php endif; ?>
                 <?php if ($topic): ?>
                     <a href="/browse?topic=<?php echo $topic['tID']; ?>&range=week" class="label-pill label-topic" title="<?php echo htmlspecialchars($topic['tname']); ?>">
                         <?php echo htmlspecialchars($topic['abbr']); ?>
                     </a>
-                <?php endif; ?>
                 <?php endif; ?>
                 <?php if (!empty($docData['isOnHold'])): ?>
                 <span class="doc-tab-right status-inactive btn-small">To Be Announced!</span>

@@ -94,4 +94,24 @@ class DraftRepository
         $rows = $stmt->fetchAll();
         return array_map(fn($row) => new Draft($row), $rows);
     }
+
+    /**
+     * Get branch data from draft's branch_list JSON.
+     */
+    public function getDraftBranches(string $branchListJson): array
+    {
+        $branchList = json_decode($branchListJson, true) ?? [];
+        if (empty($branchList)) return [];
+
+        $branchIds = array_column($branchList, 'bID');
+        if (empty($branchIds)) return [];
+
+        $placeholders = implode(',', array_fill(0, count($branchIds), '?'));
+        $sql = "SELECT bID, abbr, bname FROM ResearchBranches WHERE bID IN ($placeholders) ORDER BY FIELD(bID, " . implode(',', $branchIds) . ")";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($branchIds);
+        
+        return $stmt->fetchAll();
+    }
 }

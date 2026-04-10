@@ -109,7 +109,7 @@ class DocController extends BaseController
         $mID = $this->getCurrentUserId();
 
         $docData = [
-            'document'    => $doc,
+            'doc'    => $doc,
             'extLinks'    => $this->docRepo->getExternalLinks($doc->dID),
             'branches'    => $this->docRepo->getDocBranches($doc->dID),
             'topic'       => $this->docRepo->getDocTopic($doc->dID),
@@ -147,13 +147,13 @@ class DocController extends BaseController
         }
 
         $docData = [
-            'document'       => $doc,
+            'doc'            => $doc,
             'draftAuthors'   => $this->draftRepo->getDraftAuthors((int)$id),
             'isFullyApproved'=> $this->draftRepo->isDraftFullyApproved((int)$id),
-            'branches'       => json_decode($doc->branch_list ?? '[]', true) ?? [],
+            'branches'       => $this->draftRepo->getDraftBranches($doc->branch_list),
             'topic'          => !empty($doc->tID) ? $this->topicModel->getTopicById((int)$doc->tID) : null,
             'extLinks'       => $doc->getExtLinks(),
-            'canEdit'        => $doc->isSubmitter($mID)
+            'isSubmitter'        => $doc->isSubmitter($mID)
         ];
 
         $this->render('repository/view_docdraft.php', $docData);

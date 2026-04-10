@@ -6,22 +6,15 @@ use app\models\Draft;
  * Document Viewer View (Draft)
  * 
  * Expected $docData keys:
- *   'document'       — Draft entity
+ *   'doc'       — Draft entity
  *   'draftAuthors'   — DocDraftAuthors rows
  *   'isFullyApproved'— bool
- *   'branches'       — parsed from branch_list JSON
+ *   'branches'       — bIDs from branch_list JSON + ResearchBranches
  *   'topic'          — from ResearchTopics by tID, or false
  *   'extLinks'       — parsed from link_list JSON
+ *   'isSubmitter'    — to submit or edit
  */
-$doc = $docData['document'];
-$branches = $docData['branches'] ?? [];
-$topic = $docData['topic'] ?? false;
-$extLinks = $docData['extLinks'] ?? [];
-
-$draftAuthors = $docData['draftAuthors'] ?? [];
-$isFullyApproved = $docData['isFullyApproved'] ?? true;
 $mID = (int)($_SESSION['mID'] ?? 0);
-$isSubmitter = $doc->isSubmitter($mID);
 
 $userApprovalNeeded = false;
 foreach ($draftAuthors as $da) {
