@@ -97,8 +97,7 @@ class DocumentRepository
      */
     public function getAvailableSources(): array
     {
-        $sql = "SELECT * FROM ExternalSources ORDER BY sID ASC";
-        $stmt = $this->db->query($sql);
+        $stmt = $this->db->query("SELECT sID, esname FROM ExternalSources WHERE is_active = 1 ORDER BY esname ASC");
         return $stmt->fetchAll();
     }
 
@@ -142,7 +141,7 @@ class DocumentRepository
         if (empty($bIDs)) return [];
         
         $placeholders = implode(',', array_fill(0, count($bIDs), '?'));
-        $sql = "SELECT * FROM ResearchBranches WHERE bID IN ($placeholders)";
+        $sql = "SELECT bID, abbr, bname FROM ResearchBranches WHERE bID IN ($placeholders)";
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($bIDs);

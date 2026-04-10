@@ -63,6 +63,7 @@ class DraftService
             'dID'      => $dID,
             'title'    => $data['title'],
             'abstract' => $data['abstract'],
+            'has_file'   => (int)$data['has_file'],
             'dtype'    => (int)($data['dtype'] ?? 1),
         ];
 
