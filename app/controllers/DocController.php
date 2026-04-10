@@ -150,7 +150,7 @@ class DocController extends BaseController
             'document'       => $doc,
             'draftAuthors'   => $this->draftRepo->getDraftAuthors((int)$id),
             'isFullyApproved'=> $this->draftRepo->isDraftFullyApproved((int)$id),
-            'branches'       => $this->parseBranchesJson($doc->branch_list ?? '[]'),
+            'branches'       => json_decode($doc->branch_list ?? '[]', true) ?? [],
             'topic'          => !empty($doc->tID) ? $this->topicModel->getTopicById((int)$doc->tID) : null,
             'extLinks'       => $doc->getExtLinks(),
             'canEdit'        => $doc->isSubmitter($mID)
@@ -559,7 +559,7 @@ class DocController extends BaseController
             'suppl_ext'       => (int)($doc->suppl_ext ?? 0),
             'tID'             => $topic ? $topic['tID'] : null,
             'author_list'     => $doc->author_list,
-            'branches'        => $this->docRepo->getDocBranches($dID),
+            'branches'        => json_encode($this->docRepo->getDocBranches($dID) ?? []),
             'ext_links'       => $this->docRepo->getExternalLinks($dID),
             'pubdate'         => $doc->pubdate ?? '',
             'submission_time' => $doc->submission_time ?? '',
@@ -686,7 +686,8 @@ class DocController extends BaseController
         }
 
         // ── Process branches ──
-        $cleanedBranches = $this->parseBranchesJson($postData['branch_list_json'] ?? '[]');
+        $jsonBranches = $postData['branch_list_json'] ?? '[]';
+        $arrayBranches = json_decode($jsonBranches, true) ?? [];
 
         // ── Build pubdate ──
         $pubdate = '';
@@ -713,7 +714,7 @@ class DocController extends BaseController
             $docData['submission_time'] = $submissionTime;
             $docData['link_list'] = json_encode($cleanedLinks);
             $docData['link_list_array'] = $cleanedLinks;
-            $docData['branch_list'] = !empty($cleanedBranches) ? json_encode($cleanedBranches) : '';
+            $docData['branch_list'] = $jsonBranches;
             $docData['main_size'] = $mainSize;
             $docData['suppl_size'] = $supplSize;
             $docData['suppl_ext'] = $supplExt;
@@ -727,7 +728,7 @@ class DocController extends BaseController
             }
             $docData['has_file'] = $draftHasFile;
             $docData['link_list'] = json_encode($cleanedLinks);
-            $docData['branch_list'] = !empty($cleanedBranches) ? json_encode($cleanedBranches) : '';
+            $docData['branch_list'] = $jsonBranches;
         } elseif ($isReviseDoc) {
             $docData['revision_notes'] = $postData['revision_notes'] ?? '';
             $docData['main_pages'] = $postData['main_pages'] ?? '';
@@ -761,8 +762,8 @@ class DocController extends BaseController
                 $path = $this->getPathFromPubdate($pubdate);
                 $uploadDir = UPLOAD_PATH_TRIMMED . '/' . $path;
 
-                if (!empty($cleanedBranches)) {
-                    $this->docService->saveBranches($dID, $cleanedBranches);
+                if (!empty($arrayBranches)) {
+                    $this->docService->saveBranches($dID, $arrayBranches);
                 }
                 if ($tID > 0) {
                     $this->docService->saveTopic($dID, $tID);
@@ -787,8 +788,8 @@ class DocController extends BaseController
                 
                 $this->docService->updateExternalDocs($dID, $cleanedLinks);
 
-                if (!empty($cleanedBranches)) {
-                    $this->docService->upsertBranches($dID, $cleanedBranches);
+                if (!empty($arrayBranches)) {
+                    $this->docService->upsertBranches($dID, $arrayBranches);
                 }
 
                 if ($tID > 0) {
@@ -869,35 +870,6 @@ class DocController extends BaseController
             return substr($clean, 0, 4);
         }
         return date('Y/m/d');
-    }
-
-    /**
-     * Parse branch_list JSON into enriched branch array.
-     */
-    private function parseBranchesJson(string $json): array
-    {
-        $branches = [];
-        $branchList = json_decode($json, true) ?? [];
-        if (empty($branchList)) return $branches;
-
-        $branchIds = array_column($branchList, 'bID');
-        $branchMap = $this->docRepo->getBranchesByIds($branchIds);
-
-        foreach ($branchList as $bl) {
-            $bid = (int)$bl['bID'];
-            if (isset($branchMap[$bid])) {
-                $branches[] = [
-                    'bID'    => $bid,
-                    'abbr'   => $branchMap[$bid]['abbr'],
-                    'bname'  => $branchMap[$bid]['bname'],
-                    'num'    => (int)$bl['num'],
-                    'impact' => (int)$bl['impact'],
-                ];
-            }
-        }
-
-        usort($branches, fn($a, $b) => $a['num'] <=> $b['num']);
-        return $branches;
     }
 
     /**

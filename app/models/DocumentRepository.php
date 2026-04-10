@@ -134,27 +134,6 @@ class DocumentRepository
     }
 
     /**
-     * Fetch branches by IDs (for batch lookup).
-     */
-    public function getBranchesByIds(array $bIDs): array
-    {
-        if (empty($bIDs)) return [];
-        
-        $placeholders = implode(',', array_fill(0, count($bIDs), '?'));
-        $sql = "SELECT bID, abbr, bname FROM ResearchBranches WHERE bID IN ($placeholders)";
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($bIDs);
-        
-        $results = $stmt->fetchAll();
-        $map = [];
-        foreach ($results as $row) {
-            $map[$row['bID']] = $row;
-        }
-        return $map;
-    }
-
-    /**
      * Get external links for a document.
      */
     public function getExternalLinks(int $dID): array
@@ -366,25 +345,22 @@ class DocumentRepository
     }
 
     /**
-     * Get documents submitted by a member.
+     * Get documents authored by a member (no visibility filter).
      * @return array{results: FeedDocument[], total: int}
      */
     public function getMyDocuments(int $mID): array
     {
-        $countSql = "SELECT COUNT(*) FROM Documents d WHERE d.submitter_ID = :mID";
-        $stmt = $this->db->prepare($countSql);
-        $stmt->execute(['mID' => $mID]);
-        $total = (int)$stmt->fetchColumn();
-
-        $sql = "SELECT d.dID, d.doi, d.version, d.ver_suppl, d.main_pages, d.main_size, 
+        $sql = "SELECT d.dID, d.doi, d.version, d.ver_suppl, d.main_pages, d.main_size,
                        d.submission_time, d.author_list, d.abstract, d.title, d.visibility
                 FROM Documents d
-                WHERE d.submitter_ID = :mID
-                ORDER BY d.announce_time DESC";
+                 INNER JOIN DocAuthors da ON d.dID = da.dID
+                WHERE da.mID = :mID
+                ORDER BY d.submission_time DESC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['mID' => $mID]);
         $rows = $stmt->fetchAll();
+        $total = count($rows);
         return [
             'results' => array_map(fn($row) => new FeedDocument($row), $rows),
             'total' => $total

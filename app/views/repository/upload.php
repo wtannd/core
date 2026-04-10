@@ -62,7 +62,7 @@
 
                 // JS data for pre-populating dynamic rows
                 $jsAuthorList = $docData ? json_encode($docData['author_list'] ?? []) : 'null';
-                $jsBranches = $docData ? json_encode($docData['branches'] ?? []) : 'null';
+                $jsBranches = $docData ? $docData['branches'] : 'null';
                 $jsExtLinks = $docData ? json_encode($docData['ext_links'] ?? []) : 'null';
             ?>
 
@@ -97,7 +97,7 @@
                                 <span>/</span>
                                 <input type="number" name="pub_day" id="pub_day" min="1" max="31" placeholder="DD" class="short" value="<?php echo htmlspecialchars($_POST['pub_day'] ?? ''); ?>">
                             </div>
-                            <small>Year required. Month/day optional.</small>
+                            <small>Year required. Month/day optional if unknown.</small>
                         </div>
                         <div>
                             <label>Date Received in Journal (Optional):</label>
