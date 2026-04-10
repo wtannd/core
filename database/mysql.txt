@@ -1669,10 +1669,12 @@ CREATE TABLE DocDrafts (  -- document drafts that can also be used for future de
     branch_list JSON,        -- JSON array of research branches [{"bID":int,"num":int,"impact":int},...] up to 3 branches
     tID INT UNSIGNED,        -- topic ID assigned if desired
     has_file TINYINT UNSIGNED NOT NULL DEFAULT 0,   -- 0=no file attachment, 1=main.pdf, 2=main.pdf+suppl.pdf, 3=main.pdf+suppl.zip
+    main_pages SMALLINT UNSIGNED,  -- number of pages in main file
+    main_figs SMALLINT UNSIGNED,  -- number of figures in main file
+    main_tabs SMALLINT UNSIGNED,  -- number of tables in main file
     datetime_added DATETIME DEFAULT CURRENT_TIMESTAMP,   -- datetime added to database
     submission_time DATETIME DEFAULT (datetime_added),   -- datetime when it first got public for old doc / current time for new doc / deadline for v-doc
     pubdate VARCHAR(8) COLLATE ascii_general_ci,         -- YYYYMMDD, YYYYMM, or YYYY derived from submission_time; should never change once assigned and announced
-    last_revision_time DATETIME DEFAULT (IF(has_file = 0, NULL, datetime_added)),  -- NULL if no pdf attached
     last_update_time DATETIME DEFAULT (datetime_added) ON UPDATE CURRENT_TIMESTAMP,
     full_text LONGTEXT COLLATE utf8mb4_general_ci,       -- Storing text content for search or retrieval (optional)
     -- ... more metadata
@@ -1683,7 +1685,7 @@ CREATE TABLE DocDrafts (  -- document drafts that can also be used for future de
 --    FULLTEXT INDEX (title, abstract)          -- Fulltext index for title/abstract search
 );
 
-CREATE TABLE DocDraftAuthors (   -- co-authors who can edit/view/approve DocDrafts; but only submitter can submit documents
+CREATE TABLE DocDraftAuthors (   -- co-authors who can edit/view/approve DocDrafts; but only submitter can submit documents; submitter should not be included here even if is a co-author.
     dID BIGINT UNSIGNED NOT NULL,
     mID BIGINT UNSIGNED NOT NULL,
     is_editor TINYINT(1) NOT NULL default 1,  -- 0 means viewer only
@@ -1751,7 +1753,7 @@ CREATE TABLE `RateLimits` (
     `attempts` TINYINT UNSIGNED NOT NULL DEFAULT 1,
     `first_attempt_time` INT UNSIGNED NOT NULL,
     PRIMARY KEY (`action_key`)
-)
+);
 
 
 -- -------------------------------------------------------------------------------------------

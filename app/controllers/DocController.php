@@ -153,7 +153,7 @@ class DocController extends BaseController
             'branches'       => $this->draftRepo->getDraftBranches($doc->branch_list),
             'topic'          => !empty($doc->tID) ? $this->topicModel->getTopicById((int)$doc->tID) : null,
             'extLinks'       => $doc->getExtLinks(),
-            'isSubmitter'        => $doc->isSubmitter($mID)
+            'isSubmitter'    => $doc->isSubmitter($mID)
         ];
 
         $this->render('repository/view_docdraft.php', $docData);
@@ -254,6 +254,9 @@ class DocController extends BaseController
                 'notes'           => $draft->notes,
                 'full_text'       => $draft->full_text,
                 'dtype'           => $draft->dtype ?? 1,
+                'main_pages'      => $draft->main_pages ?? '',
+                'main_figs'       => $draft->main_figs ?? '',
+                'main_tabs'       => $draft->main_tabs ?? '',
                 'link_list_array' => json_decode($draft->link_list ?? '[]', true)
             ]);
 
@@ -706,6 +709,9 @@ class DocController extends BaseController
             'notes'       => $postData['notes'] ?? '',
             'full_text'   => $fullText,
             'tID'         => $tID > 0 ? $tID : null,
+            'main_pages'  => $postData['main_pages'] ?? '',
+            'main_figs'   => $postData['main_figs'] ?? '',
+            'main_tabs'   => $postData['main_tabs'] ?? '',
         ];
 
         if ($isUpload) {
@@ -724,16 +730,13 @@ class DocController extends BaseController
             if ($isSupplUploaded) {
                 $draftHasFile = ($supplExt === 2 ? 3 : 2);
             } elseif ($isMainUploaded && $existingSupplExt > 0) {
-                 $draftHasFile = ($existingSupplExt === 2 ? 3 : 2);
+                $draftHasFile = ($existingSupplExt === 2 ? 3 : 2);
             }
             $docData['has_file'] = $draftHasFile;
             $docData['link_list'] = json_encode($cleanedLinks);
             $docData['branch_list'] = $jsonBranches;
         } elseif ($isReviseDoc) {
             $docData['revision_notes'] = $postData['revision_notes'] ?? '';
-            $docData['main_pages'] = $postData['main_pages'] ?? '';
-            $docData['main_figs'] = $postData['main_figs'] ?? '';
-            $docData['main_tabs'] = $postData['main_tabs'] ?? '';
             $docData['main_size'] = $mainSize;
             $docData['suppl_size'] = $supplSize;
             $docData['suppl_ext'] = $supplExt;
@@ -749,7 +752,6 @@ class DocController extends BaseController
                 $docData['has_file'] = $draftHasFile;
                 
                 $dID = $this->draftService->saveDraft($docData);
-                $this->draftService->resetDraftApprovals($dID);
                 $uploadDir = UPLOAD_PATH_TRIMMED . '/docdrafts';
 
             } elseif ($isUpload && $action === 'submit') {

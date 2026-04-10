@@ -28,6 +28,9 @@ class Draft
     public ?string $last_update_time = null;
     public ?string $submission_time = null;
     public ?string $pubdate = null;
+    public ?int $main_pages = null;
+    public ?int $main_figs = null;
+    public ?int $main_tabs = null;
 
     private ?array $decodedAuthors = null;
     private ?array $decodedAffiliations = null;

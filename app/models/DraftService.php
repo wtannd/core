@@ -23,21 +23,24 @@ class DraftService
     }
 
     /**
-     * Save a document draft.
+     * Save a document draft with co-authors.
+     * Uses DB transaction to ensure atomicity.
      */
-    public function saveDraft(array $data): int
+    public function saveDraft(array $data): int|bool
     {
+        $submitterId = (int)$data['submitter_ID'];
+        
         $fields = ['submitter_ID', 'title', 'abstract', 'has_file', 'dtype'];
         $placeholders = [':submitter_ID', ':title', ':abstract', ':has_file', ':dtype'];
         $params = [
-            'submitter_ID' => $data['submitter_ID'],
+            'submitter_ID' => $submitterId,
             'title'        => $data['title'],
             'abstract'     => $data['abstract'],
             'has_file'     => (int)$data['has_file'],
             'dtype'        => (int)($data['dtype'] ?? 1)
         ];
 
-        $optionalFields = ['notes', 'author_list', 'submission_time', 'pubdate', 'full_text', 'link_list', 'branch_list', 'tID'];
+        $optionalFields = ['notes', 'author_list', 'submission_time', 'pubdate', 'full_text', 'link_list', 'branch_list', 'tID', 'main_pages', 'main_figs', 'main_tabs'];
         foreach ($optionalFields as $f) {
             if (isset($data[$f]) && $data[$f] !== '') {
                 $fields[] = $f;
@@ -46,11 +49,37 @@ class DraftService
             }
         }
 
-        $sql = "INSERT INTO DocDrafts (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
+        try {
+            $this->db->beginTransaction();
 
-        return (int)$this->db->lastInsertId();
+            $sql = "INSERT INTO DocDrafts (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+
+            $dID = (int)$this->db->lastInsertId();
+
+            $authorListJson = $data['author_list'] ?? '';
+            $authorData = json_decode($authorListJson, true);
+            if (!empty($authorData['authors'])) {
+                $sqlAuthors = "INSERT INTO DocDraftAuthors (dID, mID, is_editor, is_approved) VALUES (:dID, :mID, 1, 0)";
+                $stmtAuthors = $this->db->prepare($sqlAuthors);
+
+                foreach ($authorData['authors'] as $author) {
+                    $authorId = (int)($author[1] ?? 0);
+                    if ($authorId > 0 && $authorId !== $submitterId) {
+                        $stmtAuthors->execute(['dID' => $dID, 'mID' => $authorId]);
+                    }
+                }
+            }
+
+            $this->db->commit();
+            return $dID;
+
+        } catch (\PDOException $e) {
+            $this->db->rollBack();
+            error_log("DraftService::saveDraft() error: " . $e->getMessage(), 3, rtrim(LOG_PATH, '/') . '/error.log');
+            return false;
+        }
     }
 
     /**
