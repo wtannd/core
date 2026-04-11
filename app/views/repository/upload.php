@@ -77,13 +77,17 @@
                 <?php endif; ?>
 
                 <?php if (!$isRevise): ?>
-                <div class="form-group">
-                    <div class="submission-type-toggle">
-                        <button type="button" class="submission-type-btn <?php echo $valIsOld === '0' ? 'active' : ''; ?>" data-value="0" onclick="toggleSubmissionType(this)">New Submission</button>
-                        <button type="button" class="submission-type-btn <?php echo $valIsOld === '1' ? 'active' : ''; ?>" data-value="1" onclick="toggleSubmissionType(this)">Published/Old Document</button>
-                    </div>
-                    <input type="hidden" name="is_old" id="is_old" value="<?php echo htmlspecialchars($valIsOld); ?>">
-                </div>
+				<div class="form-group">
+					<div class="submission-type-toggle">
+						<input type="radio" name="is_old" id="type_new" value="0" 
+							   onchange="toggleDateGroup()" <?php echo $valIsOld === '0' ? 'checked' : ''; ?>>
+						<label for="type_new" class="submission-type-btn">New Submission</label>
+
+						<input type="radio" name="is_old" id="type_old" value="1" 
+							   onchange="toggleDateGroup()" <?php echo $valIsOld === '1' ? 'checked' : ''; ?>>
+						<label for="type_old" class="submission-type-btn">Published/Old Document</label>
+					</div>
+				</div>
                 <?php endif; ?>
 
                 <div class="form-group" id="old-date-group" style="display: none;">
@@ -308,6 +312,12 @@
             document.getElementById('old-date-group').style.display = isOld ? 'block' : 'none';
             document.getElementById('pub_date').required = isOld;
         }
+
+		function toggleDateGroup() {
+			const isOld = document.getElementById('type_old').checked;
+			document.getElementById('old-date-group').style.display = isOld ? 'block' : 'none';
+			document.getElementById('pub_date').required = isOld;
+		}
 
         function toggleFullText() {
             const mainFile = document.getElementById('main_file').files.length;

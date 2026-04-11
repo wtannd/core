@@ -723,22 +723,22 @@ hr {
     background: var(--bg-subtle);
 }
 
-.submission-type-btn {
-    border: none;
-    background: transparent;
-    padding: 0.5rem 1.2rem;
-    font-size: 0.88rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+.submission-type-toggle input[type="radio"] {
+    display: none;
 }
 
-.submission-type-btn.active {
-    background: #fff;
-    color: var(--text-main);
-    font-weight: 600;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+.submission-type-btn {
+    display: inline-block;
+    padding: 0.5rem 1.2rem;
+    background: var(--border-subtle);
+    cursor: pointer;
+    border: 1px solid var(--disabled-color);
+}
+
+.submission-type-toggle input[type="radio"]:checked + .submission-type-btn {
+    background: var(--link-color);
+    color: white;
+    border-color: var(--link-color);
 }
 
 /* Date Inline Group */
