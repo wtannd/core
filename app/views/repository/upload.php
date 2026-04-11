@@ -91,22 +91,14 @@
                         <div>
                             <label>Date Published in Journal or Posted as ePrint:</label>
                             <div class="date-inline-group">
-                                <input type="number" name="pub_year" id="pub_year" min="1000" max="9999" placeholder="YYYY" value="<?php echo htmlspecialchars($_POST['pub_year'] ?? ''); ?>">
-                                <span>/</span>
-                                <input type="number" name="pub_month" id="pub_month" min="1" max="12" placeholder="MM" class="short" value="<?php echo htmlspecialchars($_POST['pub_month'] ?? ''); ?>">
-                                <span>/</span>
-                                <input type="number" name="pub_day" id="pub_day" min="1" max="31" placeholder="DD" class="short" value="<?php echo htmlspecialchars($_POST['pub_day'] ?? ''); ?>">
+                                <input type="date" name="pub_date" id="pub_date" min="1000-01-01" max="9999-12-31" value="<?php echo htmlspecialchars($_POST['pub_date'] ?? ''); ?>">
                             </div>
-                            <small>Year required. Month/day optional if unknown.</small>
+                            <small>Required for old/publication dates.</small>
                         </div>
                         <div>
                             <label>Date Received in Journal (Optional):</label>
                             <div class="date-inline-group">
-                                <input type="number" name="recv_year" id="recv_year" min="1000" max="9999" placeholder="YYYY" value="<?php echo htmlspecialchars($_POST['recv_year'] ?? ''); ?>">
-                                <span>/</span>
-                                <input type="number" name="recv_month" id="recv_month" min="1" max="12" placeholder="MM" class="short" value="<?php echo htmlspecialchars($_POST['recv_month'] ?? ''); ?>">
-                                <span>/</span>
-                                <input type="number" name="recv_day" id="recv_day" min="1" max="31" placeholder="DD" class="short" value="<?php echo htmlspecialchars($_POST['recv_day'] ?? ''); ?>">
+                                <input type="date" name="recv_date" id="recv_date" min="1000-01-01" max="9999-12-31" value="<?php echo htmlspecialchars($_POST['recv_date'] ?? ''); ?>">
                             </div>
                             <small>If omitted, Date Published is used.</small>
                         </div>
@@ -314,13 +306,7 @@
             btn.classList.add('active');
             const isOld = val === '1';
             document.getElementById('old-date-group').style.display = isOld ? 'block' : 'none';
-            document.getElementById('pub_year').required = isOld;
-        }
-
-        function toggleOldDate() {
-            const isOld = document.getElementById('is_old').value === '1';
-            document.getElementById('old-date-group').style.display = isOld ? 'block' : 'none';
-            document.getElementById('pub_year').required = isOld;
+            document.getElementById('pub_date').required = isOld;
         }
 
         function toggleFullText() {
@@ -599,7 +585,7 @@
             const isOldHidden = document.getElementById('is_old');
             if (isOldHidden && isOldHidden.value === '1') {
                 document.getElementById('old-date-group').style.display = 'block';
-                document.getElementById('pub_year').required = true;
+                document.getElementById('pub_date').required = true;
             }
         });
 

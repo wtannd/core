@@ -760,15 +760,11 @@ hr {
 }
 
 .date-inline-group input {
-    width: 82px;
+    max-width: 250px;
     padding: 0.35rem 0.4rem;
     font-size: 0.88rem;
     border: 1px solid var(--border-input);
     border-radius: 4px;
-}
-
-.date-inline-group input.short {
-    width: 65px;
 }
 
 /* Author Section */

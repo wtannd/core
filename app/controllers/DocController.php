@@ -214,11 +214,17 @@ class DocController extends BaseController
         }
 
         try {
-            $pubdate = $draft->pubdate ?? '';
+            $pubDate = $draft->pub_date ?? '';
+            $recvDate = $draft->recv_date ?? '';
             $submissionTime = $draft->submission_time ?? date('Y-m-d H:i:s');
-            if ($pubdate === '') {
+            if (empty($recvDate) && empty($pubDate)) {
                 $submissionTime = date('Y-m-d H:i:s');
-                $pubdate = date('Ymd', strtotime($submissionTime));
+                $pubDate = date('Ymd', strtotime($submissionTime));
+            } elseif (!empty($recvDate)) {
+                $submissionTime = $recvDate . ' 00:00:00';
+                $pubDate = str_replace('-', '', $pubDate);
+            } else {
+                $pubDate = str_replace('-', '', $pubDate);
             }
 
             // Determine sizes and suppl_ext for submitDocument
@@ -250,7 +256,7 @@ class DocController extends BaseController
                 'suppl_size'      => $supplSize,
                 'suppl_ext'       => $supplExt,
                 'submission_time' => $submissionTime,
-                'pubdate'         => $pubdate,
+                'pubdate'         => $pubDate,
                 'notes'           => $draft->notes,
                 'full_text'       => $draft->full_text,
                 'dtype'           => $draft->dtype ?? 1,
@@ -275,7 +281,7 @@ class DocController extends BaseController
             }
 
             // Move files from docdrafts/ to YYYY/MM/DD/ with versioned naming
-            $path = $this->getPathFromPubdate($pubdate);
+            $path = $this->getFilePath($pubdate);
             $targetDir = UPLOAD_PATH_TRIMMED . '/' . $path;
             if (!is_dir($targetDir)) mkdir($targetDir, 0750, true);
 
@@ -337,7 +343,7 @@ class DocController extends BaseController
             exit;
         }
 
-        $path = $this->getPathFromPubdate($doc->submission_time);
+        $path = $this->getFilePath($doc->submission_time);
         $uploadDir = UPLOAD_PATH_TRIMMED . '/' . $path;
         $docDoi = $doc->doi ?? '';
 
@@ -692,12 +698,21 @@ class DocController extends BaseController
         $jsonBranches = $postData['branch_list_json'] ?? '[]';
         $arrayBranches = json_decode($jsonBranches, true) ?? [];
 
-        // ── Build pubdate ──
-        $pubdate = '';
-        $submissionTime = date('Y-m-d H:i:s');
+        // ── Build date fields ──
+        $dateFields = ['pub_date' => '', 'recv_date' => '', 'submission_time' => date('Y-m-d H:i:s')];
 
         if ($isUpload) {
-            [$pubdate, $submissionTime] = $this->buildPubdate($postData);
+            $dateFields = $this->parseDateFields($postData);
+        }
+
+        $pubDate = $dateFields['pub_date'];
+        $recvDate = $dateFields['recv_date'];
+        $submissionTime = $dateFields['submission_time'];
+
+        // Build pubdate for Documents (YYYYMMDD format for file path)
+        $pubdateForPath = '';
+        if (!empty($pubDate)) {
+            $pubdateForPath = str_replace('-', '', $pubDate);
         }
 
         // ── Build document data ──
@@ -716,7 +731,9 @@ class DocController extends BaseController
 
         if ($isUpload) {
             $docData['submitter_ID'] = $mID;
-            $docData['pubdate'] = $pubdate;
+            $docData['pubdate'] = $pubdateForPath;
+            $docData['pub_date'] = $pubDate ?: null;
+            $docData['recv_date'] = $recvDate ?: null;
             $docData['submission_time'] = $submissionTime;
             $docData['link_list'] = json_encode($cleanedLinks);
             $docData['link_list_array'] = $cleanedLinks;
@@ -755,13 +772,13 @@ class DocController extends BaseController
                 $uploadDir = UPLOAD_PATH_TRIMMED . '/docdrafts';
 
             } elseif ($isUpload && $action === 'submit') {
-                if ($pubdate === '') {
+                if ($pubdateForPath === '') {
                     $docData['submission_time'] = date('Y-m-d H:i:s');
-                    $pubdate = date('Ymd', strtotime($docData['submission_time']));
-                    $docData['pubdate'] = $pubdate;
+                    $pubdateForPath = date('Ymd', strtotime($docData['submission_time']));
+                    $docData['pubdate'] = $pubdateForPath;
                 }
                 $dID = $this->docService->submitDocument($docData);
-                $path = $this->getPathFromPubdate($pubdate);
+                $path = $this->getFilePath($pubdateForPath);
                 $uploadDir = UPLOAD_PATH_TRIMMED . '/' . $path;
 
                 if (!empty($arrayBranches)) {
@@ -803,7 +820,7 @@ class DocController extends BaseController
                 }
 
                 $pubdate = $existingDoc->pubdate ?? '';
-                $path = $this->getPathFromPubdate($pubdate);
+$path = $this->getFilePath($pubDate);
                 $uploadDir = UPLOAD_PATH_TRIMMED . '/' . $path;
                 $docDoi = $existingDoc->doi ?? '';
             }
@@ -859,9 +876,12 @@ class DocController extends BaseController
     // Private Helpers
     // ─────────────────────────────────────────────
 
-    private function getPathFromPubdate(string $pubdate): string
+    private function getFilePath(string $date): string
     {
-        $clean = preg_replace('/[^0-9]/', '', $pubdate);
+        if (empty($date)) {
+            return date('Y/m/d');
+        }
+        $clean = str_replace('-', '', $date);
         $len = strlen($clean);
 
         if ($len >= 8) {
@@ -952,46 +972,22 @@ class DocController extends BaseController
      * Build pubdate and submission_time from date form fields (upload mode only).
      * Returns [pubdate, submissionTime].
      */
-    private function buildPubdate(array $postData): array
+    private function parseDateFields(array $postData): array
     {
-        $isOld = isset($postData['is_old']) && $postData['is_old'] === '1';
-        $pubdate = '';
+        $pubDate = trim($postData['pub_date'] ?? '');
+        $recvDate = trim($postData['recv_date'] ?? '');
         $submissionTime = date('Y-m-d H:i:s');
 
-        if (!$isOld) {
-            return [$pubdate, $submissionTime];
+        if (!empty($recvDate)) {
+            $submissionTime = $recvDate . ' 00:00:00';
+        } elseif (!empty($pubDate)) {
+            $submissionTime = $pubDate . ' 00:00:00';
         }
 
-        $pubYear = trim((string)($postData['pub_year'] ?? ''));
-        $pubMonth = trim((string)($postData['pub_month'] ?? ''));
-        $pubDay = trim((string)($postData['pub_day'] ?? ''));
-
-        if ($pubYear !== '') {
-            $pubdate = str_pad($pubYear, 4, '0', STR_PAD_LEFT);
-            if ($pubMonth !== '') {
-                $pubdate .= str_pad($pubMonth, 2, '0', STR_PAD_LEFT);
-                if ($pubDay !== '') {
-                    $pubdate .= str_pad($pubDay, 2, '0', STR_PAD_LEFT);
-                }
-            }
-        }
-
-        $recvYear = trim((string)($postData['recv_year'] ?? ''));
-        $recvMonth = trim((string)($postData['recv_month'] ?? ''));
-        $recvDay = trim((string)($postData['recv_day'] ?? ''));
-
-        if ($recvYear !== '') {
-            $ry = str_pad($recvYear, 4, '0', STR_PAD_LEFT);
-            $rm = $recvMonth !== '' ? str_pad($recvMonth, 2, '0', STR_PAD_LEFT) : '00';
-            $rd = $recvDay !== '' ? str_pad($recvDay, 2, '0', STR_PAD_LEFT) : '00';
-            $submissionTime = "$ry-$rm-$rd 00:00:00";
-        } elseif ($pubYear !== '') {
-            $py = str_pad($pubYear, 4, '0', STR_PAD_LEFT);
-            $pm = $pubMonth !== '' ? str_pad($pubMonth, 2, '0', STR_PAD_LEFT) : '00';
-            $pd = $pubDay !== '' ? str_pad($pubDay, 2, '0', STR_PAD_LEFT) : '00';
-            $submissionTime = "$py-$pm-$pd 00:00:00";
-        }
-
-        return [$pubdate, $submissionTime];
+        return [
+            'pub_date' => $pubDate,
+            'recv_date' => $recvDate,
+            'submission_time' => $submissionTime
+        ];
     }
 }
