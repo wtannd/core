@@ -22,9 +22,9 @@ class Document extends FeedDocument
     public ?string $last_update_time = null;
     public ?string $last_revision_time = null;
     public ?string $revision_history = null;
-    public int $main_figs = 0;
-    public int $main_tabs = 0;
-    public int $suppl_size = 0;
+    public ?int $main_figs = null;
+    public ?int $main_tabs = null;
+    public ?int $suppl_size = null;
 
     public ?string $submitter_name = null;
     public ?string $submitter_coreid = null;

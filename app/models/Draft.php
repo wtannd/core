@@ -26,8 +26,8 @@ class Draft
     public ?int $tID = null;
     public ?string $datetime_added = null;
     public ?string $last_update_time = null;
-    public ?string $submission_time = null;
-    public ?string $pubdate = null;
+    public ?string $pub_date = null;
+    public ?string $recv_date = null;
     public ?int $main_pages = null;
     public ?int $main_figs = null;
     public ?int $main_tabs = null;
@@ -114,10 +114,16 @@ class Draft
         return $this->submitter_ID === $mID;
     }
 
+    public function getFormattedDatetimeAdded(): string
+    {
+        if (empty($this->datetime_added)) return '';
+        return date('M d, Y H:i:s', strtotime($this->datetime_added)) . ' UTC';
+    }
+
     public function getFormattedDateAdded(): string
     {
         if (empty($this->datetime_added)) return '';
-        return date('M d, Y H:i', strtotime($this->datetime_added)) . ' UTC';
+        return date('M d, Y', strtotime($this->datetime_added));
     }
 
     public function getFormattedLastUpdateTime(): string
@@ -126,21 +132,16 @@ class Draft
         return date('M d, Y H:i:s', strtotime($this->last_update_time)) . ' UTC';
     }
 
-    public function getFormattedSubmissionTime(): string
+    public function getFormattedPubDate(): string
     {
-        if (empty($this->submission_time)) return '';
-        return date('M d, Y H:i:s', strtotime($this->submission_time)) . ' UTC';
+        if (empty($this->pub_date)) return '';
+        return date('M d, Y', strtotime($this->pub_date));
     }
 
-    public function getFormattedSubmitTime(): string
+    public function getFormattedRecvDate(): string
     {
-        if (!empty($this->datetime_added)) {
-            return date('M d, Y', strtotime($this->datetime_added));
-        }
-        if (!empty($this->submission_time)) {
-            return date('M d, Y', strtotime($this->submission_time));
-        }
-        return '';
+        if (empty($this->recv_date)) return '';
+        return date('M d, Y', strtotime($this->recv_date));
     }
 
     public function getEditUrl(): string

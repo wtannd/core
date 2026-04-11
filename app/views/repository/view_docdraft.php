@@ -118,14 +118,19 @@ foreach ($draftAuthors as $da) {
                 <div class="doc-sidebar">
                     <!-- Draft Saved -->
                     <div class="doc-sidebar-section">
-                        <div class="field-label field-label-sm">Draft Saved</div>
-                        <div class="doc-sidebar-value"><?php echo $doc->getFormattedDateAdded(); ?></div>
+                        <div class="field-label field-label-sm">Draft Created</div>
+                        <div class="doc-sidebar-value"><?php echo $doc->getFormattedDatetimeAdded(); ?></div>
                     </div>
 
-                    <?php if (!empty($doc->pubdate)): ?>
                     <div class="doc-sidebar-section">
-                        <div class="field-label field-label-sm">Pub Date</div>
-                        <div class="doc-sidebar-value"><?php echo htmlspecialchars($doc->pubdate); ?></div>
+                        <div class="field-label field-label-sm">Last Updated</div>
+                        <div class="doc-sidebar-value"><?php echo $doc->getFormattedLastUpdateTime(); ?></div>
+                    </div>
+
+                    <?php if (!empty($doc->pub_date)): ?>
+                    <div class="doc-sidebar-section">
+                        <div class="field-label field-label-sm">Date Published</div>
+                        <div class="doc-sidebar-value"><?php echo $doc->getFormattedPubDate(); ?></div>
                     </div>
                     <?php endif; ?>
 
@@ -257,10 +262,13 @@ foreach ($draftAuthors as $da) {
                     <tbody>
                         <tr><td>Draft ID</td><td><?php echo $doc->dID; ?></td></tr>
                         <tr><td>Document Type</td><td><?php echo $doc->dtype; ?></td></tr>
-                        <tr><td>Created</td><td><?php echo $doc->getFormattedDateAdded(); ?></td></tr>
+                        <tr><td>Created</td><td><?php echo $doc->getFormattedDatetimeAdded(); ?></td></tr>
                         <tr><td>Last Updated</td><td><?php echo $doc->getFormattedLastUpdateTime(); ?></td></tr>
-                        <?php if (!empty($doc->submission_time)): ?>
-                        <tr><td>Submission Time</td><td><?php echo $doc->getFormattedSubmissionTime(); ?></td></tr>
+                        <?php if (!empty($doc->pub_date)): ?>
+                        <tr><td>Date Published/Posted</td><td><?php echo $doc->getFormattedPubDate(); ?></td></tr>
+                        <?php endif; ?>
+                        <?php if (!empty($doc->recv_date)): ?>
+                        <tr><td>Date Received</td><td><?php echo $doc->getFormattedRecvDate(); ?></td></tr>
                         <?php endif; ?>
                         <tr><td>Has File</td><td><?php echo $doc->getFileTypeLabel(); ?></td></tr>
                     </tbody>

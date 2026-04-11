@@ -24,7 +24,7 @@
                 $infoBracket = !empty($infoParts) ? '[' . implode(', ', $infoParts) . ']' : '';
 
                 // Date
-                $dateStr = $doc->getFormattedSubmitTime();
+                $dateStr = $doc->getFormattedDateAdded();
 
                 // Authors
                 $authorsArray = [];

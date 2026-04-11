@@ -16,11 +16,11 @@ class FeedDocument
     public ?string $doi = null;
     public int $version = 0;
     public ?int $ver_suppl = null;
-    public int $main_pages = 0;
-    public int $main_size = 0;
+    public ?int $main_pages = null;
+    public ?int $main_size = null;
     public ?string $submission_time = null;
     public ?string $author_list = null;
-    public ?string $abstract = null;
+    public string $abstract = '';
     public string $title = '';
     public int $visibility = 1;
 

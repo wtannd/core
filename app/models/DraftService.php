@@ -40,7 +40,7 @@ class DraftService
             'dtype'        => (int)($data['dtype'] ?? 1)
         ];
 
-        $optionalFields = ['notes', 'author_list', 'submission_time', 'pubdate', 'full_text', 'link_list', 'branch_list', 'tID', 'main_pages', 'main_figs', 'main_tabs'];
+        $optionalFields = ['notes', 'author_list', 'recv_date', 'pub_date', 'full_text', 'link_list', 'branch_list', 'tID', 'main_pages', 'main_figs', 'main_tabs'];
         foreach ($optionalFields as $f) {
             if (isset($data[$f]) && $data[$f] !== '') {
                 $fields[] = $f;
@@ -96,7 +96,7 @@ class DraftService
             'dtype'    => (int)($data['dtype'] ?? 1),
         ];
 
-        $optionalFields = ['notes', 'author_list', 'submission_time', 'pubdate', 'full_text', 'link_list', 'branch_list', 'tID'];
+        $optionalFields = ['notes', 'author_list', 'recv_date', 'pub_date', 'full_text', 'link_list', 'branch_list', 'tID'];
         foreach ($optionalFields as $f) {
             if (array_key_exists($f, $data)) {
                 $fields[] = $f;

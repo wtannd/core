@@ -628,7 +628,7 @@ CREATE TABLE Documents (
     main_tabs SMALLINT UNSIGNED,  -- number of tables in main file
     datetime_added DATETIME DEFAULT CURRENT_TIMESTAMP,   -- datetime added to database
     submission_time DATETIME DEFAULT (datetime_added),   -- receive date (journal), posted date/time (preprint) for old doc / current datetime UTC at submission for new doc / deadline for v-doc
-    pubdate VARCHAR(8) COLLATE ascii_general_ci,         -- YYYYMMDD, YYYYMM, or YYYY derived from submission_time unless for journal it is publication date; should never change once assigned and announced so that it is consistent with doi
+    pubdate VARCHAR(10) COLLATE ascii_general_ci,         -- YYYY-MM-DD, YYYY-MM, or YYYY derived from submission_time unless for journal it is publication date; should never change once assigned and announced so that it is consistent with doi
     announce_time DATETIME,               -- initially NULL, set the time when announced (passed screening and assigned with doi etc.)
     last_revision_time DATETIME DEFAULT (IF(version = 0, NULL, datetime_added)), -- NULL if no pdf attached
     last_update_time DATETIME DEFAULT (datetime_added) ON UPDATE CURRENT_TIMESTAMP,
@@ -1673,8 +1673,8 @@ CREATE TABLE DocDrafts (  -- document drafts that can also be used for future de
     main_figs SMALLINT UNSIGNED,  -- number of figures in main file
     main_tabs SMALLINT UNSIGNED,  -- number of tables in main file
     datetime_added DATETIME DEFAULT CURRENT_TIMESTAMP,   -- datetime added to database
-    submission_time DATETIME DEFAULT (datetime_added),   -- datetime when it first got public for old doc / current time for new doc / deadline for v-doc
-    pubdate VARCHAR(8) COLLATE ascii_general_ci,         -- YYYYMMDD, YYYYMM, or YYYY derived from submission_time; should never change once assigned and announced
+    pub_date DATE,  -- YYYY-MM-DD, date published of an old doc
+    recv_date DATE, -- YYYY-MM-DD, date received of an old doc
     last_update_time DATETIME DEFAULT (datetime_added) ON UPDATE CURRENT_TIMESTAMP,
     full_text LONGTEXT COLLATE utf8mb4_general_ci,       -- Storing text content for search or retrieval (optional)
     -- ... more metadata
