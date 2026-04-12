@@ -94,6 +94,20 @@ abstract class BaseController
         return $mID;
     }
 
+    // require a member in good standing for special tasks like upload/edit/revise
+    protected function requireGoodStanding(): int
+    {
+        $mID = $this->requireLogin(); // Ensure they are logged in first
+        if (empty($_SESSION['is_good'])) {
+            http_response_code(401);
+            $this->render('errors/general.php', [
+                'errorMessage' => 'The action is not allowed for a member who is not in good standing.'
+            ]);
+            exit;
+        }
+        return $mID;
+    }
+
     // The first line of every admin controller method should be: $mID = $this->requireAdmin();
     protected function requireAdmin(int $minRole = ADMIN_ROLE_MIN): int
     {

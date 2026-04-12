@@ -93,7 +93,7 @@
                 <div class="form-group" id="old-date-group" style="display: none;">
                     <div class="date-row">
                         <div>
-                            <label>Date Published in Journal or Posted as ePrint:</label>
+                            <label>Date Published or Posted as ePrint:</label>
                             <div class="date-inline-group">
                                 <input type="date" name="pub_date" id="pub_date" min="1000-01-01" max="9999-12-31" value="<?php echo htmlspecialchars($_POST['pub_date'] ?? ''); ?>">
                             </div>
