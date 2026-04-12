@@ -470,4 +470,229 @@ class DocPostController extends BaseController
             'submission_time' => $submissionTime
         ];
     }
+
+
+	/**
+	 * Validates file uploads for main and supplemental documents.
+	 *
+	 * @param array $files Usually $_FILES
+	 * @return array Associative array containing 'errors' and 'data'
+	 */
+	public function validateFileUpload(array $files): array
+	{
+		$errors = [];
+		$data = [];
+
+		// Fallback if MAX_UPLOAD_SIZE is missing (e.g. 10MB)
+		$maxSize = defined('MAX_UPLOAD_SIZE') ? MAX_UPLOAD_SIZE : 10485760;
+
+		// Use finfo to securely verify the actual file contents, not just the extension
+		$finfo = new \finfo(FILEINFO_MIME_TYPE);
+
+		// 1. Validate Main File
+		if (isset($files['main_file']) && $files['main_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+			$mainFile = $files['main_file'];
+
+			if ($mainFile['error'] !== UPLOAD_ERR_OK) {
+				$errors['main_file'] = 'Error uploading main file (Upload Code: ' . $mainFile['error'] . ').';
+			} elseif ($mainFile['size'] > $maxSize) {
+				$errors['main_file'] = 'Main file exceeds the maximum allowed size of ' . ($maxSize / (1024 * 1024)) . 'MB.';
+			} else {
+				$mimeType = $finfo->file($mainFile['tmp_name']);
+				$ext = strtolower(pathinfo($mainFile['name'], PATHINFO_EXTENSION));
+
+				if ($mimeType !== 'application/pdf' || $ext !== 'pdf') {
+					$errors['main_file'] = 'Main file must be a valid PDF document.';
+				} else {
+					$data['main_size'] = (int)$mainFile['size'];
+				}
+			}
+		}
+
+		// 2. Validate Supplemental File
+		if (isset($files['supplemental_file']) && $files['supplemental_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+			$supplFile = $files['supplemental_file'];
+
+			if ($supplFile['error'] !== UPLOAD_ERR_OK) {
+				$errors['supplemental_file'] = 'Error uploading supplemental file (Upload Code: ' . $supplFile['error'] . ').';
+			} elseif ($supplFile['size'] > $maxSize) {
+				$errors['supplemental_file'] = 'Supplemental file exceeds the maximum allowed size of ' . ($maxSize / (1024 * 1024)) . 'MB.';
+			} else {
+				$mimeType = $finfo->file($supplFile['tmp_name']);
+				$ext = strtolower(pathinfo($supplFile['name'], PATHINFO_EXTENSION));
+
+				$isPdf = ($mimeType === 'application/pdf' && $ext === 'pdf');
+				
+				// Note: ZIP files can have multiple valid MIME types depending on the OS uploading it
+				$validZipMimes = ['application/zip', 'application/x-zip-compressed', 'multipart/x-zip'];
+				$isZip = (in_array($mimeType, $validZipMimes) && $ext === 'zip');
+
+				if ($isPdf) {
+					$data['suppl_size'] = (int)$supplFile['size'];
+					$data['suppl_ext'] = 1;
+				} elseif ($isZip) {
+					$data['suppl_size'] = (int)$supplFile['size'];
+					$data['suppl_ext'] = 2;
+				} else {
+					$errors['supplemental_file'] = 'Supplemental file must be either a PDF or ZIP file.';
+				}
+			}
+		}
+
+		return [
+			'errors' => $errors,
+			'data' => $data
+		];
+	}
+
+	/**
+	 * Validates the $_POST data for document uploads/edits.
+	 *
+	 * @param array $postData Usually $_POST
+	 * @return array Associative array of error messages. Empty if no errors.
+	 */
+	private function validatePostUpload(array $postData): array
+	{
+		$errors = [];
+
+		// Helper function to validate YYYY-MM-DD range 1000-01-01 to 9999-12-31
+		$isValidDate = function ($date) {
+			$d = \DateTime::createFromFormat('Y-m-d', $date);
+			if (!$d || $d->format('Y-m-d') !== $date) return false;
+			$year = (int)$d->format('Y');
+			return $year >= 1000 && $year <= 9999;
+		};
+
+		// 1. Validate Dates if 'is_old' is set (assuming value is '1' or similar truthy value)
+		if (!empty($postData['is_old'])) {
+			$pubDate = trim($postData['pub_date'] ?? '');
+			$recvDate = trim($postData['recv_date'] ?? '');
+
+			if ($pubDate === '') {
+				$errors['pub_date'] = 'Publication date is required for old documents.';
+			} elseif (!$isValidDate($pubDate)) {
+				$errors['pub_date'] = 'Publication date is invalid or out of allowed range (1000-9999).';
+			}
+
+			if ($recvDate !== '' && !$isValidDate($recvDate)) {
+				$errors['recv_date'] = 'Receive date is invalid or out of allowed range (1000-9999).';
+			}
+
+			// Check if pub_date is strictly later than recv_date
+			if (!isset($errors['pub_date']) && !isset($errors['recv_date']) && $pubDate !== '' && $recvDate !== '') {
+				if (strtotime($pubDate) <= strtotime($recvDate)) {
+					$errors['pub_date'] = 'Publication date must be later than the receive date.';
+				}
+			}
+		}
+
+		// 2. Title and Abstract cannot be empty if provided
+		if (isset($postData['title']) && trim($postData['title']) === '') {
+			$errors['title'] = 'Title cannot be empty.';
+		}
+		if (isset($postData['abstract']) && trim($postData['abstract']) === '') {
+			$errors['abstract'] = 'Abstract cannot be empty.';
+		}
+
+		// 3. Notes limit to 255 chars
+		if (isset($postData['notes']) && mb_strlen($postData['notes']) > 255) {
+			$errors['notes'] = 'Notes cannot exceed 255 characters.';
+		}
+
+		// 4. Author List JSON Validation
+		if (isset($postData['author_list_json']) && trim($postData['author_list_json']) !== '') {
+			$authorData = json_decode($postData['author_list_json'], true);
+			
+			if (!is_array($authorData) || !isset($authorData['authors'])) {
+				$errors['author_list_json'] = 'Invalid author list format.';
+			} else {
+				$hasDuty100 = false;
+				$sumDuty20Plus = 0;
+				$validDuties = true;
+
+				foreach ($authorData['authors'] as $author) {
+					// Author array format: [name, mID, duty, affRefs]
+					$duty = (int)($author[2] ?? 0);
+					
+					if ($duty === 100) {
+						$hasDuty100 = true;
+					}
+					
+					if ($duty === 10 || ($duty >= 20 && $duty <= 100)) {
+						if ($duty >= 20) {
+							$sumDuty20Plus += $duty;
+						}
+					} else {
+						$validDuties = false;
+						break;
+					}
+				}
+
+				if (!$validDuties) {
+					$errors['author_list_json'] = 'Author duties must be 10, or between 20 and 100 inclusive.';
+				} elseif (!$hasDuty100) {
+					$errors['author_list_json'] = 'At least one author must have a duty of 100.';
+				} elseif ($sumDuty20Plus > 875) {
+					$errors['author_list_json'] = 'The sum of primary author duties (>= 20) cannot exceed 875.';
+				}
+			}
+		}
+
+		// 5. Branch List JSON Validation
+		if (isset($postData['branch_list_json']) && trim($postData['branch_list_json']) !== '') {
+			$branches = json_decode($postData['branch_list_json'], true);
+			
+			if (!is_array($branches)) {
+				$errors['branch_list_json'] = 'Invalid branch list format.';
+			} else {
+				$count = count($branches);
+				
+				if ($count < 1 || $count > 3) {
+					$errors['branch_list_json'] = 'You must select between 1 and 3 branches.';
+				} else {
+					$impactSum = 0;
+					$nums = [];
+					
+					foreach ($branches as $branch) {
+						$impactSum += (int)($branch['impact'] ?? 0);
+						$nums[] = (int)($branch['num'] ?? 0);
+					}
+					
+					// Verify 'num' is exactly 1,2,3 with no skipping
+					sort($nums);
+					$expectedNums = range(1, $count);
+					
+					if ($nums !== $expectedNums) {
+						$errors['branch_list_json'] = 'Branch numbering is invalid or skipped.';
+					} elseif ($impactSum !== 100) {
+						$errors['branch_list_json'] = 'The sum of all branch impacts must equal exactly 100.';
+					}
+				}
+			}
+		}
+
+		// 6. Link List JSON Validation
+		if (isset($postData['link_list_json']) && trim($postData['link_list_json']) !== '') {
+			$links = json_decode($postData['link_list_json'], true);
+			
+			if (!is_array($links)) {
+				$errors['link_list_json'] = 'Invalid link list format.';
+			} else {
+				foreach ($links as $index => $link) {
+					// Link array format: [sID, esname, link]
+					$esname = (string)($link[1] ?? '');
+					
+					if (mb_strlen($esname) > 30) {
+						$errors['link_list_json_' . $index] = 'Link names cannot exceed 30 characters.';
+					}
+
+                    if (isset($link[2]) && $this->draftService->checkExternalLinkExists(trim($link[2]))) {
+                        $errors['link_exists_' . $index] = 'The link/DOI ' . $link[2] . ' already exists in our database.';
+                    }
+				}
+			}
+		}
+
+		return $errors;
+	}
 }
