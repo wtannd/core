@@ -157,44 +157,37 @@ document.getElementById('btn-lookup-authors').addEventListener('click', function
         if (!response.ok) {
             throw new Error(`HTTP Error status: ${response.status}`);
         }
-        return response.text();
+        return response.json();
     })
-    .then(text => {
-        try {
-            const data = JSON.parse(text);
-            
-            if (data.length === 0) {
-                alert("No members found matching those IDs.");
-            } else {
-                const members = data;
-                const batchAffIds = document.getElementById('batch-aff-ids').value.trim();
-                members.forEach(m => {
-                    const row = createAuthorRow({
-                        pub_name: m.pub_name,
-                        mID: m.mID,
-                        core_id: m.core_id,
-                        is_manual: false
-                    });
-                    if (batchAffIds) {
-                        row.querySelector('.auth-aff-refs').value = batchAffIds;
-                    }
-                    document.getElementById('authors-container').appendChild(row);
-                });
-                
-                if (typeof autoDistributeDuties === 'function') {
-                    autoDistributeDuties();
-                }
-                
-                textarea.value = '';
-                document.getElementById('batch-aff-ids').value = '';
-            }
-        } catch (e) {
-            console.error("Failed to parse JSON. Server returned:", text);
-            alert("Server returned an invalid response. Check the browser console.");
+    .then(members => {
+        if (!members || members.length === 0) {
+            alert("No members found matching those IDs.");
+            return; // Return early so we don't need a giant 'else' block
         }
+        const batchAffIds = document.getElementById('batch-aff-ids').value.trim();        
+        members.forEach(m => {
+            const row = createAuthorRow({
+                pub_name: m.pub_name,
+                mID: m.mID,
+                core_id: m.core_id,
+                is_manual: false
+            });
+            
+            if (batchAffIds) {
+                row.querySelector('.auth-aff-refs').value = batchAffIds;
+            }
+            
+            document.getElementById('authors-container').appendChild(row);
+        });
+
+        if (typeof autoDistributeDuties === 'function') {
+            autoDistributeDuties();
+        }
+        textarea.value = '';
+        document.getElementById('batch-aff-ids').value = '';                
     })
     .catch(error => {
-        console.error("Fetch failed:", error);
+        console.error("Fetch or parsing failed:", error);
         alert("A network or server error occurred. Check the browser console.");
     })
     .finally(() => {

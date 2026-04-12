@@ -46,6 +46,7 @@ class AuthController extends BaseController
         if ($member && $member['is_active']) {
             session_regenerate_id(true);
             $_SESSION['mID'] = $member['mID'];
+            $_SESSION['is_good'] = $member['is_good'];
             $_SESSION['email'] = $member['email'];
             $_SESSION['display_name'] = $member['display_name'];
             $_SESSION['pub_name'] = $member['pub_name'];
@@ -443,6 +444,7 @@ class AuthController extends BaseController
     private function startSession(array $member): void
     {
         $_SESSION['mID'] = $member['mID'];
+        $_SESSION['is_good'] = $member['is_good'];
         $_SESSION['email'] = $member['email'];
         $_SESSION['display_name'] = $member['display_name'];
         $_SESSION['pub_name'] = $member['pub_name'];

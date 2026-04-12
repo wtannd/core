@@ -96,9 +96,10 @@ switch ($requestUri) {
             header('Location: /login');
             exit;
         }
-        $docController = new \app\controllers\DocController();
+        $uploadController = new \app\controllers\DocUploadController();
+        $postController = new \app\controllers\DocPostController();
         if ($requestMethod === 'POST') {
-            $result = $docController->processFormSubmission($_POST, $_FILES);
+            $result = $postController->processFormSubmission($_POST, $_FILES);
             if ($result['success']) {
                 $_SESSION['success_message'] = $result['message'];
                 $redirectTo = isset($result['dID']) ? ($result['action'] ?? 'draft') : 'home';
@@ -120,11 +121,11 @@ switch ($requestUri) {
                     }
                 } else {
                     $errors = [$result['message']];
-                    $docController->showUpload($errors);
+                    $uploadController->showUpload($errors);
                 }
             }
         } else {
-            $docController->showUpload([]);
+            $uploadController->showUpload([]);
         }
         break;
 
@@ -133,18 +134,19 @@ switch ($requestUri) {
             header('Location: /login');
             exit;
         }
-        $docController = new \app\controllers\DocController();
+        $uploadController = new \app\controllers\DocUploadController();
+        $postController = new \app\controllers\DocPostController();
         if ($requestMethod === 'POST') {
-            $result = $docController->processFormSubmission($_POST, $_FILES);
+            $result = $postController->processFormSubmission($_POST, $_FILES);
             if ($result['success']) {
                 $_SESSION['success_message'] = $result['message'];
                 header('Location: /docdraft?id=' . $result['dID']);
             } else {
                 $errors = [$result['message']];
-                $docController->editDraft($_POST['dID'] ?? '', $errors);
+                $uploadController->editDraft($_POST['dID'] ?? '', $errors);
             }
         } else {
-            $docController->editDraft($_GET['id'] ?? '');
+            $uploadController->editDraft($_GET['id'] ?? '');
         }
         break;
 
@@ -153,18 +155,19 @@ switch ($requestUri) {
             header('Location: /login');
             exit;
         }
-        $docController = new \app\controllers\DocController();
+        $uploadController = new \app\controllers\DocUploadController();
+        $postController = new \app\controllers\DocPostController();
         if ($requestMethod === 'POST') {
-            $result = $docController->processFormSubmission($_POST, $_FILES);
+            $result = $postController->processFormSubmission($_POST, $_FILES);
             if ($result['success']) {
                 $_SESSION['success_message'] = $result['message'];
                 header('Location: /document?id=' . $result['dID']);
             } else {
                 $errors = [$result['message']];
-                $docController->reviseDoc($_POST['dID'] ?? '', $errors);
+                $uploadController->reviseDoc($_POST['dID'] ?? '', $errors);
             }
         } else {
-            $docController->reviseDoc($_GET['id'] ?? '');
+            $uploadController->reviseDoc($_GET['id'] ?? '');
         }
         break;
 
@@ -182,13 +185,13 @@ switch ($requestUri) {
         if (empty($id)) {
             header('Location: /');
         } else {
-            (new \app\controllers\DocController())->viewDocDraft($id);
+            (new \app\controllers\DraftController())->viewDocDraft($id);
         }
         break;
 
     case '/draft/approve':
         if ($requestMethod === 'POST' && $isLoggedIn) {
-            (new \app\controllers\DocController())->approveDraft($_POST);
+            (new \app\controllers\DraftController())->approveDraft($_POST);
         } else {
             header('Location: /login');
         }
@@ -196,7 +199,7 @@ switch ($requestUri) {
 
     case '/draft/finalize':
         if ($requestMethod === 'POST' && $isLoggedIn) {
-            (new \app\controllers\DocController())->finalizeDraft($_POST);
+            (new \app\controllers\DocPostController())->finalizeDraft($_POST);
         } else {
             header('Location: /login');
         }
@@ -204,7 +207,7 @@ switch ($requestUri) {
 
     case '/lookupAuthors':
         if ($requestMethod === 'POST') {
-            (new \app\controllers\DocController())->lookupAuthors();
+            (new \app\controllers\api\DocAjaxController())->lookupAuthors();
         } else {
             http_response_code(405); // Method Not Allowed
             echo json_encode(['error' => 'POST method required']);
@@ -259,7 +262,7 @@ switch ($requestUri) {
             header('Location: /login');
             exit;
         }
-        (new \app\controllers\DocController())->myDrafts();
+        (new \app\controllers\DraftController())->myDrafts();
         break;
 
     // --- Utilities ---
@@ -274,11 +277,12 @@ switch ($requestUri) {
             include VIEWS_PATH_TRIMMED . '/errors/400.php';
             exit;
         }
-        $controller = new \app\controllers\DocController();
+        $docController = new \app\controllers\DocController();
+        $draftController = new \app\controllers\DraftController();
         if ($type === 'draft' || $type === 'draft_suppl') {
-            $controller->streamDraftPdf($id, $type === 'draft_suppl');
+            $draftController->streamDraftPdf($id, $type === 'draft_suppl');
         } else {
-            $controller->streamDocPdf($id, $suppl, $ver);
+            $docController->streamDocPdf($id, $suppl, $ver);
         }
         break;
 
