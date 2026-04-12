@@ -92,6 +92,28 @@ class DocumentRepository
         return $row ? new Document($row) : null;
     }
 
+    // get my submitted document
+    public function getMyDoc(string $column, mixed $idValue, int $mID = 0): ?Document
+    {
+        // Security check: Only allow specific columns to prevent SQL Injection
+        $allowedColumns = ['dID', 'doi'];
+        if (!in_array($column, $allowedColumns, true)) {
+            throw new \InvalidArgumentException("Invalid search column.");
+        }
+
+        $sql = "SELECT * FROM Documents 
+                WHERE $column = :idValue AND submitter_ID = :mID LIMIT 1";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            'idValue' => $idValue,
+            'mID'    => $mID
+        ]);
+
+        $row = $stmt->fetch();
+        return $row ? new Document($row) : null;
+    }
+
     /**
      * Get available external sources.
      */
