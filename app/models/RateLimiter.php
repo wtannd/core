@@ -26,19 +26,19 @@ class RateLimiter
         // If it's a new key, insert it with 1 attempt.
         // If it exists but is older than the window, reset it to 1 attempt and update the time.
         // If it exists and is within the window, increment the attempts.
-        $sql = "
-            INSERT INTO RateLimits (action_key, attempts, first_attempt_time) 
-            VALUES (:key, 1, :now)
-            ON DUPLICATE KEY UPDATE 
+        $sql = "INSERT INTO RateLimits (action_key, attempts, first_attempt_time) VALUES (:key, 1, :now)
+                ON DUPLICATE KEY UPDATE 
                 attempts = IF(first_attempt_time < :window_start, 1, attempts + 1),
-                first_attempt_time = IF(first_attempt_time < :window_start, :now, first_attempt_time)
+                first_attempt_time = IF(first_attempt_time < :window_start2, :now2, first_attempt_time)
         ";
 
         $stmt = $db->prepare($sql);
         $stmt->execute([
             'key'          => $actionKey,
             'now'          => $now,
-            'window_start' => $windowStart
+            'window_start' => $windowStart,
+            'window_start2' => $windowStart,
+            'now2'          => $now
         ]);
 
         // 2. Fetch the current attempts count

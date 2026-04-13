@@ -7,6 +7,7 @@ namespace app\models;
 use config\Database;
 use PDO;
 use Exception;
+use PDOException;
 
 /**
  * DraftService
@@ -75,7 +76,7 @@ class DraftService
             $this->db->commit();
             return $dID;
 
-        } catch (\PDOException $e) {
+        } catch (PDOException $e) {
             $this->db->rollBack();
             error_log("DraftService::saveDraft() error: " . $e->getMessage(), 3, rtrim(LOG_PATH, '/') . '/error.log');
             return false;

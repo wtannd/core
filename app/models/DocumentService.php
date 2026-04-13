@@ -7,6 +7,7 @@ namespace app\models;
 use config\Database;
 use PDO;
 use Exception;
+use PDOException;
 
 /**
  * DocumentService
@@ -171,13 +172,11 @@ class DocumentService
     }
 
     /**
-     * Upsert external links for a document.
-     * Updates existing rows by (dID, sID), inserts new ones, deletes orphans.
+     * Save external links for a document.
+     * Returns array of valid sIDs.
      */
-    public function updateExternalDocs(int $dID, array $links): void
+    public function saveExternalDocs(int $dID, array $links): array
     {
-        if (empty($links)) return;
-
         $sql = "INSERT INTO ExternalDocs (dID, sID, esname, link) 
                 VALUES (:dID, :sID, :esname, :link) 
                 ON DUPLICATE KEY UPDATE esname = VALUES(esname), link = VALUES(link)";
@@ -197,7 +196,22 @@ class DocumentService
             }
         }
 
-        // Delete links not in the valid sID list
+        return $validSIDs;
+    }
+
+    /**
+     * Upsert external links for a document.
+     * Calls saveExternalDocs() then removes orphaned rows.
+     */
+    public function updateExternalDocs(int $dID, array $links): array
+    {
+        if (empty($links)) {
+            $this->deleteExternalDocs($dID);
+            return [];
+        }
+
+        $validSIDs = $this->saveExternalDocs($dID, $links);
+
         if (!empty($validSIDs)) {
             $placeholders = implode(',', array_fill(0, count($validSIDs), '?'));
             $stmt = $this->db->prepare(
@@ -205,6 +219,7 @@ class DocumentService
             );
             $stmt->execute(array_merge([$dID], $validSIDs));
         }
+        return $validSIDs;
     }
 
     /**
@@ -251,8 +266,6 @@ class DocumentService
             $totalDuty += (int)($author[2] ?? 10);
         }
         if ($totalDuty === 0) return;
-
-        $this->deleteAuthors($dID);
 
         $sql = "INSERT INTO DocAuthors (dID, mID, duty, frac) VALUES (:dID, :mID, :duty, :frac)";
         $stmt = $this->db->prepare($sql);
@@ -323,13 +336,64 @@ class DocumentService
     }
 
     /**
+     * Save authors using array input.
+     * Input format: [[mID, duty, frac], ...]
+     * Returns array of valid mIDs.
+     */
+    public function saveAuthors(int $dID, array $authors): array
+    {
+        if (empty($authors)) return [];
+
+        $sql = "INSERT INTO DocAuthors (dID, mID, duty, frac) 
+                VALUES (:dID, :mID, :duty, :frac) 
+                ON DUPLICATE KEY UPDATE duty = VALUES(duty), frac = VALUES(frac)";
+        $stmt = $this->db->prepare($sql);
+
+        $validMIDs = [];
+        foreach ($authors as $author) {
+            $mID = (int)($author[0] ?? 0);
+            if ($mID > 0) {
+                $stmt->execute([
+                    'dID'  => $dID,
+                    'mID'  => $mID,
+                    'duty' => (int)($author[1] ?? 10),
+                    'frac' => (double)($author[2] ?? 0)
+                ]);
+                $validMIDs[] = $mID;
+            }
+        }
+
+        return $validMIDs;
+    }
+
+    /**
+     * Upsert authors using array input.
+     * Calls saveAuthors() then removes orphaned rows.
+     */
+    public function upsertAuthors(int $dID, array $authors): array
+    {
+        $validMIDs = $this->saveAuthors($dID, $authors);
+
+        if (!empty($validMIDs)) {
+            $placeholders = implode(',', array_fill(0, count($validMIDs), '?'));
+            $stmt = $this->db->prepare(
+                "DELETE FROM DocAuthors WHERE dID = ? AND mID NOT IN ($placeholders)"
+            );
+            $stmt->execute(array_merge([$dID], $validMIDs));
+        }
+
+        return $validMIDs;
+    }
+
+    /**
      * Save branches for a document.
-     * Uses num from input data directly.
+     * Uses INSERT ... ON DUPLICATE KEY UPDATE for upsert.
      */
     public function saveBranches(int $dID, array $branches): void
     {
         $sql = "INSERT INTO DocBranches (dID, bID, num, impact) 
-                VALUES (:dID, :bID, :num, :impact)";
+                VALUES (:dID, :bID, :num, :impact) 
+                ON DUPLICATE KEY UPDATE bID = VALUES(bID), impact = VALUES(impact)";
         $stmt = $this->db->prepare($sql);
 
         foreach ($branches as $branch) {
@@ -344,25 +408,12 @@ class DocumentService
 
     /**
      * Upsert branches for a document.
-     * Uses ON DUPLICATE KEY UPDATE for true upsert and Delete rows beyond count.
+     * Calls saveBranches() then removes rows beyond count.
      */
     public function upsertBranches(int $dID, array $branches): void
     {
-        $sql = "INSERT INTO DocBranches (dID, num, bID, impact) 
-                VALUES (:dID, :num, :bID, :impact) 
-                ON DUPLICATE KEY UPDATE bID = VALUES(bID), impact = VALUES(impact)";
-        $stmt = $this->db->prepare($sql);
+        $this->saveBranches($dID, $branches);
 
-        foreach ($branches as $b) {
-            $stmt->execute([
-                'dID'    => $dID,
-                'num'    => (int)$b['num'],
-                'bID'    => (int)$b['bID'],
-                'impact' => (int)$b['impact']
-            ]);
-        }
-
-        // Remove rows beyond the count provided, only if 0 < count < max
         $curNum = count($branches);
         if ($curNum > 0 && $curNum < DOC_BRANCH_MAX) {
             $stmt = $this->db->prepare(
@@ -378,11 +429,9 @@ class DocumentService
      */
     public function saveTopic(int $dID, int $tID): void
     {
-        if ($tID > 0) {
-            $sql = "INSERT INTO DocTopics (dID, tID) VALUES (:dID, :tID)
-                    ON DUPLICATE KEY UPDATE tID = VALUES(tID)";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute(['dID' => $dID, 'tID' => $tID]);
-        }
+        $sql = "INSERT INTO DocTopics (dID, tID) VALUES (:dID, :tID)
+                ON DUPLICATE KEY UPDATE tID = VALUES(tID)";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['dID' => $dID, 'tID' => $tID]);
     }
 }
