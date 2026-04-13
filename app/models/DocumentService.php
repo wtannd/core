@@ -357,7 +357,7 @@ class DocumentService
                     'dID'  => $dID,
                     'mID'  => $mID,
                     'duty' => (int)($author[1] ?? 10),
-                    'frac' => (double)($author[2] ?? 0)
+                    'frac' => (float)($author[2] ?? 0)
                 ]);
                 $validMIDs[] = $mID;
             }

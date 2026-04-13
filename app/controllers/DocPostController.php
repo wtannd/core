@@ -637,9 +637,10 @@ class DocPostController extends BaseController
 					$sumDuty20Plus = 0;
 					$validDuties = true;
 					$totDuty = 0;
+					$author_array = [];
 					foreach ($authorData['authors'] as $author) {
 						// Author array format: [name, mID, duty, affRefs]
-						$duty = (int)($author[2] ?? 0); $totDuty += $duty;
+						$duty = (int)($author[2] ?? 0);
 					
 						if ($duty === 100) {
 							$hasDuty100 = true;
@@ -649,6 +650,8 @@ class DocPostController extends BaseController
 							if ($duty >= 20) {
 								$sumDuty20Plus += $duty;
 							}
+							$totDuty += $duty;
+							$author_array[] = [(int)($author[1] ?? 0), $duty, (float)$duty];
 						} else {
 							$validDuties = false;
 							break;
@@ -663,8 +666,8 @@ class DocPostController extends BaseController
 						$errors['author_list_json'] = 'The sum of primary author duties (>= 20) cannot exceed 875.';
 					} else {
 						$data['author_list'] = $trimmedAuthorList;
-						$data['author_list_array'] = $authorData;
-						$data['tot_duty'] = $totDuty;
+						foreach ($author_array as $a) { $a[2] /= (float)$totDuty; }
+						$data['author_array'] = $author_array;
 					}
 				}
 			}
