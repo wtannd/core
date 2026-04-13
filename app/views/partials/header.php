@@ -58,3 +58,19 @@ $isAdmin = isset($_SESSION['admin_role']) && (int)$_SESSION['admin_role'] >= ADM
         </div>
     </div>
 </header>
+
+<div class="global-alerts-container">
+    
+    <?php if (!empty($flash_success)): ?>
+        <div class="alert alert-success">
+            <?php echo htmlspecialchars($flash_success); ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (!empty($flash_error)): ?>
+        <div class="alert alert-danger">
+            <?php echo htmlspecialchars($flash_error); ?>
+        </div>
+    <?php endif; ?>
+
+</div>

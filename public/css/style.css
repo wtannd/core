@@ -23,6 +23,9 @@
     --max-content-width: 1600px;
     --link-color: #007bff;
     --success-color: #28a745;
+    --success-bg: #d4edda;
+    --success-border: #c3e6cb;
+    --success-text: #155724;
     --danger-color: #dc3545;
     --danger-hover: #c82333;
     --danger-text: #721c24;
@@ -314,6 +317,8 @@ hr {
    Alerts
    ==================================== */
 
+.global-alerts-container { max-width: 800px; margin: 0.6rem auto 0; padding: 0 0.6rem; }
+
 .alert {
     padding: 1rem;
     margin-bottom: 1.5rem;
@@ -325,6 +330,13 @@ hr {
 .alert-danger {
     background-color: var(--danger-bg);
     color: var(--danger-text);
+    border-color: var(--danger-border);
+}
+
+.alert-success {
+    color: var(--success-text);
+    background-color: var(--success-bg);
+    border-color: var(--success-border);
 }
 
 .alert-info {
