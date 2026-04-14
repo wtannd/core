@@ -45,6 +45,18 @@ class DraftRepository
         return $row ? new Draft($row) : false;
     }
 
+    // check if dID is the user saved draft
+    public function checkDraftID(int $dID, int $mID): bool
+    {
+        $sql = "SELECT EXISTS(SELECT 1 FROM DocDrafts WHERE dID = :dID AND submitter_ID = :mID LIMIT 1)";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            'dID' => $dID,
+            'mID' => $mID
+        ]);
+        return (bool) $stmt->fetchColumn();
+    }
+
     /**
      * Fetch all authors for a draft.
      */

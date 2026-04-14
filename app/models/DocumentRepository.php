@@ -114,6 +114,18 @@ class DocumentRepository
         return $row ? new Document($row) : null;
     }
 
+    // check if dID is the user submitted document
+    public function checkDocID(int $dID, int $mID): bool
+    {
+        $sql = "SELECT EXISTS(SELECT 1 FROM Documents WHERE dID = :dID AND submitter_ID = :mID LIMIT 1)";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            'dID' => $dID,
+            'mID' => $mID
+        ]);
+        return (bool) $stmt->fetchColumn();
+    }
+
     /**
      * Get available external sources.
      */
