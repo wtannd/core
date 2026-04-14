@@ -240,7 +240,7 @@
                         }
                         $supplFileStr = "";
                         if ($doc->ver_suppl !== null) {
-                            $extLabel = $doc->getSupplExtLabel();
+                            $extLabel = strtoupper($doc->suppl_ext);
                             $supplFileStr = ' + <a href="'.$doc->getVersionedSupplFileLink($doc->ver_suppl).'">'.$extLabel.'</a>['.$doc->getFormattedSupplSize().']';
                         }
                         
@@ -257,7 +257,7 @@
                         foreach ($history as $hIndex => $rev):
                             $rVer = (int)$rev[0];
                             $rVerSuppl = ($rev[1] !== null) ? (int)$rev[1] : null;
-                            $rSupplExt = (int)($rev[2] ?? 0);
+                            $rSupplExt = $rev[2] ?? '';
                             $rDate = $rev[3] ?? '';
                             $rMainSize = (int)($rev[5] ?? 0);
                             $rSupplSize = (int)($rev[6] ?? 0);
@@ -273,7 +273,7 @@
                             }
                             $rSupplFileStr = "";
                             if ($rVerSuppl !== null) {
-                                $rExtLabel = ($rSupplExt === 2 ? 'ZIP' : 'PDF');
+                                $rExtLabel = strtoupper($rSupplExt);
                                 $rSupplFileStr = ' + <a href="'.$doc->getVersionedSupplFileLink($rVerSuppl).'">'.$rExtLabel.'</a>['.Document::formatSize($rSupplSize).']';
                             }
                         ?>

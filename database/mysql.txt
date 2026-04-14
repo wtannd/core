@@ -622,7 +622,7 @@ CREATE TABLE Documents (
     ver_suppl TINYINT UNSIGNED,                    -- NULL if no suppl file; 1+ =current version# of the supplementary file starting with 1 if uploaded, maybe max of 16
     main_size INT UNSIGNED,  -- size in bytes for the main pdf file (pdf only)
     suppl_size INT UNSIGNED,  -- size in bytes for the suppl file (pdf or zip)
-    suppl_ext TINYINT UNSIGNED,  -- file type of suppl file: NULL if no suppl file, 1 = pdf, 2 = zip (currently only two formats supported for suppl file)
+    suppl_ext VARCHAR(7) COLLATE ascii_general_ci,  -- suppl file type: NULL if no suppl file, currently (pdf, zip) supported (possible future extensions: gz,7z,rar,tgz,tar.gz,tar.bz2)
     main_pages SMALLINT UNSIGNED,  -- number of pages in main file
     main_figs SMALLINT UNSIGNED,  -- number of figures in main file
     main_tabs SMALLINT UNSIGNED,  -- number of tables in main file
@@ -1668,7 +1668,9 @@ CREATE TABLE DocDrafts (  -- document drafts that can also be used for future de
     link_list JSON,          -- JSON array of external links [[sID,esname,link],...]
     branch_list JSON,        -- JSON array of research branches [{"bID":int,"num":int,"impact":int},...] up to 3 branches
     tID INT UNSIGNED,        -- topic ID assigned if desired
-    has_file TINYINT UNSIGNED NOT NULL DEFAULT 0,   -- 0=no file attachment, 1=main.pdf, 2=main.pdf+suppl.pdf, 3=main.pdf+suppl.zip
+    main_size INT UNSIGNED,  -- size in bytes for the main pdf file (pdf only)
+    suppl_size INT UNSIGNED,  -- size in bytes for the suppl file (pdf or zip)
+    suppl_ext VARCHAR(7) COLLATE ascii_general_ci,  -- suppl file type: NULL if no suppl file, currently (pdf, zip) supported (possible future extensions: gz,7z,rar,tgz,tar.gz,tar.bz2)
     main_pages SMALLINT UNSIGNED,  -- number of pages in main file
     main_figs SMALLINT UNSIGNED,  -- number of figures in main file
     main_tabs SMALLINT UNSIGNED,  -- number of tables in main file

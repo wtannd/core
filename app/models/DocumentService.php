@@ -163,6 +163,98 @@ class DocumentService
     }
 
     /**
+     * Fully processes a new document submission, handles DB insertion across multiple
+     * tables, and physically moves the uploaded files to their correct directories.
+     *
+     * @param array $data Assumes merged and validated post/file data
+     * @param array $files The raw $_FILES array
+     * @return int|false Returns the new dID on success, false on failure
+     */
+    public function submitFull(array $data, array $files): int|false
+    {
+        // 1. Determine Dates based on provided rules
+        if (!empty($data['pub_date'])) {
+            $pubdate = trim($data['pub_date']);
+            $recvDate = !empty($data['recv_date']) ? trim($data['recv_date']) : $pubdate;
+            
+            $data['pubdate'] = $pubdate;
+            $data['submission_time'] = $recvDate . ' 00:00:00';
+        } else {
+            $data['date_added'] = date('Y-m-d H:i:s');
+            $data['pubdate'] = DateTimeImmutable::createFromFormat('Y-m-d', $data['date_added']);
+        }
+
+        // 2. Define Upload Directory
+        $uploadDir = UPLOAD_PATH_TRIMMED . '/'. str_replace('-', '/', $pubdate);
+        
+        try {
+            // Begin Atomic Transaction
+            $this->db->beginTransaction();
+
+            // 3. Primary DB Insert
+            $dID = $this->submitDoc($data);
+            
+            if (!$dID) {
+                throw new Exception("Failed to insert core document record.");
+            }
+
+            // 4. Relational DB Inserts
+            if (!empty($data['author_array'])) {
+                $this->saveAuthors($dID, $data['author_array']);
+            }
+            
+            if (!empty($data['branch_list_array'])) {
+                $this->saveBranches($dID, $data['branch_list_array']);
+            }
+            
+            if (!empty($data['link_list_array'])) {
+                $this->saveExternalDocs($dID, $data['link_list_array']);
+            }
+            
+            if (!empty($data['tID'])) {
+                $this->saveTopic($dID, $data['tID']);
+            }
+
+            // 5. File Movement
+            // Create the nested directory structure if it doesn't exist
+            if (!is_dir($uploadDir)) {
+                if (!mkdir($uploadDir, 0750, true)) {
+                    throw new Exception("Failed to create upload directory: $targetPath");
+                }
+            }
+
+            // Move Main File
+            if (!empty($data['main_size']) && isset($files['main_file'])) {
+                $mainDest = $uploadDir . '/main_v1.pdf';
+                if (!move_uploaded_file($files['main_file']['tmp_name'], $mainDest)) {
+                    throw new Exception("Failed to move main file to disk.");
+                }
+            }
+
+            // Move Supplemental File
+            if (!empty($data['suppl_size']) && isset($files['supplemental_file'])) {
+                $supplDest = $uploadDir . '/suppl_v1.' . ($data['suppl_ext'] ?? 'zip');
+                if (!move_uploaded_file($files['supplemental_file']['tmp_name'], $supplDest)) {
+                    throw new Exception("Failed to move supplemental file to disk.");
+                }
+            }
+
+            // If we made it here, both DB and Filesystem succeeded!
+            $this->db->commit();
+            return $dID;
+
+        } catch (PDOException $e) {
+            $this->db->rollBack();
+            error_log("DB Error in DocumentService::submitFull(): " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
+            return false;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            error_log("System/File Error in DocumentService::submitFull(): " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
+            return false;
+        }
+    }
+
+    /**
      * Delete all external links for a document.
      */
     public function deleteExternalDocs(int $dID): void

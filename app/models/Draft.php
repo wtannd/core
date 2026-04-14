@@ -17,7 +17,6 @@ class Draft
     public string $title = '';
     public string $abstract = '';
     public ?string $author_list = null;
-    public int $has_file = 0;
     public int $dtype = 1;
     public ?string $notes = null;
     public ?string $full_text = null;
@@ -28,6 +27,9 @@ class Draft
     public ?string $last_update_time = null;
     public ?string $pub_date = null;
     public ?string $recv_date = null;
+    public ?int $main_size = null;
+    public ?int $suppl_size = null;
+    public ?string $suppl_ext = null;
     public ?int $main_pages = null;
     public ?int $main_figs = null;
     public ?int $main_tabs = null;
@@ -80,23 +82,17 @@ class Draft
 
     public function hasMainFile(): bool
     {
-        return $this->has_file > 0;
+        return (bool)$this->main_size;
     }
 
     public function hasSupplFile(): bool
     {
-        return $this->has_file === 2 || $this->has_file === 3;
+        return (bool)$this->suppl_size;
     }
 
     public function getFileTypeLabel(): string
     {
-        return match ($this->has_file) {
-            0 => 'None',
-            1 => 'Main PDF',
-            2 => 'Main + Suppl PDF',
-            3 => 'Main + Suppl ZIP',
-            default => 'Unknown',
-        };
+        return ($this->main_size ? ('Main PDF' . ($this->suppl_size ? (' + Suppl.' . $this->suppl_ext) : '')) : 'None');
     }
 
     public function getMainFileLink(): string

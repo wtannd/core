@@ -103,21 +103,21 @@ class DocController extends BaseController
         if ($isSuppl) {
             $supplVersion = $ver !== null ? (int)$ver : (int)($doc->ver_suppl ?? 0);
             if ($supplVersion > 0) {
-                $supplExt = (int)($doc->suppl_ext ?? 0);
+                $supplExt = $doc->suppl_ext ?? '';
                 
                 if ($ver !== null && $ver < (int)($doc->ver_suppl ?? 0)) {
                     $history = $doc->revision_history ?? [];
                     foreach ($history as $rev) {
                         if (isset($rev[1]) && (int)$rev[1] === $ver) {
-                            $supplExt = (int)($rev[2] ?? 0);
+                            $supplExt = $rev[2] ?? '';
                             break;
                         }
                     }
                 }
 
-                if ($supplExt === 1) {
+                if ($supplExt === 'pdf') {
                     $filePath = "$uploadDir/{$filePrefix}_suppl_v{$supplVersion}.pdf";
-                } elseif ($supplExt === 2) {
+                } elseif ($supplExt === 'zip') {
                     $filePath = "$uploadDir/{$filePrefix}_suppl_v{$supplVersion}.zip";
                     $contentType = 'application/zip';
                 }

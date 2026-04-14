@@ -16,7 +16,7 @@ class Document extends FeedDocument
     public int $dtype = 1;
     public ?string $notes = null;
     public ?string $full_text = null;
-    public ?int $suppl_ext = null;
+    public ?string $suppl_ext = null;
     public ?string $pubdate = null;
     public ?string $announce_time = null;
     public ?string $last_update_time = null;
@@ -50,15 +50,6 @@ class Document extends FeedDocument
     public function hasSupplFile(): bool
     {
         return $this->ver_suppl !== null;
-    }
-
-    public function getSupplExtLabel(): string
-    {
-        return match ($this->suppl_ext) {
-            1 => 'PDF',
-            2 => 'ZIP',
-            default => '',
-        };
     }
 
     public function getAffiliations(): array

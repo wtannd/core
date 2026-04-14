@@ -270,7 +270,7 @@ foreach ($draftAuthors as $da) {
                         <?php if (!empty($doc->recv_date)): ?>
                         <tr><td>Date Received</td><td><?php echo $doc->getFormattedRecvDate(); ?></td></tr>
                         <?php endif; ?>
-                        <tr><td>Has File</td><td><?php echo $doc->getFileTypeLabel(); ?></td></tr>
+                        <tr><td>File(s)</td><td><?php echo $doc->getFileTypeLabel(); ?></td></tr>
                     </tbody>
                 </table>
             </div>

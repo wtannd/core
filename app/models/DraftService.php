@@ -78,7 +78,7 @@ class DraftService
 
         } catch (PDOException $e) {
             $this->db->rollBack();
-            error_log("DraftService::saveDraft() error: " . $e->getMessage(), 3, rtrim(LOG_PATH, '/') . '/error.log');
+            error_log("DraftService::saveDraft() error: " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
             return false;
         }
     }

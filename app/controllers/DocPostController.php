@@ -641,12 +641,9 @@ class DocPostController extends BaseController
 				$validZipMimes = ['application/zip', 'application/x-zip-compressed', 'multipart/x-zip'];
 				$isZip = (in_array($mimeType, $validZipMimes) && $ext === 'zip');
 
-				if ($isPdf) {
+				if ($isPdf || $isZip) {
 					$data['suppl_size'] = (int)$supplFile['size'];
-					$data['suppl_ext'] = 1;
-				} elseif ($isZip) {
-					$data['suppl_size'] = (int)$supplFile['size'];
-					$data['suppl_ext'] = 2;
+					$data['suppl_ext'] = $ext;
 				} else {
 					$errors['supplemental_file'] = 'Supplemental file must be either a PDF or ZIP file.';
 				}

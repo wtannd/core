@@ -137,17 +137,17 @@ class DraftController extends BaseController
         $uploadDir = UPLOAD_PATH_TRIMMED . '/docdrafts';
         $filePath = null;
         $contentType = 'application/pdf';
-        $hasFile = (int)$doc->has_file;
+        $ext = $doc->suppl_ext ?? '';
 
         if ($isSuppl) {
-            if ($hasFile === 2) {
+            if ($ext === 'pdf') {
                 $filePath = "$uploadDir/{$id}_suppl.pdf";
-            } elseif ($hasFile === 3) {
+            } elseif ($ext === 'zip') {
                 $filePath = "$uploadDir/{$id}_suppl.zip";
                 $contentType = 'application/zip';
             }
         } else {
-            if ($hasFile >= 1) {
+            if (!empty($doc->main_size)) {
                 $filePath = "$uploadDir/{$id}.pdf";
             }
         }
