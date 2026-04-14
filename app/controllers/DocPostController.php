@@ -471,6 +471,120 @@ class DocPostController extends BaseController
         ];
     }
 
+    /**
+     * Centralized method to process all document uploads/edits/revisions.
+     *
+     * @param string $mode Expected to be "submit", "save", "revise", or "edit"
+     */
+    public function processUpload(string $mode): array
+    {
+        $postData = $_POST;
+        $files = $_FILES;
+
+        // 1. Initial Access & Security Checks
+        $mID = $this->requireGoodStanding();
+        $this->validateCsrf($postData);
+
+        // Safely extract dID if it's provided in the POST request
+        $dID = isset($postData['dID']) ? (int)$postData['dID'] : 0;
+
+        // 2. Validate POST and FILES arrays
+        $postCheck = $this->validatePostUpload($postData);
+        $fileCheck = $this->validateFileUpload($files);
+
+        // Merge errors and data
+        $errors = array_merge($postCheck['errors'] ?? [], $fileCheck['errors'] ?? []);
+        $data = array_merge($postCheck['data'] ?? [], $fileCheck['data'] ?? []);
+
+        // 3. Move specific extra fields from POST to clean data if they are set
+        $extraFields = ['dtype', 'tID', 'main_pages', 'main_figs', 'main_tabs', 'full_text'];
+        foreach ($extraFields as $field) {
+            if (isset($postData[$field]) && trim((string)$postData[$field]) !== '') {
+                $data[$field] = trim($postData[$field]);
+            }
+        }
+
+        // 4. Mode-specific Rules: "submit" and "save"
+        if ($mode === 'submit' || $mode === 'save') {
+            
+            // Check required fields
+            if (empty($data['title'])) {
+                $errors['title'] = 'Title must be provided.';
+            }
+            if (empty($data['abstract'])) {
+                $errors['abstract'] = 'Abstract must be provided.';
+            }
+            if (empty($data['dtype'])) {
+                $errors['dtype'] = 'Document type (dtype) must be set.';
+            }
+            if (empty($data['author_list'])) {
+                $errors['author_list'] = 'Author list must be provided.';
+            }
+            if (empty($data['branch_list'])) {
+                $errors['branch_list'] = 'Branch list must be provided.';
+            }
+
+            // Supplemental file logic check
+            if (!empty($data['suppl_size']) && empty($data['main_size'])) {
+                $errors['main_file'] = 'A main file must be uploaded if you are providing a supplemental file.';
+            }
+
+            // Assign submitter
+            $data['submitter_ID'] = $mID;
+        }
+
+        // 5. Sub-mode / Final specific logic validations
+        if ($mode === 'submit') {
+            // Check co-author approvals 
+            if (isset($data['author_array']) && is_array($data['author_array'])) {
+                foreach ($data['author_array'] as $author) {
+                    // author is in format [mID, duty, frac]
+                    $authorMID = isset($author[0]) ? (int)$author[0] : 0;
+                    
+                    // If author has an mID (>0) and it's not the submitter's mID
+                    if ($authorMID > 0 && $authorMID !== $mID) {
+                        $errors['co_author'] = 'Submission requires the approval of other co-authors. Please save as a draft first.';
+                        break; // Stop checking after finding the first mismatch
+                    }
+                }
+            }
+        } elseif ($mode === 'revise') {
+            if ($dID <= 0 || !$this->docRepo->checkDocID($dID, $mID)) {
+                $errors['dID'] = 'Document not found or access denied.';
+            }
+        } elseif ($mode === 'edit') {
+            if ($dID <= 0 || !$this->draftRepo->checkDraftID($dID, $mID)) {
+                $errors['dID'] = 'Draft not found or access denied.';
+            }
+        }
+
+        // 6. Halt and render if ANY errors were collected
+        if (!empty($errors)) {
+            // Repopulate form fields using the original POST data
+            return ['success' => false, 'errors' => $errors, 'dID' => $dID, 'mode' => $mode];
+        }
+
+        // 7. Success! Execute DB Operations & Move files
+        switch ($mode) {
+            case 'submit':
+                $result = $this->docService->submitFull($data, $files);
+                break;
+            case 'save':
+                $result = $this->draftService->saveFull($data, $files);
+                break;
+            case 'revise':
+                $result = $this->docService->reviseFull($dID, $data, $files);
+                break;
+            case 'edit':
+                $result = $this->draftService->editFull($dID, $data, $files); 
+                break;
+            default:
+                // Hard fallback (just in case)
+                $this->render('errors/general.php', [ 'errorMessage' => 'Invalid processing mode.' ]);
+                exit;
+        }
+        return ['success' => $result, 'dID' => $dID, 'mode' => $mode];
+    }
 
 	/**
 	 * Validates file uploads for main and supplemental documents.
