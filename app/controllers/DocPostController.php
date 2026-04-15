@@ -383,93 +383,6 @@ class DocPostController extends BaseController
         return ['success' => true, 'message' => $message, 'dID' => $dID, 'action' => $action];
     }
 
-    // ─────────────────────────────────────────────
-    // Private Helpers
-    // ─────────────────────────────────────────────
-
-    private function cleanLinkList(string $json): array
-    {
-        $links = json_decode($json, true) ?? [];
-        $cleaned = [];
-
-        foreach ($links as $link) {
-            if (isset($link[2])) {
-                $url = str_ireplace('https://doi.org/', '', $link[2]);
-                $url = trim($url);
-                $cleaned[] = [(int)$link[0], trim($link[1]), $url];
-            }
-        }
-
-        return $cleaned;
-    }
-
-    private function validateFileUploads(array $fileData, int $existingSupplExt = 0): array
-    {
-        $isMainUploaded = isset($fileData['main_file']) && $fileData['main_file']['error'] === UPLOAD_ERR_OK;
-        $isSupplUploaded = isset($fileData['supplemental_file']) && $fileData['supplemental_file']['error'] === UPLOAD_ERR_OK;
-        $mainSize = $isMainUploaded ? (int)$fileData['main_file']['size'] : 0;
-        $supplSize = $isSupplUploaded ? (int)$fileData['supplemental_file']['size'] : 0;
-        $supplExt = $existingSupplExt;
-
-        if (!$isMainUploaded && !$isSupplUploaded) {
-            return ['error' => null, 'suppl_ext' => $supplExt, 'isMainUploaded' => false, 'isSupplUploaded' => false, 'mainSize' => 0, 'supplSize' => 0];
-        }
-
-        if ($isMainUploaded && $fileData['main_file']['size'] > MAX_UPLOAD_SIZE) {
-            return ['error' => 'File exceeds the maximum allowed size of ' . (MAX_UPLOAD_SIZE / (1024 * 1024)) . 'MB.', 'suppl_ext' => 0, 'isMainUploaded' => false, 'isSupplUploaded' => false, 'mainSize' => 0, 'supplSize' => 0];
-        }
-        if ($isSupplUploaded && $fileData['supplemental_file']['size'] > MAX_UPLOAD_SIZE) {
-            return ['error' => 'File exceeds the maximum allowed size of ' . (MAX_UPLOAD_SIZE / (1024 * 1024)) . 'MB.', 'suppl_ext' => 0, 'isMainUploaded' => false, 'isSupplUploaded' => false, 'mainSize' => 0, 'supplSize' => 0];
-        }
-
-        $finfo = new \finfo(FILEINFO_MIME_TYPE);
-        $supplExt = 0;
-
-        if ($isMainUploaded) {
-            $mainMime = $finfo->file($fileData['main_file']['tmp_name']);
-            if ($mainMime !== 'application/pdf') {
-                return ['error' => 'Security Error: Main document must be a valid PDF.', 'suppl_ext' => 0, 'isMainUploaded' => false, 'isSupplUploaded' => false, 'mainSize' => 0, 'supplSize' => 0];
-            }
-        }
-
-        if ($isSupplUploaded) {
-            $supplMime = $finfo->file($fileData['supplemental_file']['tmp_name']);
-            $ext = strtolower(pathinfo($fileData['supplemental_file']['name'], PATHINFO_EXTENSION));
-
-            if ($ext === 'pdf') {
-                if ($supplMime !== 'application/pdf') {
-                    return ['error' => 'Security Error: Supplemental PDF is invalid.', 'suppl_ext' => 0, 'isMainUploaded' => false, 'isSupplUploaded' => false, 'mainSize' => 0, 'supplSize' => 0];
-                }
-                $supplExt = 1;
-            } else            if ($ext === 'zip') {
-                if ($supplMime !== 'application/zip' && $supplMime !== 'application/x-zip-compressed') {
-                    return ['error' => 'Security Error: Supplemental ZIP is invalid.', 'suppl_ext' => 0, 'isMainUploaded' => false, 'isSupplUploaded' => false, 'mainSize' => 0, 'supplSize' => 0];
-                }
-                $supplExt = 2;
-            }
-        }
-
-        return ['error' => null, 'suppl_ext' => $supplExt, 'isMainUploaded' => $isMainUploaded, 'isSupplUploaded' => $isSupplUploaded, 'mainSize' => $mainSize, 'supplSize' => $supplSize];
-    }
-
-    private function parseDateFields(array $postData): array
-    {
-        $pubDate = trim($postData['pub_date'] ?? '');
-        $recvDate = trim($postData['recv_date'] ?? '');
-        $submissionTime = date('Y-m-d H:i:s');
-
-        if (!empty($recvDate)) {
-            $submissionTime = $recvDate . ' 00:00:00';
-        } elseif (!empty($pubDate)) {
-            $submissionTime = $pubDate . ' 00:00:00';
-        }
-
-        return [
-            'pub_date' => $pubDate,
-            'recv_date' => $recvDate,
-            'submission_time' => $submissionTime
-        ];
-    }
 
     /**
      * Centralized method to process all document uploads/edits/revisions.
@@ -506,6 +419,8 @@ class DocPostController extends BaseController
         if (empty($data)) {
             $errors['no_data'] = 'No valid data are provided.";
         }
+        // Assign submitter
+        $data['submitter_ID'] = $mID;
 
         // 4. Mode-specific Rules: "submit" and "save"
         if ($mode === 'submit' || $mode === 'save') {
@@ -531,9 +446,6 @@ class DocPostController extends BaseController
             if (!empty($data['suppl_size']) && empty($data['main_size'])) {
                 $errors['main_file'] = 'A main file must be uploaded if you are providing a supplemental file.';
             }
-
-            // Assign submitter
-            $data['submitter_ID'] = $mID;
         }
 
         // 5. Sub-mode / Final specific logic validations
@@ -587,6 +499,26 @@ class DocPostController extends BaseController
                 exit;
         }
         return ['success' => $result, 'dID' => $dID, 'mode' => $mode];
+    }
+
+    // ─────────────────────────────────────────────
+    // Private Helpers
+    // ─────────────────────────────────────────────
+
+    private function cleanLinkList(string $json): array
+    {
+        $links = json_decode($json, true) ?? [];
+        $cleaned = [];
+
+        foreach ($links as $link) {
+            if (isset($link[2])) {
+                $url = str_ireplace('https://doi.org/', '', $link[2]);
+                $url = trim($url);
+                $cleaned[] = [(int)$link[0], trim($link[1]), $url];
+            }
+        }
+
+        return $cleaned;
     }
 
 	/**

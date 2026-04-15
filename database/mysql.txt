@@ -1664,9 +1664,9 @@ CREATE TABLE DocDrafts (  -- document drafts that can also be used for future de
     abstract TEXT COLLATE utf8mb4_general_ci NOT NULL,
     notes VARCHAR(255) COLLATE utf8mb4_general_ci,     -- page#, fig#, other brief comments or changes for new revision
     submitter_ID BIGINT UNSIGNED NOT NULL,             -- member ID of the submitter
-    author_list JSON,        -- JSON array of authors without affiliations: [[author_name=pub_name, mID , significance_factor=duty], ...] (author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author  -- more complex: {"authors" : [[pub_name, mID, duty, [list of order numbers of affiliations]], ...], "affiliations": [[order#, name], ...]}
+    author_list JSON NOT NULL,        -- JSON array of authors without affiliations: [[author_name=pub_name, mID , significance_factor=duty], ...] (author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author  -- more complex: {"authors" : [[pub_name, mID, duty, [list of order numbers of affiliations]], ...], "affiliations": [[order#, name], ...]}
     link_list JSON,          -- JSON array of external links [[sID,esname,link],...]
-    branch_list JSON,        -- JSON array of research branches [{"bID":int,"num":int,"impact":int},...] up to 3 branches
+    branch_list JSON NOT NULL,        -- JSON array of research branches [{"bID":int,"num":int,"impact":int},...] up to 3 branches
     tID INT UNSIGNED,        -- topic ID assigned if desired
     main_size INT UNSIGNED,  -- size in bytes for the main pdf file (pdf only)
     suppl_size INT UNSIGNED,  -- size in bytes for the suppl file (pdf or zip)

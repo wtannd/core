@@ -149,7 +149,7 @@ class DocumentService
 
             // Move Main File
             if (!empty($data['main_size']) && isset($files['main_file'])) {
-                $mainDest = $uploadDir . '/main_v1.pdf';
+                $mainDest = $uploadDir . '/' . ((string)$dID) . '_main_v1.pdf';
                 if (!move_uploaded_file($files['main_file']['tmp_name'], $mainDest)) {
                     throw new Exception("Failed to move main file to disk.");
                 }
@@ -157,7 +157,7 @@ class DocumentService
 
             // Move Supplemental File
             if (!empty($data['suppl_size']) && isset($files['supplemental_file'])) {
-                $supplDest = $uploadDir . '/suppl_v1.' . ($data['suppl_ext'] ?? 'zip');
+                $supplDest = $uploadDir . '/' . ((string)$dID) . '_suppl_v1.' . ($data['suppl_ext'] ?? 'zip');
                 if (!move_uploaded_file($files['supplemental_file']['tmp_name'], $supplDest)) {
                     throw new Exception("Failed to move supplemental file to disk.");
                 }
@@ -190,7 +190,7 @@ class DocumentService
     public function reviseFull(int $dID, array $data, array $files): int|false
     {
         // 1. Retrieve old data
-        $stmt = $this->db->prepare("SELECT pubdate, version, ver_suppl, suppl_ext, revision_history, last_revision_time, main_size, suppl_size FROM Documents WHERE dID = :dID");
+        $stmt = $this->db->prepare("SELECT doi, pubdate, version, ver_suppl, suppl_ext, revision_history, last_revision_time, main_size, suppl_size FROM Documents WHERE dID = :dID");
         $stmt->execute(['dID' => $dID]);
         $old = $stmt->fetch(\PDO::FETCH_ASSOC);
 
@@ -205,10 +205,10 @@ class DocumentService
 
         // 3. Increment versions
         if ($hasNewMain) {
-            $data['version'] = (int)$old['version'] + 1;
+            $data['version'] = (int)$old['version'] + 1; if ($data['version'] > 16) return false;
         }
         if ($hasNewSuppl) {
-            $data['ver_suppl'] = (int)$old['ver_suppl'] + 1;
+            $data['ver_suppl'] = (int)$old['ver_suppl'] + 1; if ($data['ver_suppl'] > 16) return false;
         }
 
         // 4. Set the new revision time
@@ -267,8 +267,9 @@ class DocumentService
             }
 
             // Move new main file
+            $filePrefix = empty($old['doi']) ? (string)$dID : $old['doi'];
             if ($hasNewMain) {
-                $mainDest = $uploadDir . '/main_v' . $data['version'] . '.pdf';
+                $mainDest = $uploadDir . '/' . $filePrefix . '_main_v' . $data['version'] . '.pdf';
                 if (!move_uploaded_file($files['main_file']['tmp_name'], $mainDest)) {
                     throw new Exception("Failed to move revised main file to disk.");
                 }
@@ -276,7 +277,7 @@ class DocumentService
 
             // Move new supplemental file
             if ($hasNewSuppl) {
-                $supplDest = $uploadDir . '/suppl_v' . $data['ver_suppl'] . '.' . $data['suppl_ext'];
+                $supplDest = $uploadDir . '/' . $filePrefix . '_suppl_v' . $data['ver_suppl'] . '.' . $data['suppl_ext'];
                 if (!move_uploaded_file($files['supplemental_file']['tmp_name'], $supplDest)) {
                     throw new Exception("Failed to move revised supplemental file to disk.");
                 }
@@ -385,93 +386,7 @@ class DocumentService
     }
 
     /**
-     * Save authors from author_list JSON.
-     * Calculates frac = duty / totalDuty for ECP calculation.
-     */
-    public function saveAuthorsFromList(int $dID, string $authorListJson): void
-    {
-        $data = json_decode($authorListJson, true) ?? [];
-        $authors = $data['authors'] ?? [];
-
-        if (empty($authors)) return;
-
-        // Calculate total duty from ALL authors (including those without mID)
-        $totalDuty = 0;
-        foreach ($authors as $author) {
-            $totalDuty += (int)($author[2] ?? 10);
-        }
-        if ($totalDuty === 0) return;
-
-        $sql = "INSERT INTO DocAuthors (dID, mID, duty, frac) VALUES (:dID, :mID, :duty, :frac)";
-        $stmt = $this->db->prepare($sql);
-
-        foreach ($authors as $author) {
-            $mID = (int)($author[1] ?? 0);
-            if ($mID > 0) {
-                $duty = (int)($author[2] ?? 10);
-                $stmt->execute([
-                    'dID'  => $dID,
-                    'mID'  => $mID,
-                    'duty' => $duty,
-                    'frac' => $duty / $totalDuty
-                ]);
-            }
-        }
-    }
-
-    /**
-     * Upsert authors from author_list JSON.
-     * Updates existing rows, inserts new ones, deletes orphaned mIDs.
-     * Uses ON DUPLICATE KEY UPDATE for true upsert.
-     */
-    public function upsertAuthorsFromList(int $dID, string $authorListJson): void
-    {
-        $data = json_decode($authorListJson, true) ?? [];
-        $authors = $data['authors'] ?? [];
-
-        if (empty($authors)) return;
-
-        // Calculate total duty from ALL authors (including those without mID)
-        $totalDuty = 0;
-        $validMIDs = [];
-        foreach ($authors as $author) {
-            $totalDuty += (int)($author[2] ?? 10);
-            $mID = (int)($author[1] ?? 0);
-            if ($mID > 0) {
-                $validMIDs[] = $mID;
-            }
-        }
-        if ($totalDuty === 0 || empty($validMIDs)) return;
-
-        // Upsert each valid author using ON DUPLICATE KEY UPDATE
-        $sql = "INSERT INTO DocAuthors (dID, mID, duty, frac) 
-                VALUES (:dID, :mID, :duty, :frac) 
-                ON DUPLICATE KEY UPDATE duty = VALUES(duty), frac = VALUES(frac)";
-        $stmt = $this->db->prepare($sql);
-
-        foreach ($authors as $author) {
-            $mID = (int)($author[1] ?? 0);
-            if ($mID > 0) {
-                $duty = (int)($author[2] ?? 10);
-                $stmt->execute([
-                    'dID'  => $dID,
-                    'mID'  => $mID,
-                    'duty' => $duty,
-                    'frac' => $duty / $totalDuty
-                ]);
-            }
-        }
-
-        // Delete authors not in the valid mID list (cleanup orphaned)
-        $placeholders = implode(',', array_fill(0, count($validMIDs), '?'));
-        $stmt = $this->db->prepare(
-            "DELETE FROM DocAuthors WHERE dID = ? AND mID NOT IN ($placeholders)"
-        );
-        $stmt->execute(array_merge([$dID], $validMIDs));
-    }
-
-    /**
-     * Save authors using array input.
+     * Save authors using array input and upsert method.
      * Input format: [[mID, duty, frac], ...]
      * Returns array of valid mIDs.
      */
@@ -502,10 +417,10 @@ class DocumentService
     }
 
     /**
-     * Upsert authors using array input.
+     * Update authors using array input.
      * Calls saveAuthors() then removes orphaned rows.
      */
-    public function upsertAuthors(int $dID, array $authors): array
+    public function updateAuthors(int $dID, array $authors): array
     {
         $validMIDs = $this->saveAuthors($dID, $authors);
 
@@ -542,10 +457,10 @@ class DocumentService
     }
 
     /**
-     * Upsert branches for a document.
+     * Update branches for a document.
      * Calls saveBranches() then removes rows beyond count.
      */
-    public function upsertBranches(int $dID, array $branches): void
+    public function updateBranches(int $dID, array $branches): void
     {
         $this->saveBranches($dID, $branches);
 
