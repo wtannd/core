@@ -132,7 +132,7 @@
 
                 <div class="form-group">
                     <label for="notes"><h3>Notes:</h3></label>
-                    <input type="text" id="notes" name="notes" value="<?php echo htmlspecialchars($valNotes); ?>">
+                    <input type="text" id="notes" name="notes" maxlength="255" value="<?php echo htmlspecialchars($valNotes); ?>">
                 </div>
 
                 <hr>
@@ -254,7 +254,7 @@
                 <?php if ($isRevise): ?>
                 <div class="form-group">
                     <label for="revision_notes"><h3>Revision Notes:</h3></label>
-                    <textarea id="revision_notes" name="revision_notes" rows="3" placeholder="Describe what changed in this revision..."><?php echo htmlspecialchars($_POST['revision_notes'] ?? ''); ?></textarea>
+                    <input id="revision_notes" type="text" name="revision_notes" maxlength="255" placeholder="Describe what changed in this revision..." value="<?php echo htmlspecialchars($_POST['revision_notes'] ?? ''); ?>">
                 </div>
                 <?php endif; ?>
 

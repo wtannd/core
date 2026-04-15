@@ -26,28 +26,19 @@ class DocumentService
     /**
      * Submit a final document.
      */
-    public function submitDocument(array $data): int
+    public function submitDoc(array $data): int
     {
-        $mainSize = isset($data['main_size']) && $data['main_size'] !== '' ? (int)$data['main_size'] : 0;
-        $supplSize = isset($data['suppl_size']) && $data['suppl_size'] !== '' ? (int)$data['suppl_size'] : 0;
-        $supplExt = isset($data['suppl_ext']) ? (int)$data['suppl_ext'] : null;
+        $fields = []; $placeholders = []; $params = [];
 
-        $version = $mainSize > 0 ? 1 : 0;
-        $verSuppl = $supplSize > 0 ? 1 : null;
+        $requiredFields = ['submitter_ID', 'title', 'abstract', 'dtype', 'author_list', 'pubdate'];
+        foreach ($requiredFields as $f) {
+            $fields[] = $f;
+            $placeholders[] = ":$f";
+            $params[$f] = $data[$f];
+        }
 
-        $fields = ['submitter_ID', 'title', 'abstract', 'dtype', 'version', 'ver_suppl', 'suppl_ext'];
-        $placeholders = [':submitter_ID', ':title', ':abstract', ':dtype', ':version', ':ver_suppl', ':suppl_ext'];
-        $params = [
-            'submitter_ID' => $data['submitter_ID'],
-            'title'        => $data['title'],
-            'abstract'     => $data['abstract'],
-            'dtype'        => (int)($data['dtype'] ?? 1),
-            'version'      => $version,
-            'ver_suppl'    => $verSuppl,
-            'suppl_ext'    => $verSuppl !== null ? $supplExt : null
-        ];
-
-        $optionalFields = ['notes', 'author_list', 'submission_time', 'pubdate', 'full_text', 'main_pages', 'main_figs', 'main_tabs', 'main_size', 'suppl_size'];
+        $optionalFields = ['notes', 'submission_time', 'datetime_added', 'full_text', 'main_pages', 'main_figs', 'main_tabs',
+                           'main_size', 'suppl_size', 'suppl_ext', 'version', 'ver_suppl'];
         foreach ($optionalFields as $f) {
             if (isset($data[$f]) && $data[$f] !== '') {
                 $fields[] = $f;
@@ -62,104 +53,31 @@ class DocumentService
 
         $dID = (int)$this->db->lastInsertId();
 
-        if (!empty($data['link_list_array'])) {
-            $sqlLink = "INSERT INTO ExternalDocs (dID, sID, esname, link) VALUES (:dID, :sID, :esname, :link)";
-            $stmtLink = $this->db->prepare($sqlLink);
-            foreach ($data['link_list_array'] as $link) {
-                if (isset($link[0], $link[2])) {
-                    $stmtLink->execute([
-                        'dID'    => $dID,
-                        'sID'    => (int)$link[0],
-                        'esname' => $link[1],
-                        'link'   => $link[2]
-                    ]);
-                }
-            }
-        }
-
         return $dID;
     }
 
     /**
      * Revise a published document.
      */
-    public function reviseDocument(int $dID, array $data, bool $mainChanged, bool $supplChanged): array
+    public function reviseDoc(int $dID, array $data): void
     {
-        $stmt = $this->db->prepare("SELECT version, ver_suppl, suppl_ext, revision_history, last_revision_time, main_size, suppl_size FROM Documents WHERE dID = :dID");
-        $stmt->execute(['dID' => $dID]);
-        $current = $stmt->fetch(PDO::FETCH_ASSOC);
+        $fields = [];
+        $params = ['dID' => $dID];
 
-        if (!$current) {
-            return ['version' => 0, 'ver_suppl' => null];
-        }
-
-        $oldVersion = (int)($current['version'] ?? 0);
-        $oldVerSuppl = $current['ver_suppl'] !== null ? (int)$current['ver_suppl'] : null;
-        $oldSupplExt = $current['suppl_ext'] !== null ? (int)$current['suppl_ext'] : null;
-
-        $newVersion = $mainChanged ? $oldVersion + 1 : $oldVersion;
-        $newVerSuppl = $supplChanged ? ($oldVerSuppl !== null ? $oldVerSuppl + 1 : 1) : $oldVerSuppl;
-        $newSupplExt = $supplChanged && isset($data['suppl_ext']) ? (int)$data['suppl_ext'] : $oldSupplExt;
-
-        $fields = ['title', 'abstract', 'dtype'];
-        $params = [
-            'dID'      => $dID,
-            'title'    => $data['title'],
-            'abstract' => $data['abstract'],
-            'dtype'    => (int)($data['dtype'] ?? 1),
-        ];
-
-        if ($mainChanged || $supplChanged) {
-            $revisionHistory = json_decode($current['revision_history'] ?? '[]', true) ?: [];
-
-            $revisionHistory[] = [
-                $oldVersion,
-                $oldVerSuppl,
-                $oldSupplExt,
-                $current['last_revision_time'],
-                $data['revision_notes'] ?? '',
-                (int)($current['main_size'] ?? 0),
-                (int)($current['suppl_size'] ?? 0)
-            ];
-
-            $fields[] = 'version';
-            $fields[] = 'ver_suppl';
-            $fields[] = 'suppl_ext';
-            $fields[] = 'revision_history';
-            $fields[] = 'last_revision_time';
-            $params['version'] = $newVersion;
-            $params['ver_suppl'] = $newVerSuppl;
-            $params['suppl_ext'] = $newSupplExt;
-            $params['revision_history'] = json_encode($revisionHistory);
-            $params['last_revision_time'] = date('Y-m-d H:i:s');
-            
-            if ($mainChanged) {
-                $fields[] = 'main_size';
-                $params['main_size'] = (int)($data['main_size'] ?? 0);
-            }
-            if ($supplChanged) {
-                $fields[] = 'suppl_size';
-                $params['suppl_size'] = (int)($data['suppl_size'] ?? 0);
-            }
-        }
-
-        $optionalFields = ['notes', 'author_list', 'full_text', 'main_pages', 'main_figs', 'main_tabs'];
+        $optionalFields = ['title', 'abstract', 'dtype', 'notes', 'author_list', 'full_text', 'main_pages', 'main_figs', 'main_tabs',
+                           'main_size', 'suppl_size', 'suppl_ext', 'last_revision_time', 'version', 'ver_suppl'];
         foreach ($optionalFields as $f) {
             if (array_key_exists($f, $data)) {
                 $fields[] = $f;
-                $params[$f] = $data[$f] === '' ? null : $data[$f];
+                $params[$f] = $data[$f];
             }
         }
+        if (empty($fields)) return;
 
         $setClauses = array_map(fn($f) => "$f = :$f", $fields);
         $sql = "UPDATE Documents SET " . implode(', ', $setClauses) . " WHERE dID = :dID";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-
-        return [
-            'version' => $newVersion,
-            'ver_suppl' => $newVerSuppl
-        ];
     }
 
     /**
@@ -180,13 +98,19 @@ class DocumentService
             $data['pubdate'] = $pubdate;
             $data['submission_time'] = $recvDate . ' 00:00:00';
         } else {
-            $data['date_added'] = date('Y-m-d H:i:s');
-            $data['pubdate'] = DateTimeImmutable::createFromFormat('Y-m-d', $data['date_added']);
+            $data['datetime_added'] = date('Y-m-d H:i:s');
+            $data['pubdate'] = DateTimeImmutable::createFromFormat('Y-m-d', $data['datetime_added']);
         }
 
-        // 2. Define Upload Directory
+        // 2. Define Upload Directory & Set file versions
         $uploadDir = UPLOAD_PATH_TRIMMED . '/'. str_replace('-', '/', $pubdate);
-        
+        if (!empty($data['main_size']) && isset($files['main_file'])) {
+            $data['version'] = 1;
+        }
+        if (!empty($data['suppl_size']) && isset($files['supplemental_file'])) {
+            $data['ver_suppl'] = 1;
+        }
+
         try {
             // Begin Atomic Transaction
             $this->db->beginTransaction();
@@ -211,7 +135,7 @@ class DocumentService
                 $this->saveExternalDocs($dID, $data['link_list_array']);
             }
             
-            if (!empty($data['tID'])) {
+            if (!empty($data['tID'])) {  // tID = 0 means no topic
                 $this->saveTopic($dID, $data['tID']);
             }
 
@@ -250,6 +174,125 @@ class DocumentService
         } catch (Exception $e) {
             $this->db->rollBack();
             error_log("System/File Error in DocumentService::submitFull(): " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
+            return false;
+        }
+    }
+
+    /**
+     * Fully processes a document revision, updates version history, 
+     * handles DB updates, and physically moves the new files.
+     *
+     * @param int $dID The document ID being revised
+     * @param array $data Assumes merged and validated post/file data
+     * @param array $files The raw $_FILES array
+     * @return int|false Returns the dID on success, false on failure
+     */
+    public function reviseFull(int $dID, array $data, array $files): int|false
+    {
+        // 1. Retrieve old data
+        $stmt = $this->db->prepare("SELECT pubdate, version, ver_suppl, suppl_ext, revision_history, last_revision_time, main_size, suppl_size FROM Documents WHERE dID = :dID");
+        $stmt->execute(['dID' => $dID]);
+        $old = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$old) {
+            error_log("DocumentService::reviseFull(): Document $dID not found in database.", 3, LOG_PATH_TRIMMED . '/error.log');
+            return false;
+        }
+
+        // 2. Check if new files are uploaded
+        $hasNewMain = !empty($data['main_size']) && isset($files['main_file']);
+        $hasNewSuppl = !empty($data['suppl_size']) && isset($files['supplemental_file']);
+
+        // 3. Increment versions
+        if ($hasNewMain) {
+            $data['version'] = (int)$old['version'] + 1;
+        }
+        if ($hasNewSuppl) {
+            $data['ver_suppl'] = (int)$old['ver_suppl'] + 1;
+        }
+
+        // 4. Set the new revision time
+        if ($hasNewMain || $hasNewSuppl)) { $data['last_revision_time'] = date('Y-m-d H:i:s'); }
+
+        // 5. Build the Revision History
+        // Only append to history if there is actually a file update and it's a version > 1
+        if (($data['version'] > 1 || $data['ver_suppl'] > 1) && ($hasNewMain || $hasNewSuppl)) {
+            $history = json_decode($old['revision_history'] ?? '[]', true);
+            
+            // Format: [version, ver_suppl, suppl_ext, last_revision_time, revision_notes, main_size, suppl_size]
+            // We append the OLD state, but apply the NEW notes submitted in this request
+            $history[] = [
+                (int)$old['version'],
+                (int)$old['ver_suppl'],
+                $old['suppl_ext'],
+                $old['last_revision_time'],
+                $data['revision_notes'] ?? '', // The new revision notes
+                (int)$old['main_size'],
+                (int)$old['suppl_size']
+            ];
+            
+            $data['revision_history'] = json_encode($history);
+        }
+
+        // 6. Define Upload Directory
+        $uploadDir = UPLOAD_PATH_TRIMMED . '/' . str_replace('-', '/', $old['pubdate']);
+
+        try {
+            // Begin Atomic Transaction
+            $this->db->beginTransaction();
+
+            // 7. DB Updates
+            $this->reviseDoc($dID, $data);
+            
+            if (!empty($data['author_array'])) {
+                $this->updateAuthors($dID, $data['author_array']);
+            }
+            if (!empty($data['branch_list_array'])) {
+                $this->updateBranches($dID, $data['branch_list_array']);
+            }
+            if (!empty($data['link_list_array'])) {
+                $this->updateExternalDocs($dID, $data['link_list_array']);
+            }
+            if (!empty($data['tID'])) {
+                $this->saveTopic($dID, $data['tID']);
+            } elseif (isset($data['tID']) && $data['tID'] === '0') {
+                $this->deleteDocTopic($dID);
+            }
+
+            // 8. File Movements
+            if (!is_dir($uploadDir)) {
+                if (!mkdir($uploadDir, 0750, true)) {
+                    throw new Exception("Failed to create directory: $uploadDir");
+                }
+            }
+
+            // Move new main file
+            if ($hasNewMain) {
+                $mainDest = $uploadDir . '/main_v' . $data['version'] . '.pdf';
+                if (!move_uploaded_file($files['main_file']['tmp_name'], $mainDest)) {
+                    throw new Exception("Failed to move revised main file to disk.");
+                }
+            }
+
+            // Move new supplemental file
+            if ($hasNewSuppl) {
+                $supplDest = $uploadDir . '/suppl_v' . $data['ver_suppl'] . '.' . $data['suppl_ext'];
+                if (!move_uploaded_file($files['supplemental_file']['tmp_name'], $supplDest)) {
+                    throw new Exception("Failed to move revised supplemental file to disk.");
+                }
+            }
+
+            // If we made it here, both DB and Filesystem succeeded!
+            $this->db->commit();
+            return $dID;
+
+        } catch (PDOException $e) {
+            $this->db->rollBack();
+            error_log("DB Error in DocumentService::reviseFull (dID $dID): " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
+            return false;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            error_log("System/File Error in DocumentService::reviseFull (dID $dID): " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
             return false;
         }
     }

@@ -618,7 +618,7 @@ CREATE TABLE Documents (
     submitter_ID BIGINT UNSIGNED NOT NULL,             -- member ID of the submitter
     author_list JSON,        -- JSON array of authors without affiliations: [[author_name=pub_name, mID , significance_factor=duty], ...] (author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author  -- more complex: {"authors" : [[pub_name, mID, duty, [list of order numbers of affiliations]], ...], "affiliations": [[order#, name], ...]}
     visibility TINYINT UNSIGNED NOT NULL default 60,   -- 99=visible to submitter/authors only (for draft) , 1=visible to all, 10=visible to members, 20=visible to raters+, 30=visible to reviewers+, 40=visible to moderators+, 50=visible to leaders+, 100=visible to administrators only; default to 60=ready to be announced
-    version TINYINT UNSIGNED NOT NULL default 1,   -- = 0 (no main file); 1+ = current version# of the main document starting with 1, maybe max of 16
+    version TINYINT UNSIGNED NOT NULL default 0,   -- = 0 (no main file); 1+ = current version# of the main document starting with 1, maybe max of 16
     ver_suppl TINYINT UNSIGNED,                    -- NULL if no suppl file; 1+ =current version# of the supplementary file starting with 1 if uploaded, maybe max of 16
     main_size INT UNSIGNED,  -- size in bytes for the main pdf file (pdf only)
     suppl_size INT UNSIGNED,  -- size in bytes for the suppl file (pdf or zip)
@@ -628,7 +628,7 @@ CREATE TABLE Documents (
     main_tabs SMALLINT UNSIGNED,  -- number of tables in main file
     datetime_added DATETIME DEFAULT CURRENT_TIMESTAMP,   -- datetime added to database
     submission_time DATETIME DEFAULT (datetime_added),   -- receive date (journal), posted date/time (preprint) for old doc / current datetime UTC at submission for new doc / deadline for v-doc
-    pubdate VARCHAR(10) COLLATE ascii_general_ci,         -- YYYY-MM-DD, YYYY-MM, or YYYY derived from submission_time unless for journal it is publication date; should never change once assigned and announced so that it is consistent with doi
+    pubdate VARCHAR(10) COLLATE ascii_general_ci NOT NULL,  -- YYYY-MM-DD, YYYY-MM, or YYYY derived from submission_time unless for journal it is publication date; should never change once assigned and announced so that it is consistent with doi
     announce_time DATETIME,               -- initially NULL, set the time when announced (passed screening and assigned with doi etc.)
     last_revision_time DATETIME DEFAULT (IF(version = 0, NULL, datetime_added)), -- NULL if no pdf attached
     last_update_time DATETIME DEFAULT (datetime_added) ON UPDATE CURRENT_TIMESTAMP,

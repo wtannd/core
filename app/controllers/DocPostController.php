@@ -503,6 +503,9 @@ class DocPostController extends BaseController
                 $data[$field] = trim($postData[$field]);
             }
         }
+        if (empty($data)) {
+            $errors['no_data'] = 'No valid data are provided.";
+        }
 
         // 4. Mode-specific Rules: "submit" and "save"
         if ($mode === 'submit' || $mode === 'save') {
@@ -730,7 +733,15 @@ class DocPostController extends BaseController
 			if ($notes > 255) {
 				$errors['notes'] = 'Notes cannot exceed 255 characters.';
 			} else {
-				$data['notes'] = $notes;
+				$data['notes'] = trim($postData['notes']);
+			}
+		}
+		if (isset($postData['revision_notes'])) {
+			$notes = mb_strlen($postData['revision_notes']);
+			if ($notes > 255) {
+				$errors['revision_notes'] = 'Revision notes cannot exceed 255 characters.';
+			} else {
+				$data['revision_notes'] = trim($postData['revision_notes']);
 			}
 		}
 
