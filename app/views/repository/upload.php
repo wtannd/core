@@ -36,10 +36,10 @@
                 $dID = $dID ?? 0;
                 $actionUrl = $actionUrl ?? '/upload';
                 $cancelUrl = $cancelUrl ?? '/';
-                $submitLabel = $submitLabel ?? 'Submit Document';
                 $docData = $docData ?? null;
                 $isRevise = ($mode === 'revise_doc');
                 $isEditDraft = ($mode === 'edit_draft');
+                $isBlock = ($mode === 'revise_doc' || $mode === 'edit_draft');
                 $mainSize = (!empty($docData['main_size'])) ? BaseController::formatSize($docData['main_size']) : ''; 
                 $supplSize = (!empty($docData['suppl_size'])) ? BaseController::formatSize($docData['suppl_size']) : ''; 
 
@@ -50,15 +50,18 @@
                 $valFullText = $_POST['full_text'] ?? ($docData['full_text'] ?? '');
                 $valDtype = $_POST['dtype'] ?? ($docData['dtype'] ?? 1);
                 $valTID = $_POST['tID'] ?? ($docData['tID'] ?? 0);
-                $valIsOld = $_POST['is_old'] ?? ($docData && !empty($docData['pubdate']) ? '1' : '0');
+                $valIsOld = $_POST['is_old'] ?? (!empty($docData['pub_date']) ? '1' : '0');
                 $valMainPages = $_POST['main_pages'] ?? ($docData['main_pages'] ?? '');
                 $valMainFigs = $_POST['main_figs'] ?? ($docData['main_figs'] ?? '');
                 $valMainTabs = $_POST['main_tabs'] ?? ($docData['main_tabs'] ?? '');
+                $valRevNotes = $_POST['revision_notes'] ?? '';
+                $valPubDate = $_POST['pub_date'] ?? ($docData['pub_date'] ?? '');
+                $valRecvDate = $_POST['recv_date'] ?? ($docData['recv_date'] ?? '');
 
                 // JS data for pre-populating dynamic rows
                 $jsAuthorList = $_POST['author_list_json'] ?? ($docData['author_list'] ?? 'null');
-                $jsBranches = $_POST['branch_list_json'] ?? ($docData['branches'] ?? 'null');
-                $jsExtLinks = $_POST['link_list_json'] ?? ($docData['ext_links'] ?? 'null');
+                $jsBranches = $_POST['branch_list_json'] ?? ($docData['branch_list'] ?? 'null');
+                $jsExtLinks = $_POST['link_list_json'] ?? ($docData['link_list'] ?? 'null');
             ?>
 
             <form action="<?php echo $actionUrl; ?>" method="POST" enctype="multipart/form-data" id="upload-form">
@@ -89,14 +92,14 @@
                         <div>
                             <label>Date Published or Posted as ePrint:</label>
                             <div class="date-inline-group">
-                                <input type="date" name="pub_date" id="pub_date" min="1000-01-01" max="9999-12-31" value="<?php echo htmlspecialchars($_POST['pub_date'] ?? ''); ?>">
+                                <input type="date" name="pub_date" id="pub_date" min="1000-01-01" max="9999-12-31" value="<?php echo htmlspecialchars($valPubDate); ?>">
                             </div>
                             <small>Required for old/publication dates.</small>
                         </div>
                         <div>
                             <label>Date Received in Journal (Optional):</label>
                             <div class="date-inline-group">
-                                <input type="date" name="recv_date" id="recv_date" min="1000-01-01" max="9999-12-31" value="<?php echo htmlspecialchars($_POST['recv_date'] ?? ''); ?>">
+                                <input type="date" name="recv_date" id="recv_date" min="1000-01-01" max="9999-12-31" value="<?php echo htmlspecialchars($valRecvDate); ?>">
                             </div>
                             <small>If omitted, Date Published is used.</small>
                         </div>
@@ -239,7 +242,7 @@
                 <?php if ($isRevise): ?>
                 <div class="form-group">
                     <label for="revision_notes"><h3>Revision Notes:</h3></label>
-                    <input id="revision_notes" type="text" name="revision_notes" maxlength="255" placeholder="Describe what changed in this revision..." value="<?php echo htmlspecialchars($_POST['revision_notes'] ?? ''); ?>">
+                    <input id="revision_notes" type="text" name="revision_notes" maxlength="255" placeholder="Describe what changed in this revision..." value="<?php echo htmlspecialchars($valRevNotes); ?>">
                 </div>
                 <?php endif; ?>
 

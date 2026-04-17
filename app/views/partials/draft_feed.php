@@ -14,11 +14,10 @@
             <?php
                 $seq = $n + 1;
                 $dID = $doc->dID;
-                $hasFile = $doc->has_file;
 
                 // Build the info bracket: [pdf]
                 $infoParts = [];
-                if ($hasFile >= 1) {
+                if ($doc->main_size) {
                     $infoParts[] = '<a href="/stream?type=draft&id=' . $dID . '" class="feed-pdf-link">pdf</a>';
                 }
                 $infoBracket = !empty($infoParts) ? '[' . implode(', ', $infoParts) . ']' : '';

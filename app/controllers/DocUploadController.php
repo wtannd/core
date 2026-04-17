@@ -43,7 +43,7 @@ class DocUploadController extends BaseController
             } else {
                $this->renderForm('upload');
             }
-        } else {  // display after the POST method
+        } else {  // display with errors after the POST method
             $action = $_POST['action'] ?? '';
             if ($action === 'revise') {  // revise_doc with errors
                 $this->reviseDoc($id, $errors);
@@ -68,26 +68,7 @@ class DocUploadController extends BaseController
             exit;
         }
 
-        $docData = [
-            'dID'             => $dID,
-            'dtype'           => $draft->dtype,
-            'title'           => $draft->title,
-            'abstract'        => $draft->abstract,
-            'notes'           => $draft->notes ?? '',
-            'full_text'       => $draft->full_text ?? '',
-            'main_size'       => $draft->main_size ?? 0,
-            'suppl_size'      => $draft->suppl_size ?? 0,
-            'suppl_ext'       => $draft->suppl_ext ?? '',
-            'tID'             => $draft->tID,
-            'author_list'     => $draft->author_list,
-            'branches'        => $draft->branch_list,
-            'ext_links'       => $draft->link_list,
-            'pub_date'        => $draft->pub_date ?? '',
-            'recv_date'       => $draft->recv_date ?? '',
-            'main_pages'      => $draft->main_pages ?? '',
-            'main_figs'       => $draft->main_pages ?? '',
-            'main_tabs'       => $draft->main_pages ?? '',
-        ];
+        $docData = (array)$draft;
 
         $this->renderForm('edit_draft', $errors, $dID, $docData);
     }
@@ -96,39 +77,21 @@ class DocUploadController extends BaseController
     {
         $mID = $this->requireGoodStanding();
         
-        $mRole = $this->getCurrentUserRole();
         $dID = (int)$id;
-        $doc = $this->docRepo->getDocument('dID', $dID, $mRole, $mID);
+        $doc = $this->docRepo->getMyDoc('dID', $dID, $mID);
 
-        if (!$doc || $doc->submitter_ID !== $mID) {
+        if (!$doc) {
             http_response_code(403);
             $this->render('errors/403.php');
             exit;
         }
 
-        $topic = $this->docRepo->getDocTopic($dID);
+        $docData = (array)$doc;
 
-        $docData = [
-            'dID'             => $dID,
-            'dtype'           => $doc->dtype,
-            'title'           => $doc->title,
-            'abstract'        => $doc->abstract,
-            'notes'           => $doc->notes ?? '',
-            'full_text'       => $doc->full_text ?? '',
-            'version'         => (int)($doc->version ?? 0),
-            'ver_suppl'       => $doc->ver_suppl,
-            'suppl_ext'       => $doc->suppl_ext ?? '',
-            'tID'             => $topic ? $topic['tID'] : null,
-            'author_list'     => $doc->author_list,
-            'branches'        => json_encode($this->docRepo->getDocBranches($dID) ?? []),
-            'ext_links'       => json_encode($this->docRepo->getExternalLinks($dID) ?? []),
-            'pubdate'         => $doc->pubdate ?? '',
-            'main_size'       => $doc->main_size ?? 0,
-            'suppl_size'      => $doc->suppl_size ?? 0,
-            'main_pages'      => $doc->main_pages ?? '',
-            'main_figs'       => $doc->main_figs ?? '',
-            'main_tabs'       => $doc->main_tabs ?? '',
-        ];
+        $topic = $this->docRepo->getDocTopic($dID);
+        $docData['tID'] = $topic ? $topic['tID'] : null;
+        $docData['branch_list'] = json_encode($this->docRepo->getDocBranches($dID) ?? []);
+        $docData['link_list'] = json_encode($this->docRepo->getExternalLinks($dID) ?? []);
 
         $this->renderForm('revise_doc', $errors, $dID, $docData);
     }
@@ -159,12 +122,6 @@ class DocUploadController extends BaseController
             default      => '/'
         };
 
-        $submitLabel = match ($mode) {
-            'edit_draft' => 'Update Draft',
-            'revise_doc' => 'Update Document',
-            default      => 'Submit Document'
-        };
-
         $this->render('repository/upload.php', [
             'mode' => $mode,
             'dID' => $dID,
@@ -177,8 +134,7 @@ class DocUploadController extends BaseController
             'docTypes' => $docTypes,
             'pageTitle' => $pageTitle,
             'actionUrl' => $actionUrl,
-            'cancelUrl' => $cancelUrl,
-            'submitLabel' => $submitLabel
+            'cancelUrl' => $cancelUrl
         ]);
     }
 }

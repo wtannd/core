@@ -323,7 +323,7 @@ class DocPostController extends BaseController
 			return count($ids) === count(array_unique($ids)) && min($ids) > 0;
 		};
 
-		// 1. Validate Dates if 'is_old' is set (assuming value is '1' or similar truthy value)
+		// 1. Validate Dates if 'is_old' is set
 		if (!empty($postData['is_old'])) {
 			$pubDate = trim($postData['pub_date'] ?? '');
 			$recvDate = trim($postData['recv_date'] ?? '');
