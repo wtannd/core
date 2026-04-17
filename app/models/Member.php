@@ -290,7 +290,7 @@ class Member
     }
 
     /**
-     * Update a member's details.
+     * Update a member's information in main table 'Members'.
      */
     public function update(int $mID, array $data): bool
     {
@@ -419,33 +419,47 @@ class Member
     /**
      * Format research areas from semicolon-separated IDs to 'abbr (bname)' strings.
      */
-    private function formatResearchAreas(string $dbString, bool $publicOnly = false): array
-    {
-        if (empty($dbString)) return [];
+	private function formatResearchAreas(string $dbString, bool $publicOnly = false): array
+	{
+		if (empty(trim($dbString))) return [];
 
-        $parts = explode(';', $dbString);
-        $formatted = [];
+		$parts = explode(';', $dbString);
+		$validIds = [];
 
-        foreach ($parts as $part) {
-            $val = trim($part);
-            if ($val === '') continue;
-            
-            $id = (int)$val;
-            if ($id === 0) continue;
-            if ($publicOnly && $id < 0) continue;
+		// 1. Gather and filter all valid IDs first (No DB calls here!)
+		foreach ($parts as $part) {
+			$id = (int)$val;
+			if ($publicOnly && $id < 0) continue;
+			$validIds[] = abs($id);
+		}
 
-            $absId = abs($id);
-            $stmt = $this->db->prepare("SELECT abbr, bname FROM ResearchBranches WHERE bID = :bID LIMIT 1");
-            $stmt->execute(['bID' => $absId]);
-            $branch = $stmt->fetch(PDO::FETCH_ASSOC);
+		if (empty($validIds)) return [];
 
-            if ($branch) {
-                $formatted[] = "{$branch['abbr']} ({$branch['bname']})";
-            }
-        }
+		// 2. Query the DB EXACTLY ONCE for all branches
+		$placeholders = implode(',', array_fill(0, count($validIds), '?'));
+		$sql = "SELECT bID, abbr, bname FROM ResearchBranches WHERE bID IN ($placeholders)";
+		
+		$stmt = $this->db->prepare($sql);
+		// Use array_values to ensure the array is numerically indexed for the '?' placeholders
+		$stmt->execute(array_values($validIds)); 
+		$branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        return $formatted;
-    }
+		// 3. Create a quick lookup map [bID => "ABBR (Branch Name)"]
+		$branchMap = [];
+		foreach ($branches as $branch) {
+			$branchMap[$branch['bID']] = "{$branch['abbr']} ({$branch['bname']})";
+		}
+
+		// 4. Build the final formatted array (maintaining the original string's order)
+		$formatted = [];
+		foreach ($validIds as $id) {
+			if (isset($branchMap[$id])) {
+				$formatted[] = $branchMap[$id];
+			}
+		}
+
+		return $formatted;
+	}
 
     /**
      * Update the alphanumeric ID for a member.
@@ -505,7 +519,7 @@ class Member
     public static function processAreas(array $selectedIds, array $publicIds): string
     {
         $processed = [];
-        foreach ($selectedIds as $id) {
+        foreach (array_unique($selectedIds) as $id) {
             $idInt = (int)$id;
             if ($idInt === 0) continue;
             if (!in_array((string)$id, $publicIds)) {
