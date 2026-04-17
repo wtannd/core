@@ -35,7 +35,7 @@ class DraftController extends BaseController
     {
         $mID = $this->requireLogin();
         
-        $doc = $this->draftRepo->getDraft((int)$id, $mID);
+        $doc = $this->draftRepo->getMyDraft((int)$id, $mID);
 
         if (!$doc) {
             $draftAuthors = $this->draftRepo->getDraftAuthors((int)$id);

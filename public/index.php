@@ -48,6 +48,7 @@ AuthController::checkRememberMe();
 // Define global auth flags to be used by routes and views
 $isLoggedIn = isset($_SESSION['mID']);
 $isAdmin = isset($_SESSION['admin_role']) && (int)$_SESSION['admin_role'] >= ADMIN_ROLE_MIN;
+$isGoodStanding = !empty($_SESSION['is_good']);
 
 // --- Load Router ---
 require_once __DIR__ . '/../app/config/routes.php';

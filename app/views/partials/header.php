@@ -66,10 +66,22 @@ $isAdmin = isset($_SESSION['admin_role']) && (int)$_SESSION['admin_role'] >= ADM
             <?php echo htmlspecialchars($flash_success); ?>
         </div>
     <?php endif; ?>
+    <?php if (isset($_SESSION['success_message'])): ?>
+        <div class="alert alert-success">
+            <?php echo htmlspecialchars($_SESSION['success_message']); ?>
+            <?php unset($_SESSION['success_message']); ?>
+        </div>
+    <?php endif; ?>
 
     <?php if (!empty($flash_error)): ?>
         <div class="alert alert-danger">
             <?php echo htmlspecialchars($flash_error); ?>
+        </div>
+    <?php endif; ?>
+    <?php if (isset($_SESSION['error_message'])): ?>
+        <div class="alert alert-danger">
+            <?php echo htmlspecialchars($_SESSION['error_message']); ?>
+            <?php unset($_SESSION['error_message']); ?>
         </div>
     <?php endif; ?>
 

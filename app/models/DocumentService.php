@@ -85,10 +85,10 @@ class DocumentService
      * tables, and physically moves the uploaded files to their correct directories.
      *
      * @param array $data Assumes merged and validated post/file data
-     * @param array $files The raw $_FILES array
+     * @param array $files The raw $_FILES array or taken from a draft-dID
      * @return int|false Returns the new dID on success, false on failure
      */
-    public function submitFull(array $data, array $files): int|false
+    public function submitFull(array $data, array $files, int $draftID = 0): int|false
     {
         // 1. Determine Dates based on provided rules
         if (!empty($data['pub_date'])) {
@@ -104,10 +104,10 @@ class DocumentService
 
         // 2. Define Upload Directory & Set file versions
         $uploadDir = UPLOAD_PATH_TRIMMED . '/'. str_replace('-', '/', $pubdate);
-        if (!empty($data['main_size']) && isset($files['main_file'])) {
+        if (!empty($data['main_size'])) {
             $data['version'] = 1;
         }
-        if (!empty($data['suppl_size']) && isset($files['supplemental_file'])) {
+        if (!empty($data['suppl_size'])) {
             $data['ver_suppl'] = 1;
         }
 
@@ -148,19 +148,35 @@ class DocumentService
             }
 
             // Move Main File
-            if (!empty($data['main_size']) && isset($files['main_file'])) {
+            if (!empty($data['main_size'])) {
                 $mainDest = $uploadDir . '/' . ((string)$dID) . '_main_v1.pdf';
-                if (!move_uploaded_file($files['main_file']['tmp_name'], $mainDest)) {
-                    throw new Exception("Failed to move main file to disk.");
+                if ($draftID > 0) {
+                    $moveMain = rename(UPLOAD_PATH_TRIMMED . '/docdrafts/' . $draftID . '_main.pdf', $mainDest);
+                } else {
+                    $moveMain = move_uploaded_file($files['main_file']['tmp_name'], $mainDest);
+                }
+                if (!moveMain) {
+                    throw new Exception("Failed to move main file to the document directory.");
                 }
             }
 
             // Move Supplemental File
-            if (!empty($data['suppl_size']) && isset($files['supplemental_file'])) {
+            if (!empty($data['suppl_size'])) {
                 $supplDest = $uploadDir . '/' . ((string)$dID) . '_suppl_v1.' . ($data['suppl_ext'] ?? 'zip');
-                if (!move_uploaded_file($files['supplemental_file']['tmp_name'], $supplDest)) {
-                    throw new Exception("Failed to move supplemental file to disk.");
+                if ($draftID > 0) {
+                    $moveSuppl = rename(UPLOAD_PATH_TRIMMED . '/docdrafts/' . $draftID . '_suppl.' . ($data['suppl_ext'] ?? 'zip'), $supplDest);
+                } else {
+                    $moveSuppl = move_uploaded_file($files['supplemental_file']['tmp_name'], $supplDest);
                 }
+                if (!moveSuppl) {
+                    throw new Exception("Failed to move supplemental file to the document directory.");
+                }
+            }
+
+            // Delete the draft
+            if ($draftID > 0) {
+                $stmt = $this->db->prepare("DELETE FROM DocDrafts WHERE dID = :dID");
+                $stmt->execute(['dID' => $draftID]);
             }
 
             // If we made it here, both DB and Filesystem succeeded!
@@ -212,7 +228,7 @@ class DocumentService
         }
 
         // 4. Set the new revision time
-        if ($hasNewMain || $hasNewSuppl)) { $data['last_revision_time'] = date('Y-m-d H:i:s'); }
+        if ($hasNewMain || $hasNewSuppl) { $data['last_revision_time'] = date('Y-m-d H:i:s'); }
 
         // 5. Build the Revision History
         // Only append to history if there is actually a file update and it's a version > 1

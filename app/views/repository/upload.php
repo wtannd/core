@@ -30,13 +30,6 @@
                 </div>
             <?php endif; ?>
 
-            <?php if (isset($_SESSION['error_message'])): ?>
-                <div class="alert alert-danger">
-                    <?php echo htmlspecialchars($_SESSION['error_message']); ?>
-                    <?php unset($_SESSION['error_message']); ?>
-                </div>
-            <?php endif; ?>
-
             <?php
                 // Set defaults for upload mode
                 $mode = $mode ?? 'upload';
@@ -47,6 +40,8 @@
                 $docData = $docData ?? null;
                 $isRevise = ($mode === 'revise_doc');
                 $isEditDraft = ($mode === 'edit_draft');
+                $mainSize = (!empty($docData['main_size'])) ? BaseController::formatSize($docData['main_size']) : ''; 
+                $supplSize = (!empty($docData['suppl_size'])) ? BaseController::formatSize($docData['suppl_size']) : ''; 
 
                 // Pre-populate values from docData or $_POST
                 $valTitle = $_POST['title'] ?? ($docData['title'] ?? '');
@@ -61,9 +56,9 @@
                 $valMainTabs = $_POST['main_tabs'] ?? ($docData['main_tabs'] ?? '');
 
                 // JS data for pre-populating dynamic rows
-                $jsAuthorList = $docData ? json_encode($docData['author_list'] ?? []) : 'null';
-                $jsBranches = $docData ? $docData['branches'] : 'null';
-                $jsExtLinks = $docData ? json_encode($docData['ext_links'] ?? []) : 'null';
+                $jsAuthorList = $_POST['author_list_json'] ?? ($docData['author_list'] ?? 'null');
+                $jsBranches = $_POST['branch_list_json'] ?? ($docData['branches'] ?? 'null');
+                $jsExtLinks = $_POST['link_list_json'] ?? ($docData['ext_links'] ?? 'null');
             ?>
 
             <form action="<?php echo $actionUrl; ?>" method="POST" enctype="multipart/form-data" id="upload-form">
@@ -71,7 +66,6 @@
                 <input type="hidden" name="author_list_json" id="author_list_json">
                 <input type="hidden" name="link_list_json" id="link_list_json">
                 <input type="hidden" name="branch_list_json" id="branch_list_json">
-                <input type="hidden" name="form_mode" value="<?php echo $mode; ?>">
                 <?php if ($dID > 0): ?>
                 <input type="hidden" name="dID" value="<?php echo $dID; ?>">
                 <?php endif; ?>
@@ -212,17 +206,8 @@
                     <h3>Attach Files</h3>
                     <?php if ($isEditDraft || $isRevise): ?>
                     <div class="form-hint">
-                        <?php
-                        if ($isEditDraft) {
-                            $hasMain = ($docData['has_file'] ?? 0) >= 1;
-                            $supplType = ($docData['has_file'] ?? 0) === 2 ? 'PDF' : (($docData['has_file'] ?? 0) === 3 ? 'ZIP' : null);
-                        } else {
-                            $hasMain = ($docData['version'] ?? 0) >= 1;
-                            $supplType = ($docData['ver_suppl'] ?? 0) >= 1 ? (($docData['suppl_ext'] ?? 0) === 2 ? 'ZIP' : 'PDF') : null;
-                        }
-                        ?>
-                        Current file: <strong><?php echo $hasMain ? 'Main PDF attached' : 'None'; ?>
-                        <?php if ($supplType): ?> + Supplemental <?php echo $supplType; ?><?php endif; ?></strong>
+                        Current file: <strong><?php echo $mainSize ? 'Main PDF (' . $mainSize . ') attached' : 'None'; ?>
+                        <?php echo $supplSize ? ' + Supplemental'. $supplExt . ' (' . $supplSize . ')' : ''; ?></strong>
                         — upload new files below to replace.
                     </div>
                     <?php endif; ?>
@@ -265,13 +250,13 @@
 
                 <div class="submit-group">
                     <?php if ($mode === 'upload'): ?>
-                        <button type="submit" name="action" value="draft" class="btn btn-draft">Save as Draft</button>
+                        <button type="submit" name="action" value="save" class="btn btn-draft">Save as Draft</button>
                         <button type="submit" name="action" value="submit" class="btn btn-submit" onclick="return validateDuty()">Submit Document</button>
                     <?php elseif ($mode === 'edit_draft'): ?>
-                        <button type="submit" name="action" value="draft" class="btn btn-draft">Update Draft</button>
+                        <button type="submit" name="action" value="edit" class="btn btn-draft">Update Draft</button>
                         <a href="<?php echo $cancelUrl; ?>" class="btn btn-secondary">Cancel</a>
                     <?php elseif ($mode === 'revise_doc'): ?>
-                        <button type="submit" name="action" value="update" class="btn btn-submit">Update Document</button>
+                        <button type="submit" name="action" value="revise" class="btn btn-submit">Update Document</button>
                         <a href="<?php echo $cancelUrl; ?>" class="btn btn-secondary">Cancel</a>
                     <?php endif; ?>
                 </div>

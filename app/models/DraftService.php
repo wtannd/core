@@ -24,24 +24,20 @@ class DraftService
     }
 
     /**
-     * Save a document draft with co-authors.
-     * Uses DB transaction to ensure atomicity.
+     * Save a document draft
      */
     public function saveDraft(array $data): int|bool
     {
-        $submitterId = (int)$data['submitter_ID'];
-        
-        $fields = ['submitter_ID', 'title', 'abstract', 'has_file', 'dtype'];
-        $placeholders = [':submitter_ID', ':title', ':abstract', ':has_file', ':dtype'];
-        $params = [
-            'submitter_ID' => $submitterId,
-            'title'        => $data['title'],
-            'abstract'     => $data['abstract'],
-            'has_file'     => (int)$data['has_file'],
-            'dtype'        => (int)($data['dtype'] ?? 1)
-        ];
+        $fields = []; $placeholders = []; $params = [];
 
-        $optionalFields = ['notes', 'author_list', 'recv_date', 'pub_date', 'full_text', 'link_list', 'branch_list', 'tID', 'main_pages', 'main_figs', 'main_tabs'];
+        $requiredFields = ['submitter_ID', 'title', 'abstract', 'author_list', 'dtype', 'branch_list'];
+        foreach ($requiredFields as $f) {
+            $fields[] = $f;
+            $placeholders[] = ":$f";
+            $params[$f] = $data[$f];
+        }
+
+        $optionalFields = ['notes', 'recv_date', 'pub_date', 'full_text', 'link_list', 'tID', 'main_pages', 'main_figs', 'main_tabs', 'main_size', 'suppl_size', 'suppl_ext'];
         foreach ($optionalFields as $f) {
             if (isset($data[$f]) && $data[$f] !== '') {
                 $fields[] = $f;
@@ -50,37 +46,13 @@ class DraftService
             }
         }
 
-        try {
-            $this->db->beginTransaction();
+        $sql = "INSERT INTO DocDrafts (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
 
-            $sql = "INSERT INTO DocDrafts (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute($params);
+        $dID = (int)$this->db->lastInsertId();
 
-            $dID = (int)$this->db->lastInsertId();
-
-            $authorListJson = $data['author_list'] ?? '';
-            $authorData = json_decode($authorListJson, true);
-            if (!empty($authorData['authors'])) {
-                $sqlAuthors = "INSERT INTO DocDraftAuthors (dID, mID, is_editor, is_approved) VALUES (:dID, :mID, 1, 0)";
-                $stmtAuthors = $this->db->prepare($sqlAuthors);
-
-                foreach ($authorData['authors'] as $author) {
-                    $authorId = (int)($author[1] ?? 0);
-                    if ($authorId > 0 && $authorId !== $submitterId) {
-                        $stmtAuthors->execute(['dID' => $dID, 'mID' => $authorId]);
-                    }
-                }
-            }
-
-            $this->db->commit();
-            return $dID;
-
-        } catch (PDOException $e) {
-            $this->db->rollBack();
-            error_log("DraftService::saveDraft() error: " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
-            return false;
-        }
+        return $dID;
     }
 
     /**
@@ -88,25 +60,16 @@ class DraftService
      */
     public function updateDraft(int $dID, array $data): void
     {
-        $fields = ['title', 'abstract', 'dtype'];
-        $params = [
-            'dID'      => $dID,
-            'title'    => $data['title'],
-            'abstract' => $data['abstract'],
-            'dtype'    => (int)($data['dtype'] ?? 1),
-        ];
+        $fields = [];
+        $params = ['dID' => $dID];
 
-        $optionalFields = ['notes', 'author_list', 'recv_date', 'pub_date', 'full_text', 'link_list', 'branch_list', 'tID'];
+        $optionalFields = ['title', 'abstract', 'dtype', 'notes', 'author_list', 'recv_date', 'pub_date', 'full_text', 'link_list', 'branch_list', 'tID',
+                           'main_size', 'suppl_size', 'suppl_ext', 'main_pages', 'main_figs', 'main_tabs'];
         foreach ($optionalFields as $f) {
             if (array_key_exists($f, $data)) {
                 $fields[] = $f;
-                $params[$f] = $data[$f] === '' ? null : $data[$f];
+                $params[$f] = empty($data[$f]) ? null : $data[$f];
             }
-        }
-
-        if (isset($data['has_file'])) {
-            $fields[] = 'has_file';
-            $params['has_file'] = (int)$data['has_file'];
         }
 
         $setClauses = array_map(fn($f) => "$f = :$f", $fields);
@@ -266,6 +229,47 @@ class DraftService
             error_log("System/File Error in DraftService::editFull (dID $dID): " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
             return false;
         }
+    }
+
+    /**
+     * Save draft co-authors for the approval process (submitter is excluded).
+     */
+    public function saveDraftAuthors(int $dID, array $authors, int $submitterID = 0): array
+    {
+        if (empty($authors)) return [];
+
+        $sql = "INSERT INTO DocDraftAuthors (dID, mID, is_editor, is_approved) VALUES (:dID, :mID, 1, 0)
+                ON DUPLICATE KEY UPDATE is_editor = 1, is_approved = 0";
+        $stmt = $this->db->prepare($sql);
+
+        $validMIDs = [];
+        foreach ($authors as $author) {  // $author format: [mID, duty, frac]
+            $mID = (int)($author[0] ?? 0);
+            if ($mID > 0 && $mID !== $submitterID) {
+                $stmt->execute(['dID' => $dID, 'mID' => $mID]);
+                $validMIDs[] = $mID;
+            }
+        }
+        return $validMIDs;
+    }
+
+    /**
+     * Update draft co-authors for the approval process (submitter is excluded).
+     * Calls saveDraftAuthors() then removes orphaned rows.
+     */
+    public function updateDraftAuthors(int $dID, array $authors, int $submitterID = 0): array
+    {
+        $validMIDs = $this->saveDraftAuthors($dID, $authors, $submitterID);
+
+        if (!empty($validMIDs)) {
+            $placeholders = implode(',', array_fill(0, count($validMIDs), '?'));
+            $stmt = $this->db->prepare(
+                "DELETE FROM DocDraftAuthors WHERE dID = ? AND mID NOT IN ($placeholders)"
+            );
+            $stmt->execute(array_merge([$dID], $validMIDs));
+        }
+
+        return $validMIDs;
     }
 
     /**

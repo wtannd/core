@@ -114,6 +114,15 @@ class DocumentRepository
         return $row ? new Document($row) : null;
     }
 
+    // fetch a document array (all data) by dID, ensuring owner access
+    public function copyDoc(int $dID, int $mID): array|false
+    {
+        $sql = "SELECT * FROM Documents WHERE dID = :dID AND submitter_ID = :mID LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['dID' => $dID, 'mID' => $mID]);
+        return $stmt->fetch();
+    }
+
     // check if dID is the user submitted document
     public function checkDocID(int $dID, int $mID): bool
     {

@@ -29,20 +29,38 @@ class DocUploadController extends BaseController
     }
 
     // ─────────────────────────────────────────────
-    // Form: Show (upload / edit_draft / revise_doc)
+    // Form: Show (upload / edit_draft / revise_doc) for both before and after POST with errors
     // ─────────────────────────────────────────────
 
-    public function showUpload(?array $errors = null): void
+    public function showUpload(?array $errors = null, string $id = ''): void
     {
-        $this->renderForm('upload', 0, null, $errors);
+        $this->requireGoodStanding();
+        if (empty($errors)) {  // GET method
+            if (!empty($_GET['doc'])) {
+               $this->reviseDoc($_GET['doc']);
+            } elseif (!empty($_GET['draft'])) {
+               $this->editDraft($_GET['draft']);
+            } else {
+               $this->renderForm('upload');
+            }
+        } else {  // display after the POST method
+            $action = $_POST['action'] ?? '';
+            if ($action === 'revise') {  // revise_doc with errors
+                $this->reviseDoc($id, $errors);
+            } elseif ($action === 'edit') {  // edit_draft with errors
+                $this->editDraft($id, $errors);
+            } else {  // new upload with errors
+                $this->renderForm('upload', $errors);
+            }
+        }
     }
 
     public function editDraft(string $id, ?array $errors = null): void
     {
-        $mID = $this->requireLogin();
+        $mID = $this->requireGoodStanding();
         
         $dID = (int)$id;
-        $draft = $this->draftRepo->getDraft($dID, $mID);
+        $draft = $this->draftRepo->getMyDraft($dID, $mID);
 
         if (!$draft) {
             http_response_code(403);
@@ -57,21 +75,26 @@ class DocUploadController extends BaseController
             'abstract'        => $draft->abstract,
             'notes'           => $draft->notes ?? '',
             'full_text'       => $draft->full_text ?? '',
-            'has_file'        => $draft->has_file,
+            'main_size'       => $draft->main_size ?? 0,
+            'suppl_size'      => $draft->suppl_size ?? 0,
+            'suppl_ext'       => $draft->suppl_ext ?? '',
             'tID'             => $draft->tID,
             'author_list'     => $draft->author_list,
             'branches'        => $draft->branch_list,
             'ext_links'       => $draft->link_list,
-            'pubdate'         => $draft->pubdate ?? '',
-            'submission_time' => $draft->submission_time ?? '',
+            'pub_date'        => $draft->pub_date ?? '',
+            'recv_date'       => $draft->recv_date ?? '',
+            'main_pages'      => $draft->main_pages ?? '',
+            'main_figs'       => $draft->main_pages ?? '',
+            'main_tabs'       => $draft->main_pages ?? '',
         ];
 
-        $this->renderForm('edit_draft', $dID, $docData, $errors);
+        $this->renderForm('edit_draft', $errors, $dID, $docData);
     }
 
     public function reviseDoc(string $id, ?array $errors = null): void
     {
-        $mID = $this->requireLogin();
+        $mID = $this->requireGoodStanding();
         
         $mRole = $this->getCurrentUserRole();
         $dID = (int)$id;
@@ -94,22 +117,23 @@ class DocUploadController extends BaseController
             'full_text'       => $doc->full_text ?? '',
             'version'         => (int)($doc->version ?? 0),
             'ver_suppl'       => $doc->ver_suppl,
-            'suppl_ext'       => (int)($doc->suppl_ext ?? 0),
+            'suppl_ext'       => $doc->suppl_ext ?? '',
             'tID'             => $topic ? $topic['tID'] : null,
             'author_list'     => $doc->author_list,
             'branches'        => json_encode($this->docRepo->getDocBranches($dID) ?? []),
-            'ext_links'       => $this->docRepo->getExternalLinks($dID),
+            'ext_links'       => json_encode($this->docRepo->getExternalLinks($dID) ?? []),
             'pubdate'         => $doc->pubdate ?? '',
-            'submission_time' => $doc->submission_time ?? '',
+            'main_size'       => $doc->main_size ?? 0,
+            'suppl_size'      => $doc->suppl_size ?? 0,
             'main_pages'      => $doc->main_pages ?? '',
             'main_figs'       => $doc->main_figs ?? '',
             'main_tabs'       => $doc->main_tabs ?? '',
         ];
 
-        $this->renderForm('revise_doc', $dID, $docData, $errors);
+        $this->renderForm('revise_doc', $errors, $dID, $docData);
     }
 
-    private function renderForm(string $mode, int $dID, ?array $docData = null, ?array $errors = null): void
+    private function renderForm(string $mode, ?array $errors = null, int $dID = 0, ?array $docData = null): void
     {
         $availableSources = $this->docRepo->getAvailableSources();
         $institutions = (new Institution())->getAllInstitutions();

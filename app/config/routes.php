@@ -92,80 +92,33 @@ switch ($requestUri) {
 
     // --- Document Management ---
     case '/upload':
-        if (!$isLoggedIn) {
-            header('Location: /login');
-            exit;
-        }
         $uploadController = new \app\controllers\DocUploadController();
         $postController = new \app\controllers\DocPostController();
         if ($requestMethod === 'POST') {
-            $result = $postController->processFormSubmission($_POST, $_FILES);
-            if ($result['success']) {
-                $_SESSION['success_message'] = $result['message'];
-                $redirectTo = isset($result['dID']) ? ($result['action'] ?? 'draft') : 'home';
-                if ($redirectTo === 'submit' && isset($result['dID'])) {
-                    header('Location: /document?id=' . $result['dID']);
-                } elseif (isset($result['dID'])) {
-                    header('Location: /docdraft?id=' . $result['dID']);
-                } else {
-                    header('Location: /');
-                }
-            } else {
-                // Check if document was saved despite file error
-                if (!empty($result['dID'])) {
-                    $_SESSION['error_message'] = $result['message'];
-                    if (($result['action'] ?? '') === 'submit') {
-                        header('Location: /revise_doc?id=' . $result['dID']);
-                    } else {
-                        header('Location: /edit_draft?id=' . $result['dID']);
-                    }
-                } else {
-                    $errors = [$result['message']];
-                    $uploadController->showUpload($errors);
-                }
-            }
+            $result = $postController->processUpload();
+            $uploadController->showUpload($result['errors']);
         } else {
-            $uploadController->showUpload([]);
+            $uploadController->showUpload();
         }
         break;
 
     case '/edit_draft':
-        if (!$isLoggedIn) {
-            header('Location: /login');
-            exit;
-        }
         $uploadController = new \app\controllers\DocUploadController();
         $postController = new \app\controllers\DocPostController();
         if ($requestMethod === 'POST') {
-            $result = $postController->processFormSubmission($_POST, $_FILES);
-            if ($result['success']) {
-                $_SESSION['success_message'] = $result['message'];
-                header('Location: /docdraft?id=' . $result['dID']);
-            } else {
-                $errors = [$result['message']];
-                $uploadController->editDraft($_POST['dID'] ?? '', $errors);
-            }
+            $result = $postController->processUpload();
+            $uploadController->editDraft($_POST['dID'] ?? '', $result['errors']);
         } else {
             $uploadController->editDraft($_GET['id'] ?? '');
         }
         break;
 
     case '/revise_doc':
-        if (!$isLoggedIn) {
-            header('Location: /login');
-            exit;
-        }
         $uploadController = new \app\controllers\DocUploadController();
         $postController = new \app\controllers\DocPostController();
         if ($requestMethod === 'POST') {
-            $result = $postController->processFormSubmission($_POST, $_FILES);
-            if ($result['success']) {
-                $_SESSION['success_message'] = $result['message'];
-                header('Location: /document?id=' . $result['dID']);
-            } else {
-                $errors = [$result['message']];
-                $uploadController->reviseDoc($_POST['dID'] ?? '', $errors);
-            }
+            $result = $postController->processUpload();
+            $uploadController->reviseDoc($_POST['dID'] ?? '', $result['errors']);
         } else {
             $uploadController->reviseDoc($_GET['id'] ?? '');
         }
@@ -198,7 +151,7 @@ switch ($requestUri) {
         break;
 
     case '/draft/finalize':
-        if ($requestMethod === 'POST' && $isLoggedIn) {
+        if ($requestMethod === 'POST') {
             (new \app\controllers\DocPostController())->finalizeDraft($_POST);
         } else {
             header('Location: /login');
@@ -210,7 +163,8 @@ switch ($requestUri) {
             (new \app\controllers\api\DocAjaxController())->lookupAuthors();
         } else {
             http_response_code(405); // Method Not Allowed
-            echo json_encode(['error' => 'POST method required']);
+            $errorMessage = 'POST method is required';
+            include VIEWS_PATH_TRIMMED . '/errors/general.php';
         }
         exit;
 

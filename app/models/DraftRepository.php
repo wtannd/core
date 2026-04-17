@@ -34,15 +34,27 @@ class DraftRepository
     }
 
     /**
-     * Fetch a draft by dID, ensuring owner access.
+     * Fetch a draft class by dID, ensuring owner access.
      */
-    public function getDraft(int $dID, int $mID): Draft|false
+    public function getMyDraft(int $dID, int $mID): Draft|false
     {
+        if ($dID < 1 || $mID < 1) return false;
         $sql = "SELECT * FROM DocDrafts WHERE dID = :dID AND submitter_ID = :mID LIMIT 1";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['dID' => $dID, 'mID' => $mID]);
         $row = $stmt->fetch();
         return $row ? new Draft($row) : false;
+    }
+
+    /**
+     * Fetch a draft array with all data by dID, ensuring owner access.
+     */
+    public function copyDraft(int $dID, int $mID): array|false
+    {
+        $sql = "SELECT * FROM DocDrafts WHERE dID = :dID AND submitter_ID = :mID LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['dID' => $dID, 'mID' => $mID]);
+        return $stmt->fetch();
     }
 
     // check if dID is the user saved draft
@@ -78,21 +90,12 @@ class DraftRepository
      */
     public function isDraftFullyApproved(int $dID): bool
     {
-        $sql = "SELECT COUNT(*) FROM DocDraftAuthors WHERE dID = :dID AND mID IS NOT NULL";
+        $sql = "SELECT COUNT(*) FROM DocDraftAuthors WHERE dID = :dID AND is_approved = 0";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['dID' => $dID]);
-        $totalMembers = (int)$stmt->fetchColumn();
+        $num_unapproved = (int)$stmt->fetchColumn();
 
-        if ($totalMembers <= 1) {
-            return true;
-        }
-
-        $sql = "SELECT COUNT(*) FROM DocDraftAuthors WHERE dID = :dID AND mID IS NOT NULL AND is_approved = 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['dID' => $dID]);
-        $approvedMembers = (int)$stmt->fetchColumn();
-
-        return $approvedMembers >= $totalMembers;
+        return $num_unapproved === 0;
     }
 
     /**

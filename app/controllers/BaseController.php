@@ -221,4 +221,12 @@ abstract class BaseController
         readfile($filePath);
         exit;
     }
+
+    public static function formatSize(int $bytes): string
+    {
+        if ($bytes <= 0) return '';
+        if ($bytes < 1024) return $bytes . ' B';
+        if ($bytes < 1048576) return round($bytes / 1024) . ' KB';
+        return round($bytes / 1048576, 1) . ' MB';
+    }
 }
