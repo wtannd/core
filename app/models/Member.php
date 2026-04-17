@@ -259,7 +259,7 @@ class Member
 
         $member['meta'] = $meta;
         $member['meta_public'] = $metaPublic;
-        $member['formatted_id'] = $this->formatAlphanumId($member['ID_alphanum']);
+        $member['formatted_id'] = self::formatAlphanumId($member['ID_alphanum']);
 
         return $member;
     }
@@ -350,7 +350,7 @@ class Member
         }
 
         // Apply formatting (Fat Model logic)
-        $member['formatted_id'] = $this->formatAlphanumId($member['ID_alphanum']);
+        $member['formatted_id'] = self::formatAlphanumId($member['ID_alphanum']);
         $member['fullName'] = $this->buildFullName($member, $metadata);
         $member['work_areas_sanitized'] = $this->sanitizeAreas($member['work_areas'] ?? '');
         $member['interest_areas_sanitized'] = $this->sanitizeAreas($member['interest_areas'] ?? '');
@@ -375,7 +375,7 @@ class Member
     /**
      * Format raw alphanumeric ID to XXX-XXX-XXX (padded to 9 chars).
      */
-    public function formatAlphanumId(string $rawId): string
+    public static function formatAlphanumId(string $rawId): string
     {
         $padded = str_pad(strtoupper(trim($rawId)), 9, '0', STR_PAD_LEFT);
         return substr($padded, 0, 3) . '-' . substr($padded, 3, 3) . '-' . substr($padded, 6, 3);

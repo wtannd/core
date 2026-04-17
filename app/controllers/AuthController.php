@@ -50,7 +50,7 @@ class AuthController extends BaseController
             $_SESSION['email'] = $member['email'];
             $_SESSION['display_name'] = $member['display_name'];
             $_SESSION['pub_name'] = $member['pub_name'];
-            $_SESSION['core_id'] = $memberModel->formatAlphanumId($member['ID_alphanum'] ?? '');
+            $_SESSION['core_id'] = Member::formatAlphanumId($member['ID_alphanum'] ?? '');
             $_SESSION['mrole'] = $member['mrole'];
             $_SESSION['admin_role'] = $member['admin_role'];
 
@@ -475,7 +475,7 @@ class AuthController extends BaseController
         $_SESSION['email'] = $member['email'];
         $_SESSION['display_name'] = $member['display_name'];
         $_SESSION['pub_name'] = $member['pub_name'];
-        $_SESSION['core_id'] = $this->memberModel->formatAlphanumId($member['ID_alphanum'] ?? '');
+        $_SESSION['core_id'] = Member::formatAlphanumId($member['ID_alphanum'] ?? '');
         $_SESSION['mrole'] = $member['mrole'];
         $_SESSION['admin_role'] = $member['admin_role'];
 

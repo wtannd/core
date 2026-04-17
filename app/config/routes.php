@@ -93,9 +93,8 @@ switch ($requestUri) {
     // --- Document Management ---
     case '/upload':
         $uploadController = new \app\controllers\DocUploadController();
-        $postController = new \app\controllers\DocPostController();
         if ($requestMethod === 'POST') {
-            $result = $postController->processUpload();
+            $result = (new \app\controllers\DocPostController())->processUpload();
             $uploadController->showUpload($result['errors']);
         } else {
             $uploadController->showUpload();
@@ -170,10 +169,6 @@ switch ($requestUri) {
 
     // --- Member Profiles ---
     case '/profile/edit':
-        if (!$isLoggedIn) {
-            header('Location: /login');
-            exit;
-        }
         $memberController = new \app\controllers\MemberController();
         if ($requestMethod === 'POST') {
             $memberController->updateProfile($_POST);
@@ -204,18 +199,10 @@ switch ($requestUri) {
         break;
 
     case '/mydocs':
-        if (!$isLoggedIn) {
-            header('Location: /login');
-            exit;
-        }
         (new \app\controllers\DocController())->myDocuments();
         break;
 
     case '/mydrafts':
-        if (!$isLoggedIn) {
-            header('Location: /login');
-            exit;
-        }
         (new \app\controllers\DraftController())->myDrafts();
         break;
 

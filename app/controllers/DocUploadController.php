@@ -32,7 +32,7 @@ class DocUploadController extends BaseController
     // Form: Show (upload / edit_draft / revise_doc) for both before and after POST with errors
     // ─────────────────────────────────────────────
 
-    public function showUpload(?array $errors = null, string $id = ''): void
+    public function showUpload(?array $errors = null): void
     {
         $this->requireGoodStanding();
         if (empty($errors)) {  // GET method
@@ -46,9 +46,9 @@ class DocUploadController extends BaseController
         } else {  // display with errors after the POST method
             $action = $_POST['action'] ?? '';
             if ($action === 'revise') {  // revise_doc with errors
-                $this->reviseDoc($id, $errors);
+                $this->reviseDoc($_POST['dID'], $errors);
             } elseif ($action === 'edit') {  // edit_draft with errors
-                $this->editDraft($id, $errors);
+                $this->editDraft($_POST['dID'], $errors);
             } else {  // new upload with errors
                 $this->renderForm('upload', $errors);
             }

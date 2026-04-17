@@ -2,6 +2,37 @@
 /**
  * Document Upload View
  */
+    // Set defaults for upload mode
+    $mode = $mode ?? 'upload';
+    $dID = $dID ?? 0;
+    $actionUrl = $actionUrl ?? '/upload';
+    $cancelUrl = $cancelUrl ?? '/';
+    $docData = $docData ?? null;
+    $isRevise = ($mode === 'revise_doc');
+    $isEditDraft = ($mode === 'edit_draft');
+    $isBlock = ($mode === 'revise_doc' || $mode === 'edit_draft');
+    $mainSize = (!empty($docData['main_size'])) ? BaseController::formatSize($docData['main_size']) : ''; 
+    $supplSize = (!empty($docData['suppl_size'])) ? BaseController::formatSize($docData['suppl_size']) : ''; 
+
+    // Pre-populate values from docData or $_POST
+    $valTitle = $_POST['title'] ?? ($docData['title'] ?? '');
+    $valAbstract = $_POST['abstract'] ?? ($docData['abstract'] ?? '');
+    $valNotes = $_POST['notes'] ?? ($docData['notes'] ?? '');
+    $valFullText = $_POST['full_text'] ?? ($docData['full_text'] ?? '');
+    $valDtype = $_POST['dtype'] ?? ($docData['dtype'] ?? 1);
+    $valTID = $_POST['tID'] ?? ($docData['tID'] ?? 0);
+    $valIsOld = $_POST['is_old'] ?? (!empty($docData['pub_date']) ? '1' : '0');
+    $valMainPages = $_POST['main_pages'] ?? ($docData['main_pages'] ?? '');
+    $valMainFigs = $_POST['main_figs'] ?? ($docData['main_figs'] ?? '');
+    $valMainTabs = $_POST['main_tabs'] ?? ($docData['main_tabs'] ?? '');
+    $valRevNotes = $_POST['revision_notes'] ?? '';
+    $valPubDate = $_POST['pub_date'] ?? ($docData['pub_date'] ?? '');
+    $valRecvDate = $_POST['recv_date'] ?? ($docData['recv_date'] ?? '');
+
+    // JS data for pre-populating dynamic rows
+    $jsAuthorList = $_POST['author_list_json'] ?? ($docData['author_list'] ?? 'null');
+    $jsBranches = $_POST['branch_list_json'] ?? ($docData['branch_list'] ?? 'null');
+    $jsExtLinks = $_POST['link_list_json'] ?? ($docData['link_list'] ?? 'null');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -30,40 +61,6 @@
                 </div>
             <?php endif; ?>
 
-            <?php
-                // Set defaults for upload mode
-                $mode = $mode ?? 'upload';
-                $dID = $dID ?? 0;
-                $actionUrl = $actionUrl ?? '/upload';
-                $cancelUrl = $cancelUrl ?? '/';
-                $docData = $docData ?? null;
-                $isRevise = ($mode === 'revise_doc');
-                $isEditDraft = ($mode === 'edit_draft');
-                $isBlock = ($mode === 'revise_doc' || $mode === 'edit_draft');
-                $mainSize = (!empty($docData['main_size'])) ? BaseController::formatSize($docData['main_size']) : ''; 
-                $supplSize = (!empty($docData['suppl_size'])) ? BaseController::formatSize($docData['suppl_size']) : ''; 
-
-                // Pre-populate values from docData or $_POST
-                $valTitle = $_POST['title'] ?? ($docData['title'] ?? '');
-                $valAbstract = $_POST['abstract'] ?? ($docData['abstract'] ?? '');
-                $valNotes = $_POST['notes'] ?? ($docData['notes'] ?? '');
-                $valFullText = $_POST['full_text'] ?? ($docData['full_text'] ?? '');
-                $valDtype = $_POST['dtype'] ?? ($docData['dtype'] ?? 1);
-                $valTID = $_POST['tID'] ?? ($docData['tID'] ?? 0);
-                $valIsOld = $_POST['is_old'] ?? (!empty($docData['pub_date']) ? '1' : '0');
-                $valMainPages = $_POST['main_pages'] ?? ($docData['main_pages'] ?? '');
-                $valMainFigs = $_POST['main_figs'] ?? ($docData['main_figs'] ?? '');
-                $valMainTabs = $_POST['main_tabs'] ?? ($docData['main_tabs'] ?? '');
-                $valRevNotes = $_POST['revision_notes'] ?? '';
-                $valPubDate = $_POST['pub_date'] ?? ($docData['pub_date'] ?? '');
-                $valRecvDate = $_POST['recv_date'] ?? ($docData['recv_date'] ?? '');
-
-                // JS data for pre-populating dynamic rows
-                $jsAuthorList = $_POST['author_list_json'] ?? ($docData['author_list'] ?? 'null');
-                $jsBranches = $_POST['branch_list_json'] ?? ($docData['branch_list'] ?? 'null');
-                $jsExtLinks = $_POST['link_list_json'] ?? ($docData['link_list'] ?? 'null');
-            ?>
-
             <form action="<?php echo $actionUrl; ?>" method="POST" enctype="multipart/form-data" id="upload-form">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                 <input type="hidden" name="author_list_json" id="author_list_json">
@@ -85,9 +82,8 @@
 						<label for="type_old" class="submission-type-btn">Published/Old Document</label>
 					</div>
 				</div>
-                <?php endif; ?>
 
-                <div class="form-group" id="old-date-group" style="display: none;">
+                <div class="form-group" id="old-date-group" style="display: <?php echo $valIsOld === '1' ? 'block' : 'none'; ?>;">
                     <div class="date-row">
                         <div>
                             <label>Date Published or Posted as ePrint:</label>
@@ -105,6 +101,7 @@
                         </div>
                     </div>
                 </div>
+                <?php endif; ?>
 
                 <div class="form-group">
                     <label for="dtype"><h3>Document Type:</h3></label>
@@ -117,8 +114,8 @@
                     </select>
                 </div>
 
+                <h3>Document Title:</h3>
                 <div class="form-group">
-                    <label for="title"><h3>Document Title:</h3></label>
                     <input type="text" id="title" name="title" required value="<?php echo htmlspecialchars($valTitle); ?>">
                 </div>
 

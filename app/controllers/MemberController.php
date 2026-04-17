@@ -33,9 +33,9 @@ class MemberController extends BaseController
 
     /**
      * Show the edit profile form for the logged-in user.
-     * @param array $stickyData Optional data from failed submission
+     * @param array $errors from failed submission
      */
-    public function editProfile(array $stickyData = []): void
+    public function editProfile(array $errors = []): void
     {
         $mID = $this->requireLogin();
 
@@ -48,13 +48,14 @@ class MemberController extends BaseController
 
         // Pre-populate form data for the view
         $formData = [
-            'first_name' => $user['first_name'],
-            'family_name' => $user['family_name'],
-            'display_name' => $user['display_name'],
-            'pub_name' => $user['pub_name'],
-            'iID' => $user['iID'],
-            'timezone' => $user['timezone'],
-            'is_email_public' => $user['is_email_public'] ? '1' : null,
+            'first_name' => $_POST['first_name'] ?? $user['first_name'],
+            'family_name' => $_POST['family_name'] ?? $user['family_name'],
+            'display_name' => $_POST['display_name'] ?? $user['display_name'],
+            'pub_name' => $_POST['pub_name'] ?? $user['pub_name'],
+            'iID' => $_POST['iID'] ?? $user['iID'],
+            'timezone' => $_POST['timezone'] ?? $user['timezone'],
+            'is_email_public' => $_POST['is_email_public'] ?? ($user['is_email_public'] ? '1' : null),
+            'email' => $_POST['email'] ?? $user['email']
         ];
 
         // Map semicolon-separated areas back to checkbox arrays for the partial
@@ -67,6 +68,8 @@ class MemberController extends BaseController
             $formData['work_areas'][] = $absId;
             if ($id > 0) $formData['work_areas_public'][] = $absId;
         }
+        if (isset($_POST['work_areas'])) $formData['work_areas'] = $_POST['work_areas'];
+        if (isset($_POST['work_areas_public'])) $formData['work_areas_public'] = $_POST['work_areas_public'];
 
         $formData['interest_areas'] = [];
         $formData['interest_areas_public'] = [];
@@ -77,19 +80,27 @@ class MemberController extends BaseController
             $formData['interest_areas'][] = $absId;
             if ($id > 0) $formData['interest_areas_public'][] = $absId;
         }
+        if (isset($_POST['interest_areas'])) $formData['interest_areas'] = $_POST['interest_areas'];
+        if (isset($_POST['interest_areas_public'])) $formData['interest_areas_public'] = $_POST['interest_areas_public'];
 
         $formData['mail_areas'] = [];
         foreach (explode(';', $user['mail_areas'] ?? '') as $ma) {
             if ($ma !== '') $formData['mail_areas'][] = (string)$ma;
         }
+        if (isset($_POST['mail_areas'])) $formData['mail_areas'] = $_POST['mail_areas'];
 
         // Pre-populate metadata fields
         foreach ($user['meta'] as $key => $val) {
-            $formData[$key] = $val;
+            $formData[$key] = $_POST[$key] ?? $val;
         }
         foreach ($user['meta_public'] as $key => $isPub) {
-            if ($isPub) $formData['meta_public'][$key] = '1';
+            $formData['meta_public'][$key] = $_POST['meta_public'][$key] ?? ($isPub ? '1' : '0');
         }
+
+        // read-only
+        $formData['formatted_id'] = $user['formatted_id'];
+        $formData['ORCID'] = $user['ORCID'];
+        $formData['ID_alphanum'] = $user['ID_alphanum'];
 
         $institutions = $this->institutionModel->getAllInstitutions();
         $researchBranches = $this->branchModel->getAllBranches();
@@ -150,7 +161,7 @@ class MemberController extends BaseController
         }
 
         if (!empty($errors)) {
-            $this->editProfile($postData); 
+            $this->editProfile($errors); 
             return;
         }
 

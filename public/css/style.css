@@ -339,11 +339,6 @@ hr {
     border-color: var(--success-border);
 }
 
-.alert-info {
-    background-color: var(--info-bg);
-    color: var(--brand-dark);
-}
-
 /* ====================================
    Header & Footer (partials/header.php, footer.php)
    ==================================== */

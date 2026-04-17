@@ -2,8 +2,6 @@
 declare(strict_types=1);
 /**
  * Edit Member Profile View
- * 
- * An amalgamation of register.php and profile.php for logged-in users.
  */
 ?>
 <!DOCTYPE html>
@@ -22,19 +20,11 @@ declare(strict_types=1);
     <main>
         <div class="main-container profile-container">
             <h1>Edit Your Profile</h1>
-<a href="/member/<?php echo htmlspecialchars($user['ID_alphanum']); ?>" class="edit-profile-btn">View Public Profile</a>
+<a href="/member/<?php echo htmlspecialchars($formData['ID_alphanum']); ?>" class="edit-profile-btn">View Public Profile</a>
             <?php 
-            if (isset($_SESSION['success_message'])) {
-                echo '<div class="alert alert-info">' . htmlspecialchars($_SESSION['success_message']) . '</div>';
-                unset($_SESSION['success_message']);
-            }
             if (isset($_SESSION['warning_message'])) {
                 echo '<div class="alert alert-warning">' . htmlspecialchars($_SESSION['warning_message']) . '</div>';
                 unset($_SESSION['warning_message']);
-            }
-            if (isset($_SESSION['error_message'])) {
-                echo '<div class="alert alert-danger">' . htmlspecialchars($_SESSION['error_message']) . '</div>';
-                unset($_SESSION['error_message']);
             }
             ?>
 
@@ -54,19 +44,15 @@ declare(strict_types=1);
                 <!-- CORE-ID (Read-only) -->
                 <div class="form-group">
                     <label>CORE-ID:</label>
-                    <?php 
-                        $padded = str_pad(strtoupper($user['ID_alphanum']), 9, '0', STR_PAD_LEFT);
-                        $formattedId = substr($padded, 0, 3) . '-' . substr($padded, 3, 3) . '-' . substr($padded, 6, 3);
-                    ?>
-                    <div class="id-badge"><?php echo htmlspecialchars($formattedId); ?></div>
+                    <div class="id-badge"><?php echo htmlspecialchars($formData['formatted_id']); ?></div>
                     <p><small class="text-muted">Your unique CORE-ID cannot be modified.</small></p>
                 </div>
 
                 <!-- ORCID (Read-only if present) -->
                 <div class="form-group">
                     <label for="orcid">ORCID iD:</label>
-                    <input type="text" id="orcid" value="<?php echo htmlspecialchars($user['ORCID'] ?? 'Not linked'); ?>" disabled class="form-control">
-                    <?php if (empty($user['ORCID'])): ?>
+                    <input type="text" id="orcid" value="<?php echo htmlspecialchars($formData['ORCID'] ?? 'Not linked'); ?>" disabled class="form-control">
+                    <?php if (empty($formData['ORCID'])): ?>
                         <p><small class="text-muted"><a href="/orcid_login">Link your ORCID profile</a></small></p>
                     <?php endif; ?>
                 </div>
@@ -85,7 +71,7 @@ declare(strict_types=1);
                 <!-- Email & Privacy -->
                 <div class="form-group">
                     <label for="email">Email Address:</label>
-                    <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required class="form-control">
+                    <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($formData['email']); ?>" required class="form-control">
                     <div class="checkbox-group">
                         <input type="checkbox" id="is_email_public" name="is_email_public" value="1" <?php echo (isset($formData['is_email_public']) && $formData['is_email_public'] == '1') ? 'checked' : ''; ?>>
                         <label for="is_email_public">Make my email address public</label>
@@ -115,7 +101,7 @@ declare(strict_types=1);
 
                 <div class="form-submit">
                     <button type="submit" class="btn btn-primary">Save Changes</button>
-                    <a href="/member/<?php echo $user['ID_alphanum']; ?>" class="btn btn-secondary">Cancel</a> 
+                    <a href="/member/<?php echo $formData['ID_alphanum']; ?>" class="btn btn-secondary">Cancel</a> 
                 </div>
             </form>
         </div>
