@@ -9,7 +9,7 @@ use app\models\DocumentRepository;
 use app\models\lookups\DocType;
 use app\models\lookups\ResearchBranch;
 use app\models\lookups\ResearchTopic;
-use app\models\Member;
+use app\models\AuthService;
 
 /**
  * HomeController
@@ -22,7 +22,7 @@ class HomeController extends BaseController
     private ResearchBranch $branchModel;
     private ResearchTopic $topicModel;
     private DocumentRepository $docRepo;
-    private Member $memberModel;
+    private AuthService $authService;
 
     public function __construct()
     {
@@ -31,7 +31,7 @@ class HomeController extends BaseController
         $this->branchModel = new ResearchBranch();
         $this->topicModel = new ResearchTopic();
         $this->docRepo = new DocumentRepository();
-        $this->memberModel = new Member();
+        $this->authService = new AuthService();
     }
 
     /**
@@ -52,7 +52,7 @@ class HomeController extends BaseController
 
         $currentUserId = $this->getCurrentUserId();
         if ($currentUserId > 0) {
-            $user = $this->memberModel->findUser('mID', $currentUserId);
+            $user = $this->authService->findUser('mID', $currentUserId);
             if ($user) {
                 $userWorkAreas = $this->parseAreasForDisplay($user['work_areas'] ?? '', $branches);
                 $userInterestAreas = $this->parseAreasForDisplay($user['interest_areas'] ?? '', $branches);

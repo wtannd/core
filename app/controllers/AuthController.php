@@ -6,6 +6,7 @@ namespace app\controllers;
 
 use app\models\Member;
 use app\models\AuthService;
+use app\models\MemberService;
 use app\models\lookups\Institution;
 use app\models\lookups\ResearchBranch;
 
@@ -16,7 +17,7 @@ use app\models\lookups\ResearchBranch;
  */
 class AuthController extends BaseController
 {
-    private Member $memberModel;
+    private MemberService $memberModel;
     private Institution $institutionModel;
     private ResearchBranch $branchModel;
     private AuthService $authService;
@@ -24,7 +25,7 @@ class AuthController extends BaseController
     public function __construct()
     {
         parent::__construct();
-        $this->memberModel = new Member();
+        $this->memberModel = new MemberService();
         $this->institutionModel = new Institution();
         $this->branchModel = new ResearchBranch();
         $this->authService = new AuthService();
@@ -40,8 +41,8 @@ class AuthController extends BaseController
         $token = $_COOKIE['remember_token'] ?? null;
         if (!$token) return;
 
-        $memberModel = new Member();
-        $member = $memberModel->findUser('token', $token);
+        $authService = new AuthService();
+        $member = $authService->findUser('token', $token);
 
         if ($member && $member['is_active']) {
             session_regenerate_id(true);
@@ -54,7 +55,7 @@ class AuthController extends BaseController
             $_SESSION['mrole'] = $member['mrole'];
             $_SESSION['admin_role'] = $member['admin_role'];
 
-            $memberModel->updateLastLogin((int)$_SESSION['mID']);
+            $authService->updateLastLogin((int)$_SESSION['mID']);
         } else {
             // Invalid token, clear cookie
             setcookie('remember_token', '', time() - 3600, '/', '', true, true);
@@ -145,7 +146,7 @@ class AuthController extends BaseController
     {
         $this->validateCsrf($postData);
 
-        $result = $this->authService->register($postData);
+        $result = $this->memberModel->register($postData);
         
         if ($result['success']) {
             $_SESSION['success_message'] = 'Registration successful! Please check your email to verify your account before login.';
@@ -173,7 +174,7 @@ class AuthController extends BaseController
             exit;
         }
 
-        $result = $this->authService->finalizeOrcidRegistration($postData, $pending);
+        $result = $this->memberModel->finalizeOrcidRegistration($postData, $pending);
         
         if ($result['success']) {
             unset($_SESSION['pending_orcid_registration']);
@@ -427,7 +428,7 @@ class AuthController extends BaseController
             exit;
         }
 
-        if (!Member::validatePassword($password)) {
+        if (!AuthService::validatePassword($password)) {
             $_SESSION['error_message'] = 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.';
             header('Location: /reset-password?token=' . $token);
             exit;

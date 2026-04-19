@@ -7,6 +7,8 @@ namespace app\controllers;
 use app\models\FeedDocument;
 use app\models\DocumentRepository;
 use app\models\Member;
+use app\models\MemberService;
+use app\models\AuthService;
 use app\models\lookups\Institution;
 use app\models\lookups\ResearchBranch;
 
@@ -18,6 +20,7 @@ use app\models\lookups\ResearchBranch;
 class MemberController extends BaseController
 {
     private Member $memberModel;
+    private MemberService $memberService;
     private Institution $institutionModel;
     private ResearchBranch $branchModel;
     private DocumentRepository $docRepo;
@@ -26,6 +29,7 @@ class MemberController extends BaseController
     {
         parent::__construct();
         $this->memberModel = new Member();
+        $this->memberService = new MemberService();
         $this->institutionModel = new Institution();
         $this->branchModel = new ResearchBranch();
         $this->docRepo = new DocumentRepository();
@@ -39,7 +43,7 @@ class MemberController extends BaseController
     {
         $mID = $this->requireLogin();
 
-        $user = $this->memberModel->getFullEditableProfile($mID);
+        $user = $this->memberService->getFullEditableProfile($mID);
         if (!$user) {
             http_response_code(404);
             $this->render('errors/404.php');
@@ -120,7 +124,7 @@ class MemberController extends BaseController
         $this->validateCsrf($postData);
 
         $errors = [];
-        $currentUser = $this->memberModel->findUser('mID', $mID);
+        $currentUser = $this->memberService->findUser('mID', $mID);
         
         // Get form data
         $newEmail = trim($postData['email'] ?? '');
@@ -144,7 +148,7 @@ class MemberController extends BaseController
             if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
                 $errors['email'] = 'Invalid email format.';
             } else {
-                $existingUser = $this->memberModel->findUser('email', $newEmail);
+                $existingUser = $this->memberService->findUser('email', $newEmail);
                 if ($existingUser && (int)$existingUser['mID'] !== $mID) {
                     $errors['email'] = 'This email address is already registered to another account.';
                 }
@@ -153,7 +157,7 @@ class MemberController extends BaseController
 
         // Validate new password format
         if ($passwordChanging) {
-            if (!Member::validatePassword($newPassword)) {
+            if (!AuthService::validatePassword($newPassword)) {
                 $errors['new_password'] = 'Password must be at least 8 characters with uppercase, lowercase, number, and special character.';
             } elseif ($newPassword !== $confirmPassword) {
                 $errors['confirm_password'] = 'Passwords do not match.';
@@ -183,8 +187,8 @@ class MemberController extends BaseController
         }
 
         // Process research areas strings
-        $workAreasStr = Member::processAreas($postData['work_areas'] ?? [], $postData['work_areas_public'] ?? []);
-        $interestAreasStr = Member::processAreas($postData['interest_areas'] ?? [], $postData['interest_areas_public'] ?? []);
+        $workAreasStr = MemberService::processAreas($postData['work_areas'] ?? [], $postData['work_areas_public'] ?? []);
+        $interestAreasStr = MemberService::processAreas($postData['interest_areas'] ?? [], $postData['interest_areas_public'] ?? []);
         $mailAreasStr = implode(';', $postData['mail_areas'] ?? []);
 
         $baseData = [
@@ -211,18 +215,17 @@ class MemberController extends BaseController
             $metaData[$key] = $postData[$key] ?? '';
         }
 
-        if ($this->memberModel->updateCompleteProfile($mID, $baseData, $metaData, $postData['meta_public'] ?? [])) {
+        if ($this->memberService->updateCompleteProfile($mID, $baseData, $metaData, $postData['meta_public'] ?? [])) {
             // Handle password change (AFTER email is updated in case email changed)
             if ($passwordChanging) {
                 $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-                $this->memberModel->updatePassword($mID, $hashedPassword);
-                // Do NOT change email_verified
+                $this->memberService->updatePassword($mID, $hashedPassword);
             }
 
             // Handle email change with verification (AFTER password change)
             if ($emailChanged) {
-                $this->memberModel->setEmailVerified($mID, false);
-                $token = $this->memberModel->createEmailToken($mID, 'verify_email');
+                $this->memberService->setEmailVerified($mID, false);
+                $token = $this->memberService->createEmailToken($mID, 'verify_email');
                 if ($token) {
                     $verifyUrl = SITE_URL . '/verify-email?token=' . $token;
                     $subject = 'Verify your new ' . SITE_TITLE . ' email';
@@ -242,7 +245,7 @@ class MemberController extends BaseController
             }
             
             // Get alphanum ID for redirect
-            $updatedUser = $this->memberModel->findUser('mID', $mID);
+            $updatedUser = $this->memberService->findUser('mID', $mID);
             header('Location: /member/' . $updatedUser['CoreID']);
             exit;
         } else {

@@ -5,101 +5,22 @@ declare(strict_types=1);
 namespace app\models;
 
 use config\Database;
-use config\Config;
 use PDO;
+use PDOException;
 use Exception;
 
 /**
  * AuthService
  * 
- * Authentication business logic - handles registration, login, and ORCID registration.
+ * Authentication for a member to login, ORCID-login, logout, verify email, and reset password.
  */
 class AuthService
 {
-    private Member $memberModel;
+    protected PDO $db;
 
     public function __construct()
     {
-        $this->memberModel = new Member();
-    }
-
-    /**
-     * Register a new member.
-     *
-     * @param array $data Registration data
-     * @return array Array with success status and message/errors.
-     */
-    public function register(array $data): array
-    {
-        $errors = $this->validateRegistration($data);
-        if (!empty($errors)) {
-            return ['success' => false, 'errors' => $errors];
-        }
-
-        // Check for existing email
-        $data['email'] = trim(strtolower($data['email']));
-        if ($this->memberModel->findUser('email', $data['email'])) {
-            return ['success' => false, 'errors' => ['email' => 'Email already registered.']];
-        }
-
-        // Check for strong password
-        if (!Member::validatePassword($data['password'])) {
-            return [
-                'success' => false, 
-                'errors' => ['password' => 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.']
-            ];
-        }
-
-        // Prepare member data
-        $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
-        
-        $firstName = $data['first_name'] ?? '';
-        $familyName = $data['family_name'];
-        if (empty($data['display_name'])) {
-            $displayName = ($firstName === '' ? $familyName : $firstName . ' ' . $familyName);
-        } else {
-            $displayName = $data['display_name'];
-        }
-        if (empty($data['pub_name'])) {
-            $pubName = ($firstName === '' ? $familyName : substr($firstName, 0, 1) . '. ' . $familyName);
-        } else {
-            $pubName = $data['pub_name'];
-        }
-        
-        // Process work and interest areas
-        $workAreasStr = Member::processAreas($data['work_areas'] ?? [], $data['work_areas_public'] ?? []);
-        $interestAreasStr = Member::processAreas($data['interest_areas'] ?? [], $data['interest_areas_public'] ?? []);
-        $mailAreasStr = implode(';', $data['mail_areas'] ?? []);
-
-        $memberData = [
-            'family_name'      => $familyName,
-            'first_name'       => $firstName,
-            'display_name'     => $displayName,
-            'pub_name'         => $pubName,
-            'email'            => $data['email'],
-            'pass'             => $hashedPassword,
-            'iID'              => (int)($data['iID'] ?? 1),
-            'work_areas'       => $workAreasStr,
-            'interest_areas'   => $interestAreasStr,
-            'mail_areas'       => $mailAreasStr,
-            'timezone'         => $data['timezone'] ?? 'UTC',
-            'is_email_public'  => (int)(isset($data['is_email_public']) ? 1 : 0)
-        ];
-
-        $metaKeys = ['full_name', 'other_names', 'prefix', 'suffix', 'position', 'affiliations', 'address', 'url1', 'url2', 'education', 'cv', 'research_statement', 'other_interests', 'mstatus'];
-        $metaData = [];
-        foreach ($metaKeys as $key) {
-            if (!empty($data[$key])) {
-                $metaData[$key] = $data[$key];
-            }
-        }
-
-        $mID = $this->memberModel->createWithMeta($memberData, $metaData, $data['meta_public'] ?? [], true);
-        if ($mID) {
-            return ['success' => true, 'message' => 'Registration successful. Please log in.', 'mID' => $mID];
-        }
-
-        return ['success' => false, 'errors' => ['general' => 'Registration failed. Please try again.']];
+        $this->db = Database::getInstance();
     }
 
     /**
@@ -116,7 +37,7 @@ class AuthService
             return ['success' => false, 'message' => 'Invalid email.'];
         }
 
-        $member = $this->memberModel->findUser('email', $email);
+        $member = $this->findUser('email', $email);
  
         if (!$member) {
             return ['success' => false, 'message' => 'Invalid email or password.'];
@@ -139,7 +60,7 @@ class AuthService
         }
 
         // Check if email verification is required (user has never logged in before)
-        if ($this->memberModel->needsEmailVerification((int)$member['mID']) && empty($member['email_verified'])) {
+        if ($this->needsEmailVerification((int)$member['mID']) && empty($member['email_verified'])) {
             return ['success' => false, 'message' => 'Please verify your email first.'];
         }
 
@@ -148,87 +69,140 @@ class AuthService
     }
 
     /**
-     * Finalize registration for an ORCID user.
+     * Find a user with simplified member info by flexible column lookup.
      *
-     * @param array $data
-     * @param array $pending ORCID pending data from session
-     * @return array
+     * @param string $column One of: 'mID', 'email', 'token', 'ORCID', 'CoreID'
+     * @param mixed $value
+     * @return array|bool
      */
-    public function finalizeOrcidRegistration(array $data, array $pending): array
+    public function findUser(string $column, mixed $value): array|bool
     {
-        // Validate email
-        $data['email'] = trim(strtolower($data['email'] ?? ''));
-        if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-            return ['success' => false, 'errors' => ['email' => 'Valid email is required.']];
-        }
-        if ($this->memberModel->findUser('email', $data['email'])) {
-            return ['success' => false, 'errors' => ['email' => 'This email is already registered.']];
+        $allowed = ['mID', 'email', 'token', 'ORCID', 'CoreID'];
+        if (!in_array($column, $allowed, true)) {
+            throw new \InvalidArgumentException("Invalid search column.");
         }
 
-        // Hash password
-        $hashedPassword = null;
-        if (!empty($data['password'])) {
-            if (!Member::validatePassword($data['password'])) {
-                return [
-                    'success' => false, 
-                    'errors' => ['password' => 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.']
-                ];
-            }
-            $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
-        }
-
-        // Prepare member data
-        $parts = explode(' ', $pending['name'], 2);
-        $firstName = $data['first_name'] ?? (count($parts) > 1 ? $parts[0] : '');
-        $familyName = $data['family_name'] ?? (count($parts) > 1 ? $parts[1] : $parts[0]);
-
-        // Process work and interest areas
-        $workAreasStr = Member::processAreas($data['work_areas'] ?? [], $data['work_areas_public'] ?? []);
-        $interestAreasStr = Member::processAreas($data['interest_areas'] ?? [], $data['interest_areas_public'] ?? []);
-
-        $memberData = [
-            'ORCID'            => $pending['orcid'],
-            'family_name'      => $familyName,
-            'first_name'       => $firstName,
-            'display_name'     => $data['display_name'] ?? ($firstName === '' ? $familyName : $firstName . ' ' . $familyName),
-            'pub_name'         => $data['pub_name'] ?? ($firstName === '' ? $familyName : substr($firstName, 0, 1) . '. ' . $familyName),
-            'email'            => $data['email'],
-            'pass'             => $hashedPassword,
-            'iID'              => (int)($data['iID'] ?? 1),
-            'work_areas'       => $workAreasStr,
-            'interest_areas'   => $interestAreasStr,
-            'timezone'         => $data['timezone'] ?? 'UTC',
-            'is_email_public'  => (int)(isset($data['is_email_public']) ? 1 : 0)
-        ];
-
-        $metaKeys = ['full_name', 'other_names', 'prefix', 'suffix', 'position', 'affiliations', 'address', 'url1', 'url2', 'education', 'cv', 'research_statement', 'other_interests', 'mstatus'];
-        $metaData = [];
-        foreach ($metaKeys as $key) {
-            if (!empty($data[$key])) {
-                $metaData[$key] = $data[$key];
-            }
-        }
-
-        $mID = $this->memberModel->createWithMeta($memberData, $metaData, $data['meta_public'] ?? [], true);
-        if (!$mID) {
-            return ['success' => false, 'message' => 'Failed to finalize registration.'];
-        }
-
-        $member = $this->memberModel->findUser('mID', (int)$mID);
-        return ['success' => true, 'member' => $member];
+        $sql = "SELECT * FROM Members WHERE $column = :value LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['value' => $value]);
+        return $stmt->fetch();
     }
 
-    private function validateRegistration(array $data): array
+    /**
+     * Update the last login time for a member.
+     */
+    public function updateLastLogin(int $mID): bool
     {
-        $errors = [];
-        if (empty($data['family_name'])) $errors['family_name'] = 'Family name is required.';
-        if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) $errors['email'] = 'Valid email is required.';
-        if (empty($data['password']) || strlen($data['password']) < 8) $errors['password'] = 'Password must be at least 8 characters.';
-        
-        if (!empty($data['password']) && ($data['password'] !== ($data['confirm_password'] ?? ''))) {
-            $errors['confirm_password'] = 'Passwords do not match.';
-        }
-
-        return $errors;
+        $stmt = $this->db->prepare("UPDATE Members SET last_login = CURRENT_TIMESTAMP WHERE mID = :mID");
+        return $stmt->execute(['mID' => $mID]);
     }
+
+    /**
+     * Update the persistent login token for a member.
+     */
+    public function updateToken(int $mID, ?string $token): bool
+    {
+        $stmt = $this->db->prepare("UPDATE Members SET token = :token WHERE mID = :mID");
+        return $stmt->execute(['token' => $token, 'mID' => $mID]);
+    }
+
+    /**
+     * Link an ORCID ID to an existing member.
+     */
+    public function updateOrcid(int $mID, string $orcid): bool
+    {
+        try {
+            $stmt = $this->db->prepare("UPDATE Members SET ORCID = :orcid WHERE mID = :mID");
+            return $stmt->execute(['orcid' => $orcid, 'mID' => $mID]);
+        } catch (PDOException $e) {
+            error_log("Error linking ORCID for mID $mID: " . $e->getMessage(), 3, LOG_PATH_TRIMMED . '/error.log');
+            return false;
+        }
+    }
+
+    protected const TOKEN_EXPIRY = [
+        'verify_email' => '48 HOUR',
+        'reset_password' => '30 MINUTE',
+    ];
+
+    public function createEmailToken(int $mID, string $type): string|false
+    {
+        $token = bin2hex(random_bytes(32));
+        $tokenHash = hash('sha256', $token);
+        $expiry = self::TOKEN_EXPIRY[$type] ?? self::TOKEN_EXPIRY['verify_email'];
+
+        $stmt = $this->db->prepare("
+            INSERT INTO EmailTokens (mID, token_hash, token_type, expires_at)
+            VALUES (:mID, :tokenHash, :type, DATE_ADD(NOW(), INTERVAL $expiry))
+            ON DUPLICATE KEY UPDATE token_hash = VALUES(token_hash), expires_at = DATE_ADD(NOW(), INTERVAL $expiry)
+        ");
+        $result = $stmt->execute([
+            'mID' => $mID,
+            'tokenHash' => $tokenHash,
+            'type' => $type
+        ]);
+
+        return $result ? $token : false;
+    }
+
+    public function findByEmailToken(string $token, string $type): array|false
+    {
+        $tokenHash = hash('sha256', $token);
+
+        $stmt = $this->db->prepare("
+            SELECT m.*, i.iname
+            FROM EmailTokens et
+            JOIN Members m ON et.mID = m.mID
+            LEFT JOIN Institutions i ON m.iID = i.iID
+            WHERE et.token_hash = :tokenHash 
+            AND et.token_type = :type 
+            AND et.expires_at > NOW()
+            LIMIT 1
+        ");
+        $stmt->execute(['tokenHash' => $tokenHash, 'type' => $type]);
+        return $stmt->fetch();
+    }
+
+    public function deleteEmailToken(int $mID, string $type): bool
+    {
+        $stmt = $this->db->prepare("DELETE FROM EmailTokens WHERE mID = :mID AND token_type = :type");
+        return $stmt->execute(['mID' => $mID, 'type' => $type]);
+    }
+
+    public function deleteEmailTokenByToken(string $token, string $type): bool
+    {
+        $tokenHash = hash('sha256', $token);
+        $stmt = $this->db->prepare("DELETE FROM EmailTokens WHERE token_hash = :tokenHash AND token_type = :type");
+        return $stmt->execute(['tokenHash' => $tokenHash, 'type' => $type]);
+    }
+
+    public function setEmailVerified(int $mID, bool $verified = true): bool
+    {
+        $stmt = $this->db->prepare("UPDATE Members SET email_verified = :verified WHERE mID = :mID");
+        return $stmt->execute(['verified' => $verified ? 1 : 0, 'mID' => $mID]);
+    }
+
+    public function needsEmailVerification(int $mID): bool
+    {
+        $stmt = $this->db->prepare("SELECT last_login FROM Members WHERE mID = :mID");
+        $stmt->execute(['mID' => $mID]);
+        $member = $stmt->fetch();
+        return empty($member['last_login']);
+    }
+
+    public function updatePassword(int $mID, string $hashedPassword): bool
+    {
+        $stmt = $this->db->prepare("UPDATE Members SET pass = :pass WHERE mID = :mID");
+        return $stmt->execute(['pass' => $hashedPassword, 'mID' => $mID]);
+    }
+
+    public static function validatePassword(string $password): bool
+    {
+        return mb_strlen($password) >= 8
+            && preg_match('/[A-Z]/', $password)
+            && preg_match('/[a-z]/', $password)
+            && preg_match('/[0-9]/', $password)
+            && preg_match('/[^A-Za-z0-9]/', $password);
+    }
+
 }
