@@ -12,7 +12,7 @@ use Exception;
  *
  * Handles member profile creation/registration/update for the Members table.
  */
-class MemberService extends AuthService
+class MemberService extends AuthTokenService
 {
     /**
      * Set the alphanumeric ID (CORE-ID) for a member.

@@ -75,7 +75,7 @@ class Member
         }
 
         // Apply formatting (Fat Model logic)
-        $member['formatted_id'] = self::formatCoreID($member['CoreID']);
+        $member['formatted_id'] = AuthService::formatCoreID($member['CoreID']);
         $member['fullName'] = $this->buildFullName($member, $metadata);
         $member['work_areas_sanitized'] = $this->sanitizeAreas($member['work_areas'] ?? '');
         $member['interest_areas_sanitized'] = $this->sanitizeAreas($member['interest_areas'] ?? '');
@@ -95,15 +95,6 @@ class Member
         $member['ECP'] = $member['ECP'] ?? 'N/A';
 
         return $member;
-    }
-
-    /**
-     * Format raw CoreID to XXX-XXX-XXX (padded to 9 chars).
-     */
-    public static function formatCoreID(string $coreId): string
-    {
-        $padded = str_pad(strtoupper(trim($coreId)), 9, '0', STR_PAD_LEFT);
-        return substr($padded, 0, 3) . '-' . substr($padded, 3, 3) . '-' . substr($padded, 6, 3);
     }
 
     /**

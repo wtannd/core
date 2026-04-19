@@ -271,7 +271,6 @@ const MAX_UPLOAD_SIZE = <?php echo defined('MAX_UPLOAD_SIZE') ? MAX_UPLOAD_SIZE 
 const AVAILABLE_SOURCES = <?php echo json_encode($availableSources ?? []); ?>;
 const USER_DATA = {
     mID: <?php echo $_SESSION['mID'] ?? 'null'; ?>,
-    display_name: <?php echo json_encode($_SESSION['display_name'] ?? ''); ?>,
     pub_name: <?php echo json_encode($_SESSION['pub_name'] ?? ''); ?>,
     CoreID: <?php echo json_encode($_SESSION['CoreID'] ?? ''); ?>
 };

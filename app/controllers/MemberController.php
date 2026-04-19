@@ -9,6 +9,7 @@ use app\models\DocumentRepository;
 use app\models\Member;
 use app\models\MemberService;
 use app\models\AuthService;
+use app\models\AuthTokenService;
 use app\models\lookups\Institution;
 use app\models\lookups\ResearchBranch;
 
@@ -21,6 +22,7 @@ class MemberController extends BaseController
 {
     private Member $memberModel;
     private MemberService $memberService;
+    private AuthTokenService $authTokenService;
     private Institution $institutionModel;
     private ResearchBranch $branchModel;
     private DocumentRepository $docRepo;
@@ -30,6 +32,7 @@ class MemberController extends BaseController
         parent::__construct();
         $this->memberModel = new Member();
         $this->memberService = new MemberService();
+        $this->authTokenService = new AuthTokenService();
         $this->institutionModel = new Institution();
         $this->branchModel = new ResearchBranch();
         $this->docRepo = new DocumentRepository();
@@ -219,13 +222,13 @@ class MemberController extends BaseController
             // Handle password change (AFTER email is updated in case email changed)
             if ($passwordChanging) {
                 $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-                $this->memberService->updatePassword($mID, $hashedPassword);
+                $this->authTokenService->updatePassword($mID, $hashedPassword);
             }
 
             // Handle email change with verification (AFTER password change)
             if ($emailChanged) {
-                $this->memberService->setEmailVerified($mID, false);
-                $token = $this->memberService->createEmailToken($mID, 'verify_email');
+                $this->authTokenService->setEmailVerified($mID, false);
+                $token = $this->authTokenService->createEmailToken($mID, 'verify_email');
                 if ($token) {
                     $verifyUrl = SITE_URL . '/verify-email?token=' . $token;
                     $subject = 'Verify your new ' . SITE_TITLE . ' email';

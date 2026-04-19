@@ -12,7 +12,7 @@ use Exception;
 /**
  * AuthService
  * 
- * Authentication for a member to login, ORCID-login, logout, verify email, and reset password.
+ * Authentication for a member to login, ORCID-login, and logout.
  */
 class AuthService
 {
@@ -120,80 +120,12 @@ class AuthService
         }
     }
 
-    protected const TOKEN_EXPIRY = [
-        'verify_email' => '48 HOUR',
-        'reset_password' => '30 MINUTE',
-    ];
-
-    public function createEmailToken(int $mID, string $type): string|false
-    {
-        $token = bin2hex(random_bytes(32));
-        $tokenHash = hash('sha256', $token);
-        $expiry = self::TOKEN_EXPIRY[$type] ?? self::TOKEN_EXPIRY['verify_email'];
-
-        $stmt = $this->db->prepare("
-            INSERT INTO EmailTokens (mID, token_hash, token_type, expires_at)
-            VALUES (:mID, :tokenHash, :type, DATE_ADD(NOW(), INTERVAL $expiry))
-            ON DUPLICATE KEY UPDATE token_hash = VALUES(token_hash), expires_at = DATE_ADD(NOW(), INTERVAL $expiry)
-        ");
-        $result = $stmt->execute([
-            'mID' => $mID,
-            'tokenHash' => $tokenHash,
-            'type' => $type
-        ]);
-
-        return $result ? $token : false;
-    }
-
-    public function findByEmailToken(string $token, string $type): array|false
-    {
-        $tokenHash = hash('sha256', $token);
-
-        $stmt = $this->db->prepare("
-            SELECT m.*, i.iname
-            FROM EmailTokens et
-            JOIN Members m ON et.mID = m.mID
-            LEFT JOIN Institutions i ON m.iID = i.iID
-            WHERE et.token_hash = :tokenHash 
-            AND et.token_type = :type 
-            AND et.expires_at > NOW()
-            LIMIT 1
-        ");
-        $stmt->execute(['tokenHash' => $tokenHash, 'type' => $type]);
-        return $stmt->fetch();
-    }
-
-    public function deleteEmailToken(int $mID, string $type): bool
-    {
-        $stmt = $this->db->prepare("DELETE FROM EmailTokens WHERE mID = :mID AND token_type = :type");
-        return $stmt->execute(['mID' => $mID, 'type' => $type]);
-    }
-
-    public function deleteEmailTokenByToken(string $token, string $type): bool
-    {
-        $tokenHash = hash('sha256', $token);
-        $stmt = $this->db->prepare("DELETE FROM EmailTokens WHERE token_hash = :tokenHash AND token_type = :type");
-        return $stmt->execute(['tokenHash' => $tokenHash, 'type' => $type]);
-    }
-
-    public function setEmailVerified(int $mID, bool $verified = true): bool
-    {
-        $stmt = $this->db->prepare("UPDATE Members SET email_verified = :verified WHERE mID = :mID");
-        return $stmt->execute(['verified' => $verified ? 1 : 0, 'mID' => $mID]);
-    }
-
     public function needsEmailVerification(int $mID): bool
     {
         $stmt = $this->db->prepare("SELECT last_login FROM Members WHERE mID = :mID");
         $stmt->execute(['mID' => $mID]);
         $member = $stmt->fetch();
         return empty($member['last_login']);
-    }
-
-    public function updatePassword(int $mID, string $hashedPassword): bool
-    {
-        $stmt = $this->db->prepare("UPDATE Members SET pass = :pass WHERE mID = :mID");
-        return $stmt->execute(['pass' => $hashedPassword, 'mID' => $mID]);
     }
 
     public static function validatePassword(string $password): bool
@@ -205,4 +137,52 @@ class AuthService
             && preg_match('/[^A-Za-z0-9]/', $password);
     }
 
+    /**
+     * Format raw CoreID to XXX-XXX-XXX (padded to 9 chars).
+     */
+    public static function formatCoreID(string $coreId): string
+    {
+        $padded = str_pad(strtoupper(trim($coreId)), 9, '0', STR_PAD_LEFT);
+        return substr($padded, 0, 3) . '-' . substr($padded, 3, 3) . '-' . substr($padded, 6, 3);
+    }
+
+    public static function fillSession(array $member): void
+    {
+        $_SESSION['mID'] = $member['mID'];
+        $_SESSION['is_good'] = $member['is_good'];
+        $_SESSION['email'] = $member['email'];
+        $_SESSION['display_name'] = $member['display_name'];
+        $_SESSION['pub_name'] = $member['pub_name'];
+        $_SESSION['CoreID'] = self::formatCoreID($member['CoreID'] ?? '');
+        $_SESSION['mrole'] = $member['mrole'];
+        $_SESSION['admin_role'] = $member['admin_role'];
+    }
+
+    public function startSession(array $member): void
+    {
+        $self::fillSession($member);
+        $this->updateLastLogin((int)$_SESSION['mID']);
+    }
+
+    /**
+     * Helper to set Remember Me token and cookie.
+     *
+     * @param int $mID
+     * @return void
+     */
+    public function setRememberMe(int $mID): void
+    {
+        $token = bin2hex(random_bytes(32));
+        if ($this->updateToken($mID, $token)) {
+            $expiry = time() + REMEMBER_ME_DURATION;
+            setcookie('remember_token', $token, [
+                'expires' => $expiry,
+                'path' => '/',
+                'domain' => defined('COOKIE_DOMAIN') ? COOKIE_DOMAIN : '',
+                'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+                'httponly' => true,
+                'samesite' => 'Strict'
+            ]);
+        }
+    }
 }

@@ -6,6 +6,7 @@ namespace app\controllers;
 
 use app\models\Member;
 use app\models\AuthService;
+use app\models\AuthTokenService;
 use app\models\MemberService;
 use app\models\lookups\Institution;
 use app\models\lookups\ResearchBranch;
@@ -21,6 +22,7 @@ class AuthController extends BaseController
     private Institution $institutionModel;
     private ResearchBranch $branchModel;
     private AuthService $authService;
+    private AuthTokenService $authTokenService;
 
     public function __construct()
     {
@@ -29,6 +31,7 @@ class AuthController extends BaseController
         $this->institutionModel = new Institution();
         $this->branchModel = new ResearchBranch();
         $this->authService = new AuthService();
+        $this->authTokenService = new AuthTokenService();
     }
 
     /**
@@ -46,15 +49,7 @@ class AuthController extends BaseController
 
         if ($member && $member['is_active']) {
             session_regenerate_id(true);
-            $_SESSION['mID'] = $member['mID'];
-            $_SESSION['is_good'] = $member['is_good'];
-            $_SESSION['email'] = $member['email'];
-            $_SESSION['display_name'] = $member['display_name'];
-            $_SESSION['pub_name'] = $member['pub_name'];
-            $_SESSION['CoreID'] = Member::formatCoreID($member['CoreID'] ?? '');
-            $_SESSION['mrole'] = $member['mrole'];
-            $_SESSION['admin_role'] = $member['admin_role'];
-
+            AuthService::fillSession($member);
             $authService->updateLastLogin((int)$_SESSION['mID']);
         } else {
             // Invalid token, clear cookie
@@ -128,10 +123,10 @@ class AuthController extends BaseController
             
             // Handle Remember Me
             if ($rememberMe) {
-                $this->setRememberMe((int)$member['mID']);
+                $this->authService->setRememberMe((int)$member['mID']);
             }
 
-            $this->startSession($member);
+            $this->authService->startSession($member);
             $this->safeRedirect();
         } else {
             $errors = ['login' => $result['message']];
@@ -180,8 +175,8 @@ class AuthController extends BaseController
             unset($_SESSION['pending_orcid_registration']);
             
             $member = $result['member'];
-            $this->setRememberMe((int)$member['mID']);
-            $this->startSession($member);
+            $this->authService->setRememberMe((int)$member['mID']);
+            $this->authService->startSession($member);
             
             header('Location: /');
             exit;
@@ -265,30 +260,8 @@ class AuthController extends BaseController
         }
 
         // Existing user - Log the user in
-        $this->startSession($member);
+        $this->authService->startSession($member);
         $this->safeRedirect();
-    }
-
-    /**
-     * Helper to set Remember Me token and cookie.
-     *
-     * @param int $mID
-     * @return void
-     */
-    private function setRememberMe(int $mID): void
-    {
-        $token = bin2hex(random_bytes(32));
-        if ($this->memberModel->updateToken($mID, $token)) {
-            $expiry = time() + REMEMBER_ME_DURATION;
-            setcookie('remember_token', $token, [
-                'expires' => $expiry,
-                'path' => '/',
-                'domain' => defined('COOKIE_DOMAIN') ? COOKIE_DOMAIN : '',
-                'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
-                'httponly' => true,
-                'samesite' => 'Strict'
-            ]);
-        }
     }
 
     /**
@@ -328,7 +301,7 @@ class AuthController extends BaseController
 
         $this->rateLimit("verify_email", 32);
 
-        $member = $this->memberModel->findByEmailToken($token, 'verify_email');
+        $member = $this->authService->findByEmailToken($token, 'verify_email');
 
         if (!$member) {
             http_response_code(400);
@@ -337,10 +310,10 @@ class AuthController extends BaseController
             exit;
         }
 
-        $this->memberModel->deleteEmailToken((int)$member['mID'], 'verify_email');
-        $this->memberModel->setEmailVerified((int)$member['mID'], true);
+        $this->authService->deleteEmailToken((int)$member['mID'], 'verify_email');
+        $this->authService->setEmailVerified((int)$member['mID'], true);
 
-        $this->startSession($member);
+        $this->authService->startSession($member);
 
         header('Location: /');
         exit;
@@ -370,7 +343,7 @@ class AuthController extends BaseController
         $member = $this->memberModel->findUser('email', $email);
 
         if ($member) {
-            $token = $this->memberModel->createEmailToken((int)$member['mID'], 'reset_password');
+            $token = $this->authTokenService->createEmailToken((int)$member['mID'], 'reset_password');
             if ($token) {
                 $resetUrl = SITE_URL . '/reset-password?token=' . $token;
                 $subject = 'Reset your ' . SITE_TITLE . ' password';
@@ -394,7 +367,7 @@ class AuthController extends BaseController
 
         $this->rateLimit("show_pwd_reset", 32);
 
-        $member = $this->memberModel->findByEmailToken($token, 'reset_password');
+        $member = $this->authTokenService->findByEmailToken($token, 'reset_password');
 
         if (!$member) {
             http_response_code(400);
@@ -434,7 +407,7 @@ class AuthController extends BaseController
             exit;
         }
 
-        $member = $this->memberModel->findByEmailToken($token, 'reset_password');
+        $member = $this->authTokenService->findByEmailToken($token, 'reset_password');
 
         if (!$member) {
             http_response_code(400);
@@ -444,29 +417,15 @@ class AuthController extends BaseController
         }
 
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        $this->memberModel->updatePassword((int)$member['mID'], $hashedPassword);
+        $this->authTokenService->updatePassword((int)$member['mID'], $hashedPassword);
 
-        $this->memberModel->deleteEmailToken((int)$member['mID'], 'reset_password');
-        $this->memberModel->setEmailVerified((int)$member['mID'], true);
+        $this->authTokenService->deleteEmailToken((int)$member['mID'], 'reset_password');
+        $this->authTokenService->setEmailVerified((int)$member['mID'], true);
 
-        $this->startSession($member);
+        $this->authService->startSession($member);
 
         $_SESSION['success_message'] = 'Password reset successful!';
         header('Location: /');
         exit;
-    }
-
-    private function startSession(array $member): void
-    {
-        $_SESSION['mID'] = $member['mID'];
-        $_SESSION['is_good'] = $member['is_good'];
-        $_SESSION['email'] = $member['email'];
-        $_SESSION['display_name'] = $member['display_name'];
-        $_SESSION['pub_name'] = $member['pub_name'];
-        $_SESSION['CoreID'] = Member::formatCoreID($member['CoreID'] ?? '');
-        $_SESSION['mrole'] = $member['mrole'];
-        $_SESSION['admin_role'] = $member['admin_role'];
-
-        $this->memberModel->updateLastLogin((int)$_SESSION['mID']);
     }
 }
