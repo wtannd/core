@@ -28,7 +28,7 @@
         <div class="main-container doc-container">
             <h2>Member Search</h2>
 
-            <form action="/members" method="GET" class="filter-bar">
+            <form action="/findmembers" method="GET" class="filter-bar">
                 <div class="filter-group filter-group-search">
                     <input type="text" name="q" value="<?php echo htmlspecialchars($query); ?>" placeholder="Search members by name..." class="search-input">
                 </div>

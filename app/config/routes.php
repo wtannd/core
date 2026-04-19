@@ -36,38 +36,29 @@ switch ($requestUri) {
         }
         break;
 
-    case '/register':
-        $authController = new AuthController();
-        if ($requestMethod === 'POST') {
-            $authController->processRegister($_POST);
-        } else {
-            $authController->showRegister();
-        }
-        break;
-
     case '/logout':
         (new AuthController())->logout();
         break;
 
     case '/verify-email':
-        (new AuthController())->verifyEmail($_GET['token'] ?? '');
+        (new \app\controllers\AuthTokenController())->verifyEmail($_GET['token'] ?? '');
         break;
 
     case '/forgot-password':
-        $authController = new AuthController();
+        $authTokenController = new \app\controllers\AuthTokenController();
         if ($requestMethod === 'POST') {
-            $authController->processForgotPassword($_POST);
+            $authTokenController->processForgotPassword($_POST);
         } else {
-            $authController->showForgotPassword();
+            $authTokenController->showForgotPassword();
         }
         break;
 
     case '/reset-password':
-        $authController = new AuthController();
+        $authTokenController = new \app\controllers\AuthTokenController();
         if ($requestMethod === 'POST') {
-            $authController->processResetPassword($_POST);
+            $authTokenController->processResetPassword($_POST);
         } else {
-            $authController->showResetPassword($_GET['token'] ?? '');
+            $authTokenController->showResetPassword($_GET['token'] ?? '');
         }
         break;
 
@@ -81,16 +72,32 @@ switch ($requestUri) {
         }
         break;
 
-    case '/complete_profile':
-        $authController = new AuthController();
-        if ($requestMethod === 'POST') {
-            $authController->processCompleteProfile($_POST);
-        } else {
-            $authController->showCompleteProfile();
-        }
+    // --- Search & Feed ---
+    case '/search':
+        (new \app\controllers\FeedController())->search();
         break;
 
-    // --- Document Management ---
+    case '/match':
+        (new \app\controllers\FeedController())->match();
+        break;
+
+    case '/browse':
+        (new \app\controllers\FeedController())->browse();
+        break;
+
+    case '/feed':
+        (new \app\controllers\DocController())->feed();
+        break;
+
+    case '/mydocs':
+        (new \app\controllers\DocController())->myDocuments();
+        break;
+
+    case '/mydrafts':
+        (new \app\controllers\DraftController())->myDrafts();
+        break;
+
+    // --- Document/Draft Upload/View/Management ---
     case '/upload':
         $uploadController = new \app\controllers\DocUploadController();
         if ($requestMethod === 'POST') {
@@ -103,9 +110,8 @@ switch ($requestUri) {
 
     case '/edit_draft':
         $uploadController = new \app\controllers\DocUploadController();
-        $postController = new \app\controllers\DocPostController();
         if ($requestMethod === 'POST') {
-            $result = $postController->processUpload();
+            $result = (new \app\controllers\DocPostController())->processUpload();
             $uploadController->editDraft($_POST['dID'] ?? '', $result['errors']);
         } else {
             $uploadController->editDraft($_GET['id'] ?? '');
@@ -114,9 +120,8 @@ switch ($requestUri) {
 
     case '/revise_doc':
         $uploadController = new \app\controllers\DocUploadController();
-        $postController = new \app\controllers\DocPostController();
         if ($requestMethod === 'POST') {
-            $result = $postController->processUpload();
+            $result = (new \app\controllers\DocPostController())->processUpload();
             $uploadController->reviseDoc($_POST['dID'] ?? '', $result['errors']);
         } else {
             $uploadController->reviseDoc($_GET['id'] ?? '');
@@ -167,63 +172,54 @@ switch ($requestUri) {
         }
         exit;
 
-    // --- Member Profiles ---
-    case '/profile/edit':
-        $memberController = new \app\controllers\MemberController();
+    // --- Member Registration & Profile Management ---
+    case '/register':
+        $profileController = new \app\controllers\ProfileController();
         if ($requestMethod === 'POST') {
-            $memberController->updateProfile($_POST);
+            $profileController->processRegister($_POST);
         } else {
-            $memberController->editProfile();
+            $profileController->showRegister();
         }
         break;
 
-    case '/members':
+    case '/complete_profile':
+        $profileController = new \app\controllers\ProfileController();
+        if ($requestMethod === 'POST') {
+            $profileController->processCompleteProfile($_POST);
+        } else {
+            $profileController->showCompleteProfile();
+        }
+        break;
+
+    case '/profile/edit':
+        $profileController = new \app\controllers\ProfileController();
+        if ($requestMethod === 'POST') {
+            $profileController->updateProfile($_POST);
+        } else {
+            $profileController->editProfile();
+        }
+        break;
+
+    case '/findmembers':
         (new \app\controllers\MemberController())->search();
-        break;
-
-    // --- Search & Feed ---
-    case '/search':
-        (new \app\controllers\FeedController())->search();
-        break;
-
-    case '/match':
-        (new \app\controllers\FeedController())->match();
-        break;
-
-    case '/browse':
-        (new \app\controllers\FeedController())->browse();
-        break;
-
-    case '/feed':
-        (new \app\controllers\DocController())->feed();
-        break;
-
-    case '/mydocs':
-        (new \app\controllers\DocController())->myDocuments();
-        break;
-
-    case '/mydrafts':
-        (new \app\controllers\DraftController())->myDrafts();
         break;
 
     // --- Utilities ---
     case '/stream':
-        $type = $_GET['type'] ?? 'doc';
         $id = $_GET['id'] ?? '';
-        $suppl = isset($_GET['suppl']);
-        $ver = isset($_GET['ver']) ? (int)$_GET['ver'] : null;
         if (empty($id)) {
             http_response_code(400);
             $errorMessage = 'A valid document ID is required to stream the file.';
             include VIEWS_PATH_TRIMMED . '/errors/400.php';
             exit;
         }
-        $docController = new \app\controllers\DocController();
-        $draftController = new \app\controllers\DraftController();
+        $type = $_GET['type'] ?? 'doc';
+        $suppl = isset($_GET['suppl']);
+        $ver = isset($_GET['ver']) ? (int)$_GET['ver'] : null;
         if ($type === 'draft' || $type === 'draft_suppl') {
-            $draftController->streamDraftPdf($id, $type === 'draft_suppl');
+            (new \app\controllers\DraftController())->streamDraftPdf($id, $type === 'draft_suppl');
         } else {
-            $docController->streamDocPdf($id, $suppl, $ver);
+            (new \app\controllers\DocController())->streamDocPdf($id, $suppl, $ver);
         }
         break;
 
