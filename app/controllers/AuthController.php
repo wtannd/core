@@ -41,7 +41,7 @@ class AuthController extends BaseController
         if (!$token) return;
 
         $memberModel = new Member();
-        $member = $memberModel->findByToken($token);
+        $member = $memberModel->findUser('token', $token);
 
         if ($member && $member['is_active']) {
             session_regenerate_id(true);
@@ -50,7 +50,7 @@ class AuthController extends BaseController
             $_SESSION['email'] = $member['email'];
             $_SESSION['display_name'] = $member['display_name'];
             $_SESSION['pub_name'] = $member['pub_name'];
-            $_SESSION['core_id'] = Member::formatAlphanumId($member['ID_alphanum'] ?? '');
+            $_SESSION['CoreID'] = Member::formatCoreID($member['CoreID'] ?? '');
             $_SESSION['mrole'] = $member['mrole'];
             $_SESSION['admin_role'] = $member['admin_role'];
 
@@ -127,18 +127,7 @@ class AuthController extends BaseController
             
             // Handle Remember Me
             if ($rememberMe) {
-                $token = bin2hex(random_bytes(32));
-                if ($this->memberModel->updateToken((int)$member['mID'], $token)) {
-                    $expiry = time() + REMEMBER_ME_DURATION;
-                    setcookie('remember_token', $token, [
-                        'expires' => $expiry,
-                        'path' => '/',
-                        'domain' => defined('COOKIE_DOMAIN') ? COOKIE_DOMAIN : '',
-                        'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
-                        'httponly' => true,
-                        'samesite' => 'Strict'
-                    ]);
-                }
+                $this->setRememberMe((int)$member['mID']);
             }
 
             $this->startSession($member);
@@ -262,7 +251,7 @@ class AuthController extends BaseController
             exit;
         }
 
-        $member = $this->memberModel->findByOrcid($orcid);
+        $member = $this->memberModel->findUser('ORCID', $orcid);
 
         if (!$member) {
             // New ORCID user - store data in session for profile completion
@@ -275,8 +264,6 @@ class AuthController extends BaseController
         }
 
         // Existing user - Log the user in
-        $this->setRememberMe((int)$member['mID']);
-
         $this->startSession($member);
         $this->safeRedirect();
     }
@@ -379,7 +366,7 @@ class AuthController extends BaseController
 
         $this->rateLimit("pwd_forgot", 3, $email);
 
-        $member = $this->memberModel->findByEmail($email);
+        $member = $this->memberModel->findUser('email', $email);
 
         if ($member) {
             $token = $this->memberModel->createEmailToken((int)$member['mID'], 'reset_password');
@@ -475,7 +462,7 @@ class AuthController extends BaseController
         $_SESSION['email'] = $member['email'];
         $_SESSION['display_name'] = $member['display_name'];
         $_SESSION['pub_name'] = $member['pub_name'];
-        $_SESSION['core_id'] = Member::formatAlphanumId($member['ID_alphanum'] ?? '');
+        $_SESSION['CoreID'] = Member::formatCoreID($member['CoreID'] ?? '');
         $_SESSION['mrole'] = $member['mrole'];
         $_SESSION['admin_role'] = $member['admin_role'];
 

@@ -52,7 +52,7 @@ class HomeController extends BaseController
 
         $currentUserId = $this->getCurrentUserId();
         if ($currentUserId > 0) {
-            $user = $this->memberModel->findById($currentUserId);
+            $user = $this->memberModel->findUser('mID', $currentUserId);
             if ($user) {
                 $userWorkAreas = $this->parseAreasForDisplay($user['work_areas'] ?? '', $branches);
                 $userInterestAreas = $this->parseAreasForDisplay($user['interest_areas'] ?? '', $branches);

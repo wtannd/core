@@ -38,7 +38,7 @@ class AuthService
 
         // Check for existing email
         $data['email'] = trim(strtolower($data['email']));
-        if ($this->memberModel->findByEmail($data['email'])) {
+        if ($this->memberModel->findUser('email', $data['email'])) {
             return ['success' => false, 'errors' => ['email' => 'Email already registered.']];
         }
 
@@ -116,8 +116,8 @@ class AuthService
             return ['success' => false, 'message' => 'Invalid email.'];
         }
 
-        $member = $this->memberModel->findByEmail($email);
-
+        $member = $this->memberModel->findUser('email', $email);
+ 
         if (!$member) {
             return ['success' => false, 'message' => 'Invalid email or password.'];
         }
@@ -161,7 +161,7 @@ class AuthService
         if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
             return ['success' => false, 'errors' => ['email' => 'Valid email is required.']];
         }
-        if ($this->memberModel->findByEmail($data['email'])) {
+        if ($this->memberModel->findUser('email', $data['email'])) {
             return ['success' => false, 'errors' => ['email' => 'This email is already registered.']];
         }
 
@@ -214,7 +214,7 @@ class AuthService
             return ['success' => false, 'message' => 'Failed to finalize registration.'];
         }
 
-        $member = $this->memberModel->findById((int)$mID);
+        $member = $this->memberModel->findUser('mID', (int)$mID);
         return ['success' => true, 'member' => $member];
     }
 

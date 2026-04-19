@@ -50,7 +50,7 @@ class DocAjaxController extends BaseAjaxController
 
         $results = [];
         if (!empty($parsedIds)) {
-            $results = $this->memberModel->findByAlphaIds($parsedIds);
+            $results = $this->memberModel->lookUpByCoreIDs($parsedIds);
         }
 
         $this->jsonResponse($results);

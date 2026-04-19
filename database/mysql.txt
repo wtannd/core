@@ -329,8 +329,8 @@ INSERT INTO Institutions (iID,iname,itype,icountry) VALUES (2,'University of Not
 
 CREATE TABLE Members (  -- IT personnel of CORE with CORE-ID <= ZZZ (3 digits); regular members (at least 4 digits)
     mID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,          -- Unique identifier for each member
-    ID_alphanum VARCHAR(9) COLLATE ascii_general_ci UNIQUE, -- (CONV(mID,10,36)), alphanumerical format of member ID; CORE-ID display format xxx-xxx-xxx
-    ORCID CHAR(19) COLLATE ascii_general_ci UNIQUE,     -- ORCID ID as unique identifier
+    CoreID VARCHAR(9) COLLATE ascii_general_ci UNIQUE, -- (CONV(mID,10,36)), alphanumerical format of member ID; CORE-ID display format xxx-xxx-xxx
+    ORCID CHAR(19) COLLATE ascii_general_ci UNIQUE,    -- ORCID ID as unique identifier
     family_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL,
     first_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL default '',    -- empty string '' if a member has no first name
     display_name VARCHAR(255) COLLATE utf8mb4_general_ci NOT NULL default (IF(first_name = '', family_name, CONCAT(first_name, ' ', family_name))),    -- for display on the member page

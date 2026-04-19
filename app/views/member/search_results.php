@@ -50,7 +50,7 @@
                 <div class="member-list">
                     <?php foreach ($members as $member): ?>
                         <?php
-                            $rawId = $member['ID_alphanum'] ?? '';
+                            $rawId = $member['CoreID'] ?? '';
                             $paddedId = str_pad(strtoupper(trim($rawId)), 9, '0', STR_PAD_LEFT);
                             $formattedId = substr($paddedId, 0, 3) . '-' . substr($paddedId, 3, 3) . '-' . substr($paddedId, 6, 3);
                         ?>

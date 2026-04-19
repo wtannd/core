@@ -100,7 +100,7 @@ class MemberController extends BaseController
         // read-only
         $formData['formatted_id'] = $user['formatted_id'];
         $formData['ORCID'] = $user['ORCID'];
-        $formData['ID_alphanum'] = $user['ID_alphanum'];
+        $formData['CoreID'] = $user['CoreID'];
 
         $institutions = $this->institutionModel->getAllInstitutions();
         $researchBranches = $this->branchModel->getAllBranches();
@@ -120,7 +120,7 @@ class MemberController extends BaseController
         $this->validateCsrf($postData);
 
         $errors = [];
-        $currentUser = $this->memberModel->findById($mID);
+        $currentUser = $this->memberModel->findUser('mID', $mID);
         
         // Get form data
         $newEmail = trim($postData['email'] ?? '');
@@ -144,7 +144,7 @@ class MemberController extends BaseController
             if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
                 $errors['email'] = 'Invalid email format.';
             } else {
-                $existingUser = $this->memberModel->findByEmail($newEmail);
+                $existingUser = $this->memberModel->findUser('email', $newEmail);
                 if ($existingUser && (int)$existingUser['mID'] !== $mID) {
                     $errors['email'] = 'This email address is already registered to another account.';
                 }
@@ -242,8 +242,8 @@ class MemberController extends BaseController
             }
             
             // Get alphanum ID for redirect
-            $updatedUser = $this->memberModel->findById($mID);
-            header('Location: /member/' . $updatedUser['ID_alphanum']);
+            $updatedUser = $this->memberModel->findUser('mID', $mID);
+            header('Location: /member/' . $updatedUser['CoreID']);
             exit;
         } else {
             $_SESSION['error_message'] = 'Failed to update profile. Please try again.';
@@ -254,11 +254,11 @@ class MemberController extends BaseController
     /**
      * Display a member's public profile.
      *
-     * @param string $ID_alphanum
+     * @param string $coreId
      */
-    public function show(string $ID_alphanum): void
+    public function show(string $coreId): void
     {
-        $cleanId = ltrim(str_replace('-', '', strtoupper($ID_alphanum)), '0');
+        $cleanId = ltrim(str_replace('-', '', strtoupper($coreId)), '0');
 
         if (empty($cleanId)) {
             http_response_code(400);
@@ -268,7 +268,7 @@ class MemberController extends BaseController
         }
 
         // 1. Call model to get user data - fully formatted by the model (Fat Model)
-        $member = $this->memberModel->getPublicProfileByAlphaId($cleanId);
+        $member = $this->memberModel->getPublicProfileByCoreID($cleanId);
 
         if (!$member) {
             http_response_code(404);

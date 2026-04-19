@@ -24,47 +24,23 @@ class Member
     }
 
     /**
-     * Find a member by email.
+     * Find a user with simplified member info by flexible column lookup.
      *
-     * @param string $email
+     * @param string $column One of: 'mID', 'email', 'token', 'ORCID', 'CoreID'
+     * @param mixed $value
      * @return array|bool
      */
-    public function findByEmail(string $email): array|bool
+    public function findUser(string $column, mixed $value): array|bool
     {
-        $stmt = $this->db->prepare("
-            SELECT m.*, i.iname 
-            FROM Members m 
-            LEFT JOIN Institutions i ON m.iID = i.iID 
-            WHERE m.email = :email LIMIT 1
-        ");
-        $stmt->execute(['email' => $email]);
-        return $stmt->fetch();
-    }
-
-    /**
-     * Find a member by mID.
-     *
-     * @param int $mID
-     * @return array|bool
-     */
-    public function findById(int $mID): array|bool
-    {
-        $stmt = $this->db->prepare("
-            SELECT m.*, i.iname 
-            FROM Members m 
-            LEFT JOIN Institutions i ON m.iID = i.iID 
-            WHERE m.mID = :mID LIMIT 1
-        ");
-        $stmt->execute(['mID' => $mID]);
-        $member = $stmt->fetch();
-
-        if ($member) {
-            $member['work_areas_display'] = $this->formatResearchAreas($member['work_areas'] ?? '', false);
-            $member['interest_areas_display'] = $this->formatResearchAreas($member['interest_areas'] ?? '', false);
-            $member['mail_areas_display'] = $this->formatResearchAreas($member['mail_areas'] ?? '', false);
+        $allowed = ['mID', 'email', 'token', 'ORCID', 'CoreID'];
+        if (!in_array($column, $allowed, true)) {
+            throw new \InvalidArgumentException("Invalid search column.");
         }
 
-        return $member;
+        $sql = "SELECT * FROM Members WHERE $column = :value LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['value' => $value]);
+        return $stmt->fetch();
     }
 
     /**
@@ -86,7 +62,7 @@ class Member
 
         if ($result) {
             $mID = (int)$this->db->lastInsertId();
-            $this->updateAlphanumId($mID);
+            $this->setCoreID($mID);
             return $mID;
         }
 
@@ -173,61 +149,25 @@ class Member
     }
 
     /**
-     * Find multiple members by their alphanumeric IDs.
+     * Find multiple members by their alphanumeric IDs (CoreIDs).
      *
      * @param array $alphaIds
      * @return array
      */
-    public function findByAlphaIds(array $alphaIds): array
+    public function lookUpByCoreIDs(array $alphaIds): array
     {
         $alphaIds = array_filter(array_map('strtoupper', array_map('trim', $alphaIds)));
         if (empty($alphaIds)) return [];
 
         $placeholders = implode(',', array_fill(0, count($alphaIds), '?'));
         $values = array_values($alphaIds);
-        $sql = "SELECT mID, pub_name, ID_alphanum FROM Members WHERE ID_alphanum IN ($placeholders)
-                ORDER BY FIELD(ID_alphanum, $placeholders)";
+        $sql = "SELECT mID, pub_name, CoreID FROM Members WHERE CoreID IN ($placeholders)
+                ORDER BY FIELD(CoreID, $placeholders)";
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute(array_merge($values, $values));
         
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * Find a member by their persistent login token.
-     *
-     * @param string $token
-     * @return array|bool
-     */
-    public function findByToken(string $token): array|bool
-    {
-        $stmt = $this->db->prepare("
-            SELECT m.*, i.iname 
-            FROM Members m 
-            LEFT JOIN Institutions i ON m.iID = i.iID 
-            WHERE m.token = :token LIMIT 1
-        ");
-        $stmt->execute(['token' => $token]);
-        return $stmt->fetch();
-    }
-
-    /**
-     * Find a member by ORCID.
-     *
-     * @param string $orcidId
-     * @return array|bool
-     */
-    public function findByOrcid(string $orcidId): array|bool
-    {
-        $stmt = $this->db->prepare("
-            SELECT m.*, i.iname 
-            FROM Members m 
-            LEFT JOIN Institutions i ON m.iID = i.iID 
-            WHERE m.ORCID = :orcid LIMIT 1
-        ");
-        $stmt->execute(['orcid' => $orcidId]);
-        return $stmt->fetch();
     }
 
     /**
@@ -238,7 +178,7 @@ class Member
      */
     public function getFullEditableProfile(int $mID): array|bool
     {
-        $member = $this->findById($mID);
+        $member = $this->findUser('mID', $mID);
         if (!$member) return false;
 
         $sql = "SELECT mm.meta_value, mk.mkname, mm.is_public
@@ -259,7 +199,7 @@ class Member
 
         $member['meta'] = $meta;
         $member['meta_public'] = $metaPublic;
-        $member['formatted_id'] = self::formatAlphanumId($member['ID_alphanum']);
+        $member['formatted_id'] = self::formatCoreID($member['CoreID']);
 
         return $member;
     }
@@ -319,22 +259,22 @@ class Member
     }
 
     /**
-     * Fetch a public member profile by their alphanumeric ID.
+     * Fetch a public member profile by their CoreID.
      *
-     * @param string $ID_alphanum
+     * @param string $coreId
      * @return array|bool
      */
-    public function getPublicProfileByAlphaId(string $ID_alphanum): array|bool
+    public function getPublicProfileByCoreID(string $coreId): array|bool
     {
         $sql = "SELECT m.*, mm.meta_value, mk.mkname, mm.is_public as meta_public, i.iname
                 FROM Members m
                 LEFT JOIN MemberMeta mm ON m.mID = mm.mID AND mm.is_public = 1
                 LEFT JOIN MemberMetaKeys mk ON mm.meta_ID = mk.ID AND mk.is_active = 1
                 LEFT JOIN Institutions i ON m.iID = i.iID
-                WHERE m.ID_alphanum = :ID_alphanum";
+                WHERE m.CoreID = :coreId";
         
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(['ID_alphanum' => $ID_alphanum]);
+        $stmt->execute(['coreId' => $coreId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         if (empty($rows)) return false;
@@ -350,7 +290,7 @@ class Member
         }
 
         // Apply formatting (Fat Model logic)
-        $member['formatted_id'] = self::formatAlphanumId($member['ID_alphanum']);
+        $member['formatted_id'] = self::formatCoreID($member['CoreID']);
         $member['fullName'] = $this->buildFullName($member, $metadata);
         $member['work_areas_sanitized'] = $this->sanitizeAreas($member['work_areas'] ?? '');
         $member['interest_areas_sanitized'] = $this->sanitizeAreas($member['interest_areas'] ?? '');
@@ -373,11 +313,11 @@ class Member
     }
 
     /**
-     * Format raw alphanumeric ID to XXX-XXX-XXX (padded to 9 chars).
+     * Format raw CoreID to XXX-XXX-XXX (padded to 9 chars).
      */
-    public static function formatAlphanumId(string $rawId): string
+    public static function formatCoreID(string $coreId): string
     {
-        $padded = str_pad(strtoupper(trim($rawId)), 9, '0', STR_PAD_LEFT);
+        $padded = str_pad(strtoupper(trim($coreId)), 9, '0', STR_PAD_LEFT);
         return substr($padded, 0, 3) . '-' . substr($padded, 3, 3) . '-' . substr($padded, 6, 3);
     }
 
@@ -428,7 +368,7 @@ class Member
 
 		// 1. Gather and filter all valid IDs first (No DB calls here!)
 		foreach ($parts as $part) {
-			$id = (int)$val;
+			$id = (int)$part;
 			if ($publicOnly && $id < 0) continue;
 			$validIds[] = abs($id);
 		}
@@ -462,11 +402,11 @@ class Member
 	}
 
     /**
-     * Update the alphanumeric ID for a member.
+     * Set the alphanumeric ID (CORE-ID) for a member.
      */
-    private function updateAlphanumId(int $mID): void
+    private function setCoreID(int $mID): void
     {
-        $stmt = $this->db->prepare("UPDATE Members SET ID_alphanum = UPPER(CONV(:mID1, 10, 36)) WHERE mID = :mID2");
+        $stmt = $this->db->prepare("UPDATE Members SET CoreID = UPPER(CONV(:mID1, 10, 36)) WHERE mID = :mID2");
         $stmt->execute(['mID1' => $mID, 'mID2' => $mID]);
     }
 
@@ -492,7 +432,7 @@ class Member
         $total = (int)$stmt->fetchColumn();
 
         // Fetch results
-        $sql = "SELECT m.mID, m.display_name, m.pub_name, m.ID_alphanum, i.iname
+        $sql = "SELECT m.mID, m.display_name, m.pub_name, m.CoreID, i.iname
                 FROM Members m
                 LEFT JOIN Institutions i ON m.iID = i.iID
                 WHERE m.is_active = 1 AND m.is_good = 1

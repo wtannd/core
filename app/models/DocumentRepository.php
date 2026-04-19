@@ -73,7 +73,7 @@ class DocumentRepository
             throw new \InvalidArgumentException("Invalid search column.");
         }
 
-        $sql = "SELECT d.*, m.pub_name as submitter_name, m.ID_alphanum as submitter_coreid
+        $sql = "SELECT d.*, m.pub_name as submitter_name, m.CoreID as submitter_coreid
                 FROM Documents d
                 JOIN Members m ON d.submitter_ID = m.mID
                 WHERE d.$column = :idValue AND (:mRole2 >= d.visibility OR EXISTS (
@@ -326,7 +326,7 @@ class DocumentRepository
             $whereParts[] = "EXISTS (
                 SELECT 1 FROM DocAuthors da 
                 JOIN Members m ON da.mID = m.mID 
-                WHERE da.dID = d.dID AND m.ID_alphanum = :author$paramIdx
+                WHERE da.dID = d.dID AND m.CoreID = :author$paramIdx
             )";
             $params["author$paramIdx"] = $filters['author'];
             $paramIdx++;

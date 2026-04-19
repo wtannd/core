@@ -273,7 +273,7 @@ const USER_DATA = {
     mID: <?php echo $_SESSION['mID'] ?? 'null'; ?>,
     display_name: <?php echo json_encode($_SESSION['display_name'] ?? ''); ?>,
     pub_name: <?php echo json_encode($_SESSION['pub_name'] ?? ''); ?>,
-    core_id: <?php echo json_encode($_SESSION['core_id'] ?? ''); ?>
+    CoreID: <?php echo json_encode($_SESSION['CoreID'] ?? ''); ?>
 };
 const EDIT_AUTHORS = <?php echo $jsAuthorList; ?>;
 const EDIT_BRANCHES = <?php echo $jsBranches; ?>;

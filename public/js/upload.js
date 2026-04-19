@@ -55,7 +55,7 @@ toggleFullText();
 // --- Authors Logic ---
 const authorsContainer = document.getElementById('authors-container');
 
-function createAuthorRow(author = {pub_name: '', mID: '', core_id: '', is_manual: true}) {
+function createAuthorRow(author = {pub_name: '', mID: '', CoreID: '', is_manual: true}) {
     const row = document.createElement('div');
     row.className = 'author-row';
 
@@ -65,7 +65,7 @@ function createAuthorRow(author = {pub_name: '', mID: '', core_id: '', is_manual
             <button type="button" class="btn-down">↓</button>
         </div>
         <input type="text" class="auth-pub-name" placeholder="Publication Name" required value="${author.pub_name}" ${author.is_manual ? '' : 'readonly'}>
-        <input type="text" class="auth-core-id" placeholder="CORE-ID" value="${author.core_id}" readonly ${author.is_manual ? 'disabled' : ''}>
+        <input type="text" class="auth-core-id" placeholder="CORE-ID" value="${author.CoreID}" readonly ${author.is_manual ? 'disabled' : ''}>
         <input type="hidden" class="auth-mid" value="${author.mID}">
         <input type="number" class="auth-duty duty-input" placeholder="Duty" required min="10" max="100" value="100">
         <input type="text" class="auth-aff-refs" placeholder="Aff. IDs" value="1">
@@ -169,7 +169,7 @@ document.getElementById('btn-lookup-authors').addEventListener('click', function
             const row = createAuthorRow({
                 pub_name: m.pub_name,
                 mID: m.mID,
-                core_id: m.core_id,
+                CoreID: m.CoreID,
                 is_manual: false
             });
             
@@ -233,7 +233,7 @@ document.getElementById('btn-add-myself').onclick = () => {
     const row = createAuthorRow({
         pub_name: USER_DATA.pub_name,
         mID: USER_DATA.mID,
-        core_id: USER_DATA.core_id,
+        CoreID: USER_DATA.CoreID,
         is_manual: false
     });
     insertAuthorAtPosition(row);
@@ -255,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = createAuthorRow({
                 pub_name: a[0] || '',
                 mID: a[1] || '',
-                core_id: '',
+                CoreID: '',
                 is_manual: !a[1]
             });
             row.querySelector('.auth-duty').value = a[2] || 100;
@@ -269,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const row = createAuthorRow({
             pub_name: USER_DATA.display_name,
             mID: USER_DATA.mID,
-            core_id: USER_DATA.core_id,
+            CoreID: USER_DATA.CoreID,
             is_manual: false
         });
         authorsContainer.appendChild(row);
