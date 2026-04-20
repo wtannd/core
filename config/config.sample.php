@@ -67,3 +67,4 @@ define('VISIBILITY_ON_HOLD', 60);
 
 // CORE Parameters
 define('DOC_BRANCH_MAX', 3);
+define('DOC_REVISION_MAX',16);

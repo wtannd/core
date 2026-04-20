@@ -221,10 +221,10 @@ class DocumentService
 
         // 3. Increment versions
         if ($hasNewMain) {
-            $data['version'] = (int)$old['version'] + 1; if ($data['version'] > 16) return false;
+            $data['version'] = (int)$old['version'] + 1; if ($data['version'] > DOC_REVISION_MAX) return false;
         }
         if ($hasNewSuppl) {
-            $data['ver_suppl'] = (int)$old['ver_suppl'] + 1; if ($data['ver_suppl'] > 16) return false;
+            $data['ver_suppl'] = (int)$old['ver_suppl'] + 1; if ($data['ver_suppl'] > DOC_REVISION_MAX) return false;
         }
 
         // 4. Set the new revision time

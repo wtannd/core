@@ -84,6 +84,12 @@ class DocUploadController extends BaseController
             http_response_code(403);
             $this->render('errors/403.php');
             exit;
+        } elseif ($doc->version >= DOC_REVISION_MAX || $doc->ver_suppl >= DOC_REVISION_MAX) {
+            $_SESSION['error_message'] = 'No more than ' . DOC_REVISION_MAX . ' revisions are allowed.';
+            header("Location: /document?id=$dID");
+            exit;
+        } elseif ($doc->version > DOC_REVISION_MAX/2 || $doc->ver_suppl > DOC_REVISION_MAX/2) {
+            $errors['revision_warning'] = 'Warning: maxium revisions allowed are '. DOC_REVISION_MAX . '.'; 
         }
 
         $docData = (array)$doc;
