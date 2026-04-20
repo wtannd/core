@@ -105,5 +105,6 @@
         password.onchange = validatePassword;
         confirm_password.onkeyup = validatePassword;
     </script>
+<script src="/js/lookup_inst.js"></script>
 </body>
 </html>

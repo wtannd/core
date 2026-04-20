@@ -16,20 +16,20 @@
         <label for="pub_name">Preferred Name for Publications:</label>
         <input type="text" id="pub_name" name="pub_name" value="<?php echo htmlspecialchars($_POST['pub_name'] ?? ''); ?>">
     </div>
-    <div class="form-group">
-        <label for="iID">Primary Institution:</label>
-        <select name="iID" id="iID">
-            <option value="">-- Select Institution --</option>
-            <?php 
-            $selectedID = (int)($_POST['iID'] ?? 1);
-            foreach ($institutions as $inst): 
-            ?>
-                <option value="<?php echo $inst['iID']; ?>" <?php echo ($selectedID === (int)$inst['iID']) ? 'selected' : ''; ?>>
-                    <?php echo htmlspecialchars($inst['iname']); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
+	<div class="form-group">
+		<label for="institution_search">Primary Institution:</label>
+		
+		<input type="text" 
+			   id="institution_search" 
+			   class="form-control" 
+			   placeholder="Type to search institutions..." 
+			   autocomplete="off" 
+			   value="<?php echo htmlspecialchars($selectedInstitutionName ?? ''); ?>">
+		
+		<input type="hidden" name="iID" id="iID" value="<?php echo (int)($_POST['iID'] ?? 1); ?>">
+
+		<div id="institution_results" class="autocomplete-dropdown" style="display: none;"></div>
+	</div>
 
     <div class="form-group">
         <label>Work Areas:</label>

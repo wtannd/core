@@ -108,5 +108,6 @@ declare(strict_types=1);
     </main>
 
     <?php include VIEWS_PATH_TRIMMED . '/partials/footer.php'; ?>
+<script src="/js/lookup_inst.js"></script>
 </body>
 </html>
