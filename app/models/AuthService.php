@@ -1,4 +1,4 @@
-<?php
+<?PHP
 
 declare(strict_types=1);
 
@@ -138,7 +138,7 @@ class AuthService
     }
 
     /**
-     * Format raw CoreID to XXX-XXX-XXX (padded to 9 chars).
+     * Format raw CoreID to XXX-XXX-XXX (padded to 9 chars) called Core_ID.
      */
     public static function formatCoreID(string $coreId): string
     {
@@ -153,14 +153,14 @@ class AuthService
         $_SESSION['email'] = $member['email'];
         $_SESSION['display_name'] = $member['display_name'];
         $_SESSION['pub_name'] = $member['pub_name'];
-        $_SESSION['CoreID'] = self::formatCoreID($member['CoreID'] ?? '');
+        $_SESSION['Core_ID'] = self::formatCoreID($member['CoreID'] ?? '');
         $_SESSION['mrole'] = $member['mrole'];
         $_SESSION['admin_role'] = $member['admin_role'];
     }
 
     public function startSession(array $member): void
     {
-        $self::fillSession($member);
+        self::fillSession($member);
         $this->updateLastLogin((int)$_SESSION['mID']);
     }
 

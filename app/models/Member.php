@@ -34,7 +34,8 @@ class Member
 
         $placeholders = implode(',', array_fill(0, count($alphaIds), '?'));
         $values = array_values($alphaIds);
-        $sql = "SELECT mID, pub_name, CoreID FROM Members WHERE CoreID IN ($placeholders)
+        $sql = "SELECT mID, pub_name, REGEXP_REPLACE(LPAD(CoreID, 9, '0'), '(.{3})(?=.)', '\\\\1-') AS Core_ID
+                FROM Members WHERE CoreID IN ($placeholders)
                 ORDER BY FIELD(CoreID, $placeholders)";
         
         $stmt = $this->db->prepare($sql);

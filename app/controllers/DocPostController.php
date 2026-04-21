@@ -77,7 +77,7 @@ class DocPostController extends BaseController
         $newDID = $this->docService->submitFull($draft, [], $dID);
 
         if($newDID) {
-            $_SESSION['success_message'] = "Document published successfully!";
+            $_SESSION['success_message'] = "Document is submitted successfully and will be announced after 24 hours!";
             header("Location: /document?id=$newDID");
             exit;
         } else {
@@ -205,7 +205,7 @@ class DocPostController extends BaseController
 
         if ($result) {  // $result is returned dID or false
             if ($action === 'submit') {
-                $_SESSION['success_message'] = 'Document is successfully submitted and will be announced in 24 hours.';
+                $_SESSION['success_message'] = 'Document is successfully submitted and will be announced after 24 hours.';
                 header("Location: /document?id=$result");
             } elseif ($action === 'save') {
                 $_SESSION['success_message'] = 'Document is successfully saved as a draft.';

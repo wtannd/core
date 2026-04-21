@@ -28,7 +28,7 @@ class Institution
      * @param int $limit
      * @return array
      */
-    public function searchByName(string $query, int $limit = 10): array
+    public function searchByName(string $query, int $limit = 20): array
     {
         // Escape SQL wildcards to prevent search abuse
         $escapedQuery = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $query);

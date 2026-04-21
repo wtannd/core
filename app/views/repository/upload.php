@@ -10,9 +10,10 @@
     $docData = $docData ?? null;
     $isRevise = ($mode === 'revise_doc');
     $isEditDraft = ($mode === 'edit_draft');
-    $isBlock = ($mode === 'revise_doc' || $mode === 'edit_draft');
-    $mainSize = (!empty($docData['main_size'])) ? BaseController::formatSize($docData['main_size']) : ''; 
-    $supplSize = (!empty($docData['suppl_size'])) ? BaseController::formatSize($docData['suppl_size']) : ''; 
+    $isBlockDisabled = ($mode === 'revise_doc' || $mode === 'edit_draft');
+    $mainSize = $mainSize ?? '';
+    $supplSize = $supplSize ?? '';
+    $supplExt = $docData['suppl_ext'] ?? '';
 
     // Pre-populate values from docData or $_POST
     $valTitle = $_POST['title'] ?? ($docData['title'] ?? '');
@@ -71,6 +72,11 @@
                 <?php endif; ?>
 
                 <?php if (!$isRevise): ?>
+                <?php
+                    $blockId = 'block-isold';
+                    $blockTitle = 'Submission Type:';
+                    include VIEWS_PATH_TRIMMED . '/partials/block_begin.php';
+                ?>
 				<div class="form-group">
 					<div class="submission-type-toggle">
 						<input type="radio" name="is_old" id="type_new" value="0" 
@@ -101,10 +107,15 @@
                         </div>
                     </div>
                 </div>
+                <?php include VIEWS_PATH_TRIMMED . '/partials/block_end.php'; ?>
                 <?php endif; ?>
 
+                <?php
+                    $blockId = 'block-dtype';
+                    $blockTitle = 'Document Type:';
+                    include VIEWS_PATH_TRIMMED . '/partials/block_begin.php';
+                ?>
                 <div class="form-group">
-                    <label for="dtype"><h3>Document Type:</h3></label>
                     <select name="dtype" id="dtype" class="form-control" required>
                         <?php foreach ($docTypes as $type): ?>
                             <option value="<?= $type['ID'] ?>" <?= (int)$type['ID'] === (int)$valDtype ? 'selected' : '' ?>>
@@ -113,25 +124,46 @@
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <?php include VIEWS_PATH_TRIMMED . '/partials/block_end.php'; ?>
 
-                <h3>Document Title:</h3>
+                <?php
+                    $blockId = 'block-title';
+                    $blockTitle = 'Document Title:';
+                    include VIEWS_PATH_TRIMMED . '/partials/block_begin.php';
+                ?>
                 <div class="form-group">
                     <input type="text" id="title" name="title" required value="<?php echo htmlspecialchars($valTitle); ?>">
                 </div>
+                <?php include VIEWS_PATH_TRIMMED . '/partials/block_end.php'; ?>
 
+                <?php
+                    $blockId = 'block-abs';
+                    $blockTitle = 'Abstract:';
+                    include VIEWS_PATH_TRIMMED . '/partials/block_begin.php';
+                ?>
                 <div class="form-group">
-                    <label for="abstract"><h3>Abstract:</h3></label>
                     <textarea id="abstract" name="abstract" rows="6" required><?php echo htmlspecialchars($valAbstract); ?></textarea>
                 </div>
+                <?php include VIEWS_PATH_TRIMMED . '/partials/block_end.php'; ?>
 
+                <?php
+                    $blockId = 'block-notes';
+                    $blockTitle = 'Notes:';
+                    include VIEWS_PATH_TRIMMED . '/partials/block_begin.php';
+                ?>
                 <div class="form-group">
-                    <label for="notes"><h3>Notes:</h3></label>
                     <input type="text" id="notes" name="notes" maxlength="255" value="<?php echo htmlspecialchars($valNotes); ?>">
                 </div>
+                <?php include VIEWS_PATH_TRIMMED . '/partials/block_end.php'; ?>
 
                 <hr>
 
-                <h3>Affiliations</h3>
+                <?php
+                    $blockId = 'block-authors';
+                    $blockTitle = 'Authors & Affiliations:';
+                    include VIEWS_PATH_TRIMMED . '/partials/block_begin.php';
+                ?>
+                <h3>List of Affiliations -</h3>
                 <div id="affiliations-container">
                     <!-- Dynamic affiliation rows -->
                 </div>
@@ -139,7 +171,7 @@
 
                 <hr>
 
-                <h3>Authors &amp; Contributions</h3>
+                <h3>List of Authors &amp; Contributions -</h3>
                 <div class="duty-rules-box">
                     <strong>Duty Assignment Rules:</strong> Each author is assigned a duty percentage reflecting their contribution/responsibility level.
                     <ul>
@@ -165,10 +197,15 @@
                     <button type="button" id="btn-add-myself" class="btn btn-secondary">+ Add Myself</button>
                 </div>
                 <div class="duty-summary" id="duty-summary">Total Duty: 0%</div>
+                <?php include VIEWS_PATH_TRIMMED . '/partials/block_end.php'; ?>
 
                 <hr>
 
-                <h3>Research Branches</h3>
+                <?php
+                    $blockId = 'block-branches';
+                    $blockTitle = 'Research Branches:';
+                    include VIEWS_PATH_TRIMMED . '/partials/block_begin.php';
+                ?>
                 <p class="form-hint">Assign 1 to 3 research branches. The total impact must equal 100%.</p>
                 <div id="branches-container">
                     <!-- Dynamic branch rows -->
@@ -177,11 +214,16 @@
                     <button type="button" class="btn btn-add" id="btn-add-branch" onclick="addBranchRow()">+ Add Branch</button>
                     <span class="branch-summary" id="branch-summary">Total Impact: 100%</span>
                 </div>
+                <?php include VIEWS_PATH_TRIMMED . '/partials/block_end.php'; ?>
 
                 <hr>
 
+                <?php
+                    $blockId = 'block-topic';
+                    $blockTitle = 'Research Topic (optional):';
+                    include VIEWS_PATH_TRIMMED . '/partials/block_begin.php';
+                ?>
                 <div class="form-group">
-                    <label for="tID"><h3>Research Topic (optional):</h3></label>
                     <select name="tID" id="tID" class="form-control">
                         <option value="0">-- None --</option>
                         <?php foreach ($researchTopics as $t): ?>
@@ -191,23 +233,33 @@
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <?php include VIEWS_PATH_TRIMMED . '/partials/block_end.php'; ?>
 
                 <hr>
 
-                <h3>External Links</h3>
+                <?php
+                    $blockId = 'block-links';
+                    $blockTitle = 'External Links:';
+                    include VIEWS_PATH_TRIMMED . '/partials/block_begin.php';
+                ?>
                 <div id="links-container">
                     <!-- Dynamic link rows -->
                 </div>
                 <button type="button" class="btn btn-add" onclick="addLinkRow()">+ Add Link</button>
+                <?php include VIEWS_PATH_TRIMMED . '/partials/block_end.php'; ?>
 
                 <hr>
 
+                <?php
+                    $blockId = 'block-files';
+                    $blockTitle = 'Attach Files:';
+                    include VIEWS_PATH_TRIMMED . '/partials/block_begin.php';
+                ?>
                 <div class="file-section">
-                    <h3>Attach Files</h3>
                     <?php if ($isEditDraft || $isRevise): ?>
                     <div class="form-hint">
-                        Current file: <strong><?php echo $mainSize ? 'Main PDF (' . $mainSize . ') attached' : 'None'; ?>
-                        <?php echo $supplSize ? ' + Supplemental'. $supplExt . ' (' . $supplSize . ')' : ''; ?></strong>
+                        Current file(s): <strong><?php echo $mainSize ? 'Main PDF (' . $mainSize . ')' : 'None'; ?>
+                        <?php echo $supplSize ? ' + Supplemental '. strtoupper($supplExt) . ' (' . $supplSize . ')' : ''; ?></strong> attached.
                         — upload new files below to replace.
                     </div>
                     <?php endif; ?>
@@ -242,11 +294,17 @@
                     <input id="revision_notes" type="text" name="revision_notes" maxlength="255" placeholder="Describe what changed in this revision..." value="<?php echo htmlspecialchars($valRevNotes); ?>">
                 </div>
                 <?php endif; ?>
+                <?php include VIEWS_PATH_TRIMMED . '/partials/block_end.php'; ?>
 
-                <div class="form-group" id="full-text-group" style="display: none;">
-                    <label for="full_text">Full Text (if no file attached):</label>
+                <?php
+                    $blockId = 'block-fulltext';
+                    $blockTitle = 'Full Text (if no file attached):';
+                    include VIEWS_PATH_TRIMMED . '/partials/block_begin.php';
+                ?>
+                <div class="form-group" id="full-text-group">
                     <textarea id="full_text" name="full_text" rows="8"><?php echo htmlspecialchars($valFullText); ?></textarea>
                 </div>
+                <?php include VIEWS_PATH_TRIMMED . '/partials/block_end.php'; ?>
 
                 <div class="submit-group">
                     <?php if ($mode === 'upload'): ?>
@@ -270,9 +328,9 @@
 const MAX_UPLOAD_SIZE = <?php echo defined('MAX_UPLOAD_SIZE') ? MAX_UPLOAD_SIZE : 10485760; ?>;
 const AVAILABLE_SOURCES = <?php echo json_encode($availableSources ?? []); ?>;
 const USER_DATA = {
-    mID: <?php echo $_SESSION['mID'] ?? 'null'; ?>,
+    mID: <?php echo json_encode($_SESSION['mID'] ?? 'null'); ?>,
     pub_name: <?php echo json_encode($_SESSION['pub_name'] ?? ''); ?>,
-    CoreID: <?php echo json_encode($_SESSION['CoreID'] ?? ''); ?>
+    Core_ID: <?php echo json_encode($_SESSION['Core_ID'] ?? ''); ?>
 };
 const EDIT_AUTHORS = <?php echo $jsAuthorList; ?>;
 const EDIT_BRANCHES = <?php echo $jsBranches; ?>;

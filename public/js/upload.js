@@ -14,6 +14,35 @@
 
 // Note: MAX_UPLOAD_SIZE, AVAILABLE_SOURCES, USER_DATA are defined in upload.php before this file is included
 
+function toggleBlock(blockId, btn) {
+    const block = document.getElementById(blockId);
+    if (!block) return;
+
+    const body = block.querySelector('.block-body');
+    const fieldset = body.querySelector('fieldset');
+
+    // Check if the block is currently disabled
+    const isCurrentlyDisabled = fieldset.hasAttribute('disabled');
+
+    if (isCurrentlyDisabled) {
+        // Enable it for editing
+        fieldset.removeAttribute('disabled');
+        body.classList.remove('is-disabled');
+        
+        // Update button appearance
+        btn.textContent = 'Disable';
+        btn.classList.add('btn-is-editing');
+    } else {
+        // Disable it (won't be sent in $_POST)
+        fieldset.setAttribute('disabled', 'disabled');
+        body.classList.add('is-disabled');
+        
+        // Update button appearance
+        btn.textContent = 'Edit';
+        btn.classList.remove('btn-is-editing');
+    }
+}
+
 function validateFileSize(event) {
     const file = event.target.files[0];
     if (file && file.size > MAX_UPLOAD_SIZE) {
@@ -46,7 +75,25 @@ function toggleFullText() {
     const mainFile = document.getElementById('main_file').files.length;
     const supplFile = document.getElementById('supplemental_file').files.length;
     const showFullText = (mainFile === 0 && supplFile === 0);
-    document.getElementById('full-text-group').style.display = showFullText ? 'block' : 'none';
+
+    const block = document.getElementById('block-fulltext');
+    const body = block.querySelector('.block-body');
+    const fieldset = body.querySelector('fieldset');
+
+    // Check if the block is currently disabled
+    const isCurrentlyDisabled = fieldset.hasAttribute('disabled');
+
+    if (showFullText && isCurrentlyDisabled) {
+        // Enable it for editing
+        fieldset.removeAttribute('disabled');
+        body.classList.remove('is-disabled');
+        block.style.display = 'block';
+    } else if (!showFullText && !isCurrentlyDisabled) {
+        // Disable it (won't be sent in $_POST)
+        fieldset.setAttribute('disabled', 'disabled');
+        body.classList.add('is-disabled');
+        block.style.display = 'none';
+    }
 }
 
 // Initialize visibility
@@ -55,7 +102,7 @@ toggleFullText();
 // --- Authors Logic ---
 const authorsContainer = document.getElementById('authors-container');
 
-function createAuthorRow(author = {pub_name: '', mID: '', CoreID: '', is_manual: true}) {
+function createAuthorRow(author = {pub_name: '', mID: '', Core_ID: '', is_manual: true}) {
     const row = document.createElement('div');
     row.className = 'author-row';
 
@@ -65,7 +112,7 @@ function createAuthorRow(author = {pub_name: '', mID: '', CoreID: '', is_manual:
             <button type="button" class="btn-down">↓</button>
         </div>
         <input type="text" class="auth-pub-name" placeholder="Publication Name" required value="${author.pub_name}" ${author.is_manual ? '' : 'readonly'}>
-        <input type="text" class="auth-core-id" placeholder="CORE-ID" value="${author.CoreID}" readonly ${author.is_manual ? 'disabled' : ''}>
+        <input type="text" class="auth-core-id" placeholder="CORE-ID" value="${author.Core_ID}" readonly ${author.is_manual ? 'disabled' : ''}>
         <input type="hidden" class="auth-mid" value="${author.mID}">
         <input type="number" class="auth-duty duty-input" placeholder="Duty" required min="10" max="100" value="100">
         <input type="text" class="auth-aff-refs" placeholder="Aff. IDs" value="1">
@@ -169,7 +216,7 @@ document.getElementById('btn-lookup-authors').addEventListener('click', function
             const row = createAuthorRow({
                 pub_name: m.pub_name,
                 mID: m.mID,
-                CoreID: m.CoreID,
+                Core_ID: m.Core_ID,
                 is_manual: false
             });
             
@@ -233,7 +280,7 @@ document.getElementById('btn-add-myself').onclick = () => {
     const row = createAuthorRow({
         pub_name: USER_DATA.pub_name,
         mID: USER_DATA.mID,
-        CoreID: USER_DATA.CoreID,
+        Core_ID: USER_DATA.Core_ID,
         is_manual: false
     });
     insertAuthorAtPosition(row);
@@ -255,7 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = createAuthorRow({
                 pub_name: a[0] || '',
                 mID: a[1] || '',
-                CoreID: '',
+                Core_ID: '',
                 is_manual: !a[1]
             });
             row.querySelector('.auth-duty').value = a[2] || 100;
@@ -267,9 +314,9 @@ document.addEventListener('DOMContentLoaded', () => {
         updateDutySummary();
     } else if (USER_DATA.mID) {
         const row = createAuthorRow({
-            pub_name: USER_DATA.display_name,
+            pub_name: USER_DATA.pub_name,
             mID: USER_DATA.mID,
-            CoreID: USER_DATA.CoreID,
+            Core_ID: USER_DATA.Core_ID,
             is_manual: false
         });
         authorsContainer.appendChild(row);

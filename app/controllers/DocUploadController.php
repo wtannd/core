@@ -107,6 +107,8 @@ class DocUploadController extends BaseController
         $researchBranches = (new ResearchBranch())->getAllBranches();
         $researchTopics = (new ResearchTopic())->getAllTopics();
         $docTypes = (new DocType())->getAllDocTypes();
+        $mainSize = (!empty($docData['main_size'])) ? BaseController::formatSize($docData['main_size']) : '';
+        $supplSize = (!empty($docData['suppl_size'])) ? BaseController::formatSize($docData['suppl_size']) : '';
 
         $pageTitle = match ($mode) {
             'edit_draft' => 'Edit Draft',
@@ -129,6 +131,8 @@ class DocUploadController extends BaseController
         $this->render('repository/upload.php', [
             'mode' => $mode,
             'dID' => $dID,
+            'mainSize' => $mainSize,
+            'supplSize' => $supplSize,
             'docData' => $docData,
             'errors' => $errors,
             'availableSources' => $availableSources,

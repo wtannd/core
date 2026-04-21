@@ -922,11 +922,11 @@ hr {
 .branch-row {
     display: grid;
     grid-template-columns: 30px 2fr 100px 50px;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 5px;
+    margin-bottom: 8px;
     align-items: center;
     background: var(--bg-row);
-    padding: 8px;
+    padding: 4px;
     border-radius: 4px;
 }
 .branch-summary {
@@ -959,7 +959,7 @@ hr {
     background: var(--info-bg);
     padding: 15px;
     border-radius: 8px;
-    margin-bottom: 20px;
+    margin-bottom: 8px;
 }
 
 .metrics-group {
@@ -1010,6 +1010,84 @@ hr {
 
 .link-esname[readonly] {
     background: var(--border-subtle);
+}
+
+/* ===========================
+   edit or disable form blocks
+   =========================== */
+/* Block Container */
+
+.form-block {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-bottom: 0.8rem;
+    background-color: #fff;
+    overflow: hidden;
+}
+
+.form-block .form-group { margin-bottom: 0.4rem; }
+
+/* Header: Title on Left, Button on Right */
+.block-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f8f9fa;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid #ccc;
+}
+
+.block-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #333;
+}
+
+/* Fieldset reset so it doesn't mess up your layout */
+.block-body fieldset {
+    border: none;
+    padding: 0;
+    margin: 0;
+    min-width: 0; 
+}
+
+.block-body {
+    padding: 0.6rem;
+    transition: all 0.3s ease;
+}
+
+/* Disabled State Visuals */
+.block-body.is-disabled {
+    opacity: 0.5;
+    background-color: #f1f5f9;
+    /* Optional: prevents users from even clicking inside the greyed-out area */
+    pointer-events: none; 
+}
+
+/* Toggle Button Styling */
+.btn-toggle-edit {
+    padding: 0.2rem 0.4rem;
+    background-color: #e2e8f0;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+}
+
+.btn-toggle-edit:hover {
+    background-color: #cbd5e1;
+}
+
+/* Red button state when the block is actively being edited and can be disabled */
+.btn-toggle-edit.btn-is-editing {
+    background-color: #fee2e2;
+    border-color: #fca5a5;
+    color: #991b1b;
+}
+
+.btn-toggle-edit.btn-is-editing:hover {
+    background-color: #fecaca;
 }
 
 
