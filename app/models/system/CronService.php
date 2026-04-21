@@ -7,6 +7,7 @@ namespace app\models\system;
 use config\Database;
 use PDO;
 use Exception;
+use PDOException;
 
 /**
  * Cron Service Model
@@ -79,7 +80,7 @@ class CronService
                     // (new \app\models\CommentService())->announce();
                     break;
                 case 'announce_doc':
-                    (new \app\models\DocumentService())->announceDoc();
+                    (new $this->announceDoc();
                     break;
                 case 'calc_ecp':
                     // (new \app\models\evaluations\EcpRecord())->calculateAll();
@@ -116,6 +117,119 @@ class CronService
             )->execute([$task['task_id']]);
 
             return false;
+        }
+    }
+
+    /**
+     * Finds documents on hold for >24 hours, assigns them a DOI,
+     * renames their files, makes them public, and notifies the submitter.
+     */
+    public function announceDoc(): void
+    {
+        // 1. Fetch all documents due for announcement
+        // We join the Members table to get the submitter's email address for the notification
+        $sql = "SELECT d.dID, d.pubdate, d.submitter_ID, m.email, m.display_name 
+                FROM Documents d
+                LEFT JOIN Members m ON d.submitter_ID = m.mID
+                WHERE d.visibility = :holdStatus 
+                  AND d.last_update_time <= DATE_SUB(NOW(), INTERVAL 24 HOUR) ORDER BY d.last_update_time ASC";
+                  
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['holdStatus' => VISIBILITY_ON_HOLD]);
+        $documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($documents)) {
+            return; // Nothing to announce
+        }
+
+        // 2. Process each document individually
+        foreach ($documents as $doc) {
+            $dID = (int)$doc['dID'];
+            $pubdate = $doc['pubdate'];
+            $uploadDir = UPLOAD_PATH_TRIMMED . '/' . str_replace('-', '/', $pubdate);
+            
+            try {
+                // Begin Atomic Transaction per document
+                $this->db->beginTransaction();
+
+                // 3. Count items with the same pubdate that already have a DOI
+                // no need FOR UPDATE for race conditions as this is the only routine to modify doi 
+                $countSql = "SELECT COUNT(*) FROM Documents 
+                             WHERE pubdate = :pubdate AND doi IS NOT NULL";
+                $countStmt = $this->db->prepare($countSql);
+                $countStmt->execute(['pubdate' => $pubdate]);
+                $count = (int)$countStmt->fetchColumn();
+
+                // 4. Calculate new values
+                $idMini = $count + 1;
+                // Convert base 10 to base 36 for the DOI suffix (e.g., 1 -> 1, 10 -> a, 36 -> 10)
+                $doiSuffix = strtoupper(base_convert((string)$idMini, 10, 36));
+                $doi = str_replace('-', '', $pubdate) . '.' . $doiSuffix;
+                $now = date('Y-m-d H:i:s');
+
+                // 5. Update DB Record
+                $updateSql = "UPDATE Documents 
+                              SET ID_mini = :id_mini,
+                                  doi = :doi,
+                                  visibility = 1,
+                                  announce_time = :now
+                              WHERE dID = :dID";
+                $updateStmt = $this->db->prepare($updateSql);
+                $updateStmt->execute([
+                    'id_mini' => $idMini,
+                    'doi' => $doi,
+                    'now' => $now,
+                    'dID' => $dID
+                ]);
+
+                // 6. Rename attached files
+                if (is_dir($uploadDir)) {
+                    // Find all files in the directory prefixed with "{dID}_"
+                    $files = glob($uploadDir . '/' . $dID . '_*');
+                    
+                    if ($files !== false) {
+                        foreach ($files as $oldFile) {
+                            $filename = basename($oldFile);
+                            
+                            // Replace the prefix "{dID}_" with "{doi}_"
+                            $newFilename = preg_replace('/^' . $dID . '_/', $doi . '_', $filename);
+                            $newFile = $uploadDir . '/' . $newFilename;
+                            
+                            if (!rename($oldFile, $newFile)) {
+                                throw new Exception("Failed to rename file $oldFile to $newFile");
+                            }
+                        }
+                    }
+                }
+
+                // 7. Commit Transaction
+                $this->db->commit();
+
+                // 8. Send Notification Email
+                if (!empty($doc['email'])) {
+                    $to = $doc['email'];
+                    $subject = "Your document has been published!";
+                    $body = "Hello " . ($doc['display_name'] ?? 'Submitter') . ",\n\n"
+                          . "Good news! Your document has passed the hold period and is now officially announced and visible.\n\n"
+                          . "Assigned DOI: " . $doi . "  " . SITE_URL . "/doc/" . $doi . "\n\n"
+                          . "Best regards,\n" . SITE_TITLE;
+                          
+                    $headers = [
+                        'From' => SITE_EMAIL,
+                        'Reply-To' => SITE_EMAIL,
+                        'X-Mailer' => 'PHP/' . phpversion()
+                    ];
+                    
+                    mail($to, $subject, $body, $headers);
+                }
+
+            } catch (PDOException $e) {
+                $this->db->rollBack();
+                error_log("DB Error announcing document dID {$dID}: " . $e->getMessage(), 3, $this->logFile);
+            } catch (Exception $e) {
+                $this->db->rollBack();
+                error_log("System Error announcing document dID {$dID}: " . $e->getMessage(), 3, $this->logFile);
+            }
         }
     }
 }
