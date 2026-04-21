@@ -3,7 +3,7 @@
  * Shared Profile Details Form Partial
  * 
  * Includes Recommended and Optional details used in registration and profile completion.
- * Assumes $institutions and $researchBranches are available.
+ * Assumes $researchBranches are available.
  */
 ?>
 <details>

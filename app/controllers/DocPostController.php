@@ -8,7 +8,6 @@ use app\models\DraftRepository;
 use app\models\DraftService;
 use app\models\DocumentRepository;
 use app\models\DocumentService;
-use app\models\lookups\ResearchTopic;
 use Exception;
 
 /**
@@ -22,7 +21,6 @@ class DocPostController extends BaseController
     private DocumentService $docService;
     private DraftRepository $draftRepo;
     private DraftService $draftService;
-    private ResearchTopic $topicModel;
 
     public function __construct()
     {
@@ -31,7 +29,6 @@ class DocPostController extends BaseController
         $this->docService = new DocumentService();
         $this->draftRepo = new DraftRepository();
         $this->draftService = new DraftService();
-        $this->topicModel = new ResearchTopic();
     }
 
     // ─────────────────────────────────────────────

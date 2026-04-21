@@ -1,9 +1,10 @@
-`<?php
+<?php
 
 declare(strict_types=1);
 
 namespace app\models;
 
+use PDO;
 use PDOException;
 use Exception;
 

@@ -36,8 +36,8 @@ class Institution
 
         $sql = "SELECT iID, iname 
                 FROM Institutions 
-                WHERE iname LIKE :query 
-                ORDER BY iname ASC 
+                WHERE iID = 1 OR iname LIKE :query 
+                ORDER BY CASE WHEN iID = 1 THEN 0 ELSE 1 END ASC, iID ASC 
                 LIMIT :limit";
 
         $stmt = $this->db->prepare($sql);

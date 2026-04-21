@@ -162,16 +162,6 @@ switch ($requestUri) {
         }
         break;
 
-    case '/lookupAuthors':
-        if ($requestMethod === 'POST') {
-            (new \app\controllers\api\DocAjaxController())->lookupAuthors();
-        } else {
-            http_response_code(405); // Method Not Allowed
-            $errorMessage = 'POST method is required';
-            include VIEWS_PATH_TRIMMED . '/errors/general.php';
-        }
-        exit;
-
     // --- Member Registration & Profile Management ---
     case '/register':
         $profileController = new \app\controllers\ProfileController();
@@ -222,6 +212,26 @@ switch ($requestUri) {
             (new \app\controllers\DocController())->streamDocPdf($id, $suppl, $ver);
         }
         break;
+
+    // --- AJAX lookups ---
+    case '/lookupAuthors':
+        if ($requestMethod === 'POST') {
+            (new \app\controllers\api\DocAjaxController())->lookupAuthors();
+        } else {
+            http_response_code(405); // Method Not Allowed
+            $errorMessage = 'POST method is required';
+            include VIEWS_PATH_TRIMMED . '/errors/general.php';
+        }
+        exit;
+    case '/lookupInstitutions':
+        if ($requestMethod === 'POST') {
+            (new \app\controllers\api\InstitutionAjaxController())->lookupInstitutions();
+        } else {
+            http_response_code(405); // Method Not Allowed
+            $errorMessage = 'POST method is required';
+            include VIEWS_PATH_TRIMMED . '/errors/general.php';
+        }
+        exit;
 
     // --- Admin Routes ---
     case '/admin':

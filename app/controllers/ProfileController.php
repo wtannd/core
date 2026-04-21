@@ -6,7 +6,6 @@ namespace app\controllers;
 
 use app\models\Member;
 use app\models\MemberService;
-use app\models\lookups\Institution;
 use app\models\lookups\ResearchBranch;
 
 /**
@@ -17,14 +16,12 @@ use app\models\lookups\ResearchBranch;
 class ProfileController extends BaseController
 {
     private MemberService $memberService;
-    private Institution $institutionModel;
     private ResearchBranch $branchModel;
 
     public function __construct()
     {
         parent::__construct();
         $this->memberService = new MemberService();
-        $this->institutionModel = new Institution();
         $this->branchModel = new ResearchBranch();
     }
 
@@ -35,9 +32,8 @@ class ProfileController extends BaseController
     {
         $errors = [];
         $message = '';
-        $institutions = $this->institutionModel->getAllInstitutions();
         $researchBranches = $this->branchModel->getAllBranches();
-        $this->render('auth/register.php', ['errors' => $errors, 'message' => $message, 'institutions' => $institutions, 'researchBranches' => $researchBranches]);
+        $this->render('auth/register.php', ['errors' => $errors, 'message' => $message, 'researchBranches' => $researchBranches]);
     }
 
     /**
@@ -56,9 +52,8 @@ class ProfileController extends BaseController
         $preFamilyName = count($parts) > 1 ? $parts[1] : $parts[0];
 
         $errors = [];
-        $institutions = $this->institutionModel->getAllInstitutions();
         $researchBranches = $this->branchModel->getAllBranches();
-        $this->render('auth/complete_profile.php', ['errors' => $errors, 'institutions' => $institutions, 'researchBranches' => $researchBranches]);
+        $this->render('auth/complete_profile.php', ['errors' => $errors, 'researchBranches' => $researchBranches]);
     }
 
     /**
@@ -76,9 +71,8 @@ class ProfileController extends BaseController
             exit;
         } else {
             $errors = $result['errors'];
-            $institutions = $this->institutionModel->getAllInstitutions();
             $researchBranches = $this->branchModel->getAllBranches();
-            $this->render('auth/register.php', ['errors' => $errors, 'institutions' => $institutions, 'researchBranches' => $researchBranches]);
+            $this->render('auth/register.php', ['errors' => $errors, 'researchBranches' => $researchBranches]);
         }
     }
 
@@ -102,7 +96,7 @@ class ProfileController extends BaseController
             unset($_SESSION['pending_orcid_registration']);
             
             $member = $result['member'];
-            $this->memberService->setRememberMe((int)$member['mID']);
+            if (isset($postData['remember_me'])) $this->memberService->setRememberMe((int)$member['mID']);
             $this->memberService->startSession($member);
             
             header('Location: /');
@@ -184,10 +178,9 @@ class ProfileController extends BaseController
         $formData['ORCID'] = $user['ORCID'];
         $formData['CoreID'] = $user['CoreID'];
 
-        $institutions = $this->institutionModel->getAllInstitutions();
         $researchBranches = $this->branchModel->getAllBranches();
 
-        $this->render('member/edit_profile.php', ['formData' => $formData, 'institutions' => $institutions, 'researchBranches' => $researchBranches]);
+        $this->render('member/edit_profile.php', ['formData' => $formData, 'researchBranches' => $researchBranches]);
     }
 
     /**

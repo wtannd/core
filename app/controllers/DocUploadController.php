@@ -6,7 +6,6 @@ namespace app\controllers;
 
 use app\models\DocumentRepository;
 use app\models\DraftRepository;
-use app\models\lookups\Institution;
 use app\models\lookups\ResearchBranch;
 use app\models\lookups\DocType;
 use app\models\lookups\ResearchTopic;
@@ -105,7 +104,6 @@ class DocUploadController extends BaseController
     private function renderForm(string $mode, ?array $errors = null, int $dID = 0, ?array $docData = null): void
     {
         $availableSources = $this->docRepo->getAvailableSources();
-        $institutions = (new Institution())->getAllInstitutions();
         $researchBranches = (new ResearchBranch())->getAllBranches();
         $researchTopics = (new ResearchTopic())->getAllTopics();
         $docTypes = (new DocType())->getAllDocTypes();
@@ -134,7 +132,6 @@ class DocUploadController extends BaseController
             'docData' => $docData,
             'errors' => $errors,
             'availableSources' => $availableSources,
-            'institutions' => $institutions,
             'researchBranches' => $researchBranches,
             'researchTopics' => $researchTopics,
             'docTypes' => $docTypes,

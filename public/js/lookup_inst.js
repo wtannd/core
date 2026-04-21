@@ -12,13 +12,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (query.length < 4) {
             resultsContainer.style.display = 'none';
             // Optional: clear the hidden iID if they delete the text
-            if (query.length === 0) hiddenIdInput.value = '';
+            if (query.length === 0) hiddenIdInput.value = '1';
             return;
         }
 
         // Debounce the AJAX call to save server resources
         timeoutId = setTimeout(() => {
-            fetch('/api/lookupInstitutions', { // Update this URL to match your routing
+            fetch('/lookupInstitutions', { // Update this URL to match your routing
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         
                         resultsContainer.appendChild(div);
                     });
+                    if (data.length === 1) resultsContainer.insertAdjacentHTML('beforeend', '<div class="autocomplete-item text-muted">No institutions found...</div>');
                     resultsContainer.style.display = 'block';
                 } else {
                     // Show a "No results" message

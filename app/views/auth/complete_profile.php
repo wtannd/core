@@ -5,7 +5,6 @@
  * @var array $pending Session data from ORCID callback
  * @var string $preFirstName Pre-filled first name from ORCID
  * @var string $preFamilyName Pre-filled family name from ORCID
- * @var array $institutions List of institutions for the dropdown
  * @var array $researchBranches List of branches for the checkbox lists
  */
 ?>
@@ -56,6 +55,11 @@
                         pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}"
                         title="Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.">
                     <small>Leave blank if you only want to use ORCID login.</small>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="remember_me" name="remember_me" <?php echo isset($_POST['remember_me']) ? 'checked' : ''; ?>>
+                    <label for="remember_me">Remember me on this device</label>
                 </div>
 
                 <div class="form-group">
