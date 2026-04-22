@@ -40,10 +40,10 @@
                         <?php echo htmlspecialchars($topic['abbr']); ?>
                     </a>
                 <?php endif; ?>
-                <?php if (!empty($docData['isOnHold'])): ?>
-                <span class="doc-tab-right status-inactive btn-small">To Be Announced!</span>
+                <?php if (!empty($isOnHold)): ?>
+                <span class="doc-tab-right status-inactive btn btn-small"><strong>To Be Announced!</strong></span>
                 <?php endif; ?>
-                <?php if (!empty($docData['isSubmitter'])): ?>
+                <?php if (!empty($isSubmitter)): ?>
                 <span class="doc-tab-right">
                     <a href="/revise_doc?id=<?php echo $doc->dID; ?>" class="btn btn-draft btn-small">Revise Document</a>
                 </span>

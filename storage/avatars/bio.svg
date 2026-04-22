@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <clipPath id="bioClip">
+      <circle cx="50" cy="50" r="50" />
+    </clipPath>
+  </defs>
+  <circle cx="50" cy="50" r="50" fill="#3f6212" />
+  
+  <g clip-path="url(#bioClip)">
+    <g opacity="0.6">
+      <path d="M 15 15 Q 35 30 15 45 Q -5 60 15 75 Q 35 90 15 105" fill="none" stroke="#a3e635" stroke-width="2"/>
+      <path d="M 15 15 Q -5 30 15 45 Q 35 60 15 75 Q -5 90 15 105" fill="none" stroke="#bef264" stroke-width="2"/>
+      <line x1="8" y1="30" x2="22" y2="30" stroke="#a3e635" stroke-width="1"/>
+      <line x1="8" y1="60" x2="22" y2="60" stroke="#a3e635" stroke-width="1"/>
+      <line x1="8" y1="90" x2="22" y2="90" stroke="#a3e635" stroke-width="1"/>
+    </g>
+
+    <path d="M20 100 C 20 65, 80 65, 80 100 Z" fill="#ffffff" />
+    <circle cx="50" cy="38" r="20" fill="#ffffff" />
+  </g>
+</svg>

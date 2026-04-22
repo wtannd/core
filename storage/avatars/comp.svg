@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <clipPath id="csClip">
+      <circle cx="50" cy="50" r="50" />
+    </clipPath>
+  </defs>
+  <circle cx="50" cy="50" r="50" fill="#1e293b" />
+  
+  <g clip-path="url(#csClip)">
+    <text x="15" y="30" font-family="monospace" font-weight="bold" font-size="12" fill="#4ade80" opacity="0.4">01</text>
+    <text x="25" y="55" font-family="monospace" font-weight="bold" font-size="12" fill="#4ade80" opacity="0.3">10</text>
+    <text x="75" y="25" font-family="monospace" font-weight="bold" font-size="12" fill="#4ade80" opacity="0.4">11</text>
+    <text x="82" y="65" font-family="monospace" font-weight="bold" font-size="12" fill="#4ade80" opacity="0.3">00</text>
+
+    <path d="M20 100 C 20 65, 80 65, 80 100 Z" fill="#ffffff" />
+    <circle cx="50" cy="38" r="20" fill="#ffffff" />
+    
+    <text x="50" y="80" font-family="monospace" font-weight="bold" font-size="16" fill="#1e293b" text-anchor="middle">&lt;/&gt;</text>
+  </g>
+</svg>

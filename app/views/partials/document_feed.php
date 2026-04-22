@@ -58,9 +58,9 @@
                     <span class="doc-feed-id">
                         <?php echo '[' . $seq . '] '; ?>
                         <?php if (!empty($doi)): ?>
-                            <a href="/doc/<?php echo htmlspecialchars($doi); ?>">OpenArxiv:<?php echo htmlspecialchars($doi); ?></a>
+                            <a href="/doc/<?php echo $doi; ?>">OpenArxiv:<?php echo $doi; ?></a>
                         <?php else: ?>
-                            OpenArxiv:<?php echo $dID; ?>
+                            <a href="/document?id=<?php echo $dID; ?>">OpenArxiv:<?php echo $dID; ?></a>
                         <?php endif; ?>
                         <?php if (!empty($infoBracket)): ?>
                             <span class="doc-feed-info"><?php echo $infoBracket; ?></span>

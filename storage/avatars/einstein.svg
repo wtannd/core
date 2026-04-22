@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <clipPath id="einsteinClip">
+      <circle cx="50" cy="50" r="50" />
+    </clipPath>
+  </defs>
+  
+  <circle cx="50" cy="50" r="50" fill="#0f172a" />
+  
+  <g clip-path="url(#einsteinClip)">
+    <path d="M 30 68 L 8 60 L 20 48 L 4 32 L 23 24 L 12 8 L 34 16 L 42 2 L 50 14 L 58 2 L 66 16 L 88 8 L 77 24 L 96 32 L 80 48 L 92 60 L 70 68 Z" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2" stroke-linejoin="round" />
+
+    <rect x="42" y="65" width="16" height="20" fill="#e2b796" />
+
+    <polygon points="40,75 50,90 60,75 60,100 40,100" fill="#ffffff" />
+    <path d="M12 100 C 12 70, 35 75, 43 89 L 50 98 L 57 89 C 65 75, 88 70, 88 100 Z" fill="#475569" />
+
+    <ellipse cx="50" cy="50" rx="19" ry="23" fill="#fcdbba" />
+
+    <path d="M 38 32 Q 50 35 62 32" stroke="#d4a381" stroke-width="1.5" fill="none" stroke-linecap="round" />
+    <path d="M 42 28 Q 50 30 58 28" stroke="#d4a381" stroke-width="1.5" fill="none" stroke-linecap="round" />
+
+    <polygon points="28,42 45,44 43,37 32,36" fill="#f8fafc" />
+    <polygon points="72,42 55,44 57,37 68,36" fill="#f8fafc" />
+
+    <circle cx="40" cy="46" r="2.5" fill="#0f172a" />
+    <circle cx="60" cy="46" r="2.5" fill="#0f172a" />
+
+    <path d="M 37 50 Q 40 52 43 50" stroke="#d4a381" stroke-width="1.5" fill="none" stroke-linecap="round" />
+    <path d="M 57 50 Q 60 52 63 50" stroke="#d4a381" stroke-width="1.5" fill="none" stroke-linecap="round" />
+
+    <path d="M 50 45 L 47 55 C 47 57, 53 57, 53 55 Z" fill="#e2b796" />
+
+    <path d="M 24 64 Q 50 54 76 64 Q 65 76 50 72 Q 35 76 24 64 Z" fill="#f8fafc" />
+  </g>
+</svg>
