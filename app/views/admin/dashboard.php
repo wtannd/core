@@ -16,7 +16,7 @@ include VIEWS_PATH_TRIMMED . '/admin/partials/header.php';
             <h2>System Maintenance</h2>
             <div class="admin-card">
                 <p>Run system-wide maintenance procedures.</p>
-                
+                <a href="/cron?token=<?php echo CRON_SECRET_TOKEN; ?>" class="btn btn-danger">Run Due Tasks</a>
                 <form action="/admin/update-comments" method="POST" class="admin-form">
                     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                     <button type="submit" class="btn btn-danger">Run UpdateComments() Procedure</button>
