@@ -98,6 +98,6 @@ $pageTitle = 'Edit Profile';
     </main>
 
     <?php include VIEWS_PATH_TRIMMED . '/partials/footer.php'; ?>
-<script src="/js/lookup_inst.js"></script>
+<script src="/js/lookup_inst.min.js"></script>
 </body>
 </html>

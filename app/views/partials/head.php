@@ -12,4 +12,4 @@ $pageTitle = $pageTitle ?? '';
     <title><?php echo SITE_TITLE; ?> - <?php echo $pageTitle; ?></title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="alternate icon" type="image/png" href="/favicon.ico">
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/style.min.css">

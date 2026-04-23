@@ -12,8 +12,8 @@ $adminName = $_SESSION['display_name'] ?? 'Administrator';
     <title>CORE Admin - Dashboard</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="alternate icon" type="image/png" href="/favicon.ico">
-    <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="/css/admin.css">
+    <link rel="stylesheet" href="/css/style.min.css">
+    <link rel="stylesheet" href="/css/admin.min.css">
 </head>
 <body class="admin-body">
     <header class="admin-header">

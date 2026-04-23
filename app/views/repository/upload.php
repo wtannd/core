@@ -331,6 +331,6 @@ const EDIT_LINKS = <?php echo $jsExtLinks; ?>;
 const BRANCHES_DATA = <?php echo json_encode($researchBranches ?? []); ?>;
 const DOC_BRANCH_MAX = <?php echo defined('DOC_BRANCH_MAX') ? DOC_BRANCH_MAX : 3; ?>;
 </script>
-<script src="/js/upload.js"></script>
+<script src="/js/upload.min.js"></script>
 </body>
 </html>

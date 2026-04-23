@@ -97,6 +97,6 @@ $pageTitle = 'Register';
         password.onchange = validatePassword;
         confirm_password.onkeyup = validatePassword;
     </script>
-<script src="/js/lookup_inst.js"></script>
+<script src="/js/lookup_inst.min.js"></script>
 </body>
 </html>
