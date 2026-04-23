@@ -1,15 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo SITE_TITLE; ?> - 400 Bad Request</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="alternate icon" type="image/png" href="/favicon.ico">
-    <link rel="stylesheet" href="/css/style.css">
-</head>
-<body>
-    <?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
+<?php
+/**
+ * 400 Error Page
+ */
+$pageTitle = '400 Bad Request';
+?>
+<?php include VIEWS_PATH_TRIMMED . '/partials/head.php'; ?>
+<?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
     <main>
         <div class="main-container auth-container">
             <h1>400 - Bad Request</h1>

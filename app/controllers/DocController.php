@@ -125,7 +125,7 @@ class DocController extends BaseController
         } else {
             $mainVersion = $ver !== null ? (int)$ver : (int)($doc->version ?? 0);
             if ($mainVersion > 0) {
-                $filePath = "$uploadDir/{$filePrefix}_v{$mainVersion}.pdf";
+                $filePath = "$uploadDir/{$filePrefix}_main_v{$mainVersion}.pdf";
             }
         }
 

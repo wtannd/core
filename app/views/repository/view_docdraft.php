@@ -1,7 +1,4 @@
 <?php
-
-use app\models\Draft;
-
 /**
  * Document Viewer View (Draft)
  * 
@@ -9,33 +6,17 @@ use app\models\Draft;
  *   'doc'       — Draft entity
  *   'draftAuthors'   — DocDraftAuthors rows
  *   'isFullyApproved'— bool
+ *   'userApprovalNeeded' — bool
  *   'branches'       — bIDs from branch_list JSON + ResearchBranches
  *   'topic'          — from ResearchTopics by tID, or false
  *   'extLinks'       — parsed from link_list JSON
  *   'isSubmitter'    — to submit or edit
  */
-$mID = (int)($_SESSION['mID'] ?? 0);
-
-$userApprovalNeeded = false;
-foreach ($draftAuthors as $da) {
-    if ((int)($da['mID'] ?? 0) === $mID && (int)($da['approved'] ?? 0) === 0) {
-        $userApprovalNeeded = true;
-        break;
-    }
-}
+$pageTitle = '[Draft] ' . htmlspecialchars($doc->title ?: '[Untitled]');
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo SITE_TITLE; ?> - [Draft] <?php echo htmlspecialchars($doc->title ?: '[Untitled]'); ?></title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="alternate icon" type="image/png" href="/favicon.ico">
-    <link rel="stylesheet" href="/css/style.css">
-</head>
-<body>
-    <?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
+<?php include VIEWS_PATH_TRIMMED . '/partials/head.php'; ?>
+    <script src="/js/load_mathjax.js" async></script>
+<?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
 
     <main>
         <div class="main-container doc-container">
@@ -191,10 +172,10 @@ foreach ($draftAuthors as $da) {
                     <tbody>
                         <?php foreach ($draftAuthors as $da): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($da['display_name'] ?? 'Author'); ?></td>
+                                <td><?php echo htmlspecialchars($da['pub_name'] ?? 'Author'); ?></td>
                                 <td><?php echo $da['mID'] ? 'Member' : 'External'; ?></td>
                                 <td>
-                                    <?php if ($da['approved']): ?>
+                                    <?php if ($da['is_approved']): ?>
                                         <span class="status-approved">&#10003; Approved</span>
                                     <?php else: ?>
                                         <span class="status-pending">&#9710; Pending</span>
@@ -210,6 +191,8 @@ foreach ($draftAuthors as $da) {
                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                         <input type="hidden" name="dID" value="<?php echo $doc->dID; ?>">
                         <button type="submit" class="btn btn-submit">Approve this Draft</button>
+                        <input type="checkbox" id="lock_approval" name="lock_approval" <?php echo isset($_POST['lock_approval']) ? 'checked' : ''; ?>>
+                        <label for="lock_approval">Lock my approval (even if it is revised again)</label>
                     </form>
                 <?php endif; ?>
 

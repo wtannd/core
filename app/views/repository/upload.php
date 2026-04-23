@@ -34,19 +34,10 @@
     $jsAuthorList = $_POST['author_list_json'] ?? ($docData['author_list'] ?? 'null');
     $jsBranches = $_POST['branch_list_json'] ?? ($docData['branch_list'] ?? 'null');
     $jsExtLinks = $_POST['link_list_json'] ?? ($docData['link_list'] ?? 'null');
+$pageTitle = 'Upload Document';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo SITE_TITLE; ?> - Upload Document</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="alternate icon" type="image/png" href="/favicon.ico">
-    <link rel="stylesheet" href="/css/style.css">
-</head>
-<body>
-    <?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
+<?php include VIEWS_PATH_TRIMMED . '/partials/head.php'; ?>
+<?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
 
     <main>
         <div class="main-container doc-container">
@@ -64,9 +55,9 @@
 
             <form action="<?php echo $actionUrl; ?>" method="POST" enctype="multipart/form-data" id="upload-form">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                <input type="hidden" name="author_list_json" id="author_list_json">
-                <input type="hidden" name="link_list_json" id="link_list_json">
-                <input type="hidden" name="branch_list_json" id="branch_list_json">
+                <input type="hidden" name="author_list_json" id="author_list_json" <?php if ($isBlockDisabled) echo 'disabled="disabled"' ?>>
+                <input type="hidden" name="link_list_json" id="link_list_json" <?php if ($isBlockDisabled) echo 'disabled="disabled"' ?>>
+                <input type="hidden" name="branch_list_json" id="branch_list_json" <?php if ($isBlockDisabled) echo 'disabled="disabled"' ?>>
                 <?php if ($dID > 0): ?>
                 <input type="hidden" name="dID" value="<?php echo $dID; ?>">
                 <?php endif; ?>
@@ -296,6 +287,7 @@
                 <?php endif; ?>
                 <?php include VIEWS_PATH_TRIMMED . '/partials/block_end.php'; ?>
 
+                <?php if (empty($mainSize) && empty($supplSize)): ?>
                 <?php
                     $blockId = 'block-fulltext';
                     $blockTitle = 'Full Text (if no file attached):';
@@ -305,6 +297,7 @@
                     <textarea id="full_text" name="full_text" rows="8"><?php echo htmlspecialchars($valFullText); ?></textarea>
                 </div>
                 <?php include VIEWS_PATH_TRIMMED . '/partials/block_end.php'; ?>
+                <?php endif; ?>
 
                 <div class="submit-group">
                     <?php if ($mode === 'upload'): ?>

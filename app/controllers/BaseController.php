@@ -153,47 +153,10 @@ abstract class BaseController
     // ─────────────────────────────────────────────
 
     /**
-     * Sets a temporary flash message in the session to be displayed after a redirect.
-     *
-     * @param string $type The type of message ('error', 'success', 'info')
-     * @param string $message The message text
-     */
-    protected function setFlash(string $type, string $message): void
-    {
-        // Ensure the flash array exists in the session
-        if (!isset($_SESSION['flash'])) {
-            $_SESSION['flash'] = [];
-        }
-        
-        $_SESSION['flash'][$type] = $message;
-    }
-
-    /**
-     * Retrieves a flash message by type and immediately deletes it from the session.
-     *
-     * @param string $type The type of message ('error', 'success', 'info')
-     * @return string|null The message text, or null if none exists
-     */
-    protected function getFlash(string $type): ?string
-    {
-        if (isset($_SESSION['flash'][$type])) {
-            $message = $_SESSION['flash'][$type];
-            unset($_SESSION['flash'][$type]); // Automatically clear it!
-            return $message;
-        }
-        
-        return null;
-    }
-
-    /**
      * Standardizes rendering views and passing data to them.
      */
     protected function render(string $viewPath, array $data = []): void
     {
-        // Automatically grab any pending flash messages
-        $data['flash_error'] = $this->getFlash('error');
-        $data['flash_success'] = $this->getFlash('success');
-
         // Extract array keys into variables (e.g., ['title' => 'Home'] becomes $title)
         extract($data);
         

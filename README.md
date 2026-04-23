@@ -73,10 +73,12 @@ CORE introduces a **Rigorous Dual Evaluation System** for STEM and other researc
 core/
 ├── public/                  # Web root (only public entry point)
 │   ├── index.php            # Front controller
+│   ├── js/                  # Javascripts
 │   └── css/                 # Stylesheets
 ├── app/
 │   ├── controllers/         # Business logic (skinny controllers)
 │   │   ├── admin/           # Admin controllers
+│   │   ├── api/             # Ajax lookups
 │   │   └── XxxController.php
 │   ├── models/              # Database interactions (fat models)
 │   │   ├── Xxx.php
@@ -96,6 +98,7 @@ core/
 │   └── config/
 │       └── routes.php       # Route definitions
 ├── config/
+│   ├── config.php           # Global settings
 │   └── Database.php         # PDO singleton connection
 ├── database/
 │   └── mysql.txt            # Full database schema with seed data
@@ -132,6 +135,7 @@ php -S localhost:8000 -t public/
 ```
 
 Visit `http://localhost:8000` in your browser.
+
 - **Deployment on web hosting service**
 	- Upload your entire repository (excluding any local config.php) to the server.
 	- Create DB on Host using the host's control panel (like cPanel)

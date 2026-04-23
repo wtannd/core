@@ -1,16 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo SITE_TITLE; ?> - 404 Page Not Found</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="alternate icon" type="image/png" href="/favicon.ico">
-    <link rel="stylesheet" href="/css/style.css">
-</head>
-<body>
-    <?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
-
+<?php
+/**
+ * 404 Not Found Page
+ */
+$pageTitle = '404 Page Not Found';
+?>
+<?php include VIEWS_PATH_TRIMMED . '/partials/head.php'; ?>
+<?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
     <main>
         <div class="main-container auth-container">
             <h1>404 - Page Not Found</h1>
@@ -19,7 +14,6 @@
             <a href="/" class="btn btn-primary">Return to Homepage</a>
         </div>
     </main>
-
     <?php include VIEWS_PATH_TRIMMED . '/partials/footer.php'; ?>
 </body>
 </html>

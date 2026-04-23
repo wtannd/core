@@ -1742,8 +1742,8 @@ CREATE TABLE SystemTasks (
     INDEX (last_run, is_running)
 );
 INSERT INTO SystemTasks (task_name, freq_minutes) VALUES 
-('announce_comment', 10), -- every 10 min
-('announce_doc', 1440),   -- every 24 hrs
+('announce_comment', 10), -- every 10 min to announce after 15 min
+('announce_doc', 360),   -- every 6 hrs to announce after 24 hrs
 ('calc_ecp', 1440),   -- Run daily
 ('calc_als', 10080),  -- Run weekly
 ('move_logs',20160),  -- Run bi-weekly

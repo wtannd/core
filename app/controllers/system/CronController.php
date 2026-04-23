@@ -39,5 +39,12 @@ class CronController
 
         // 5. Run the tasks
         (new CronService())->runDueTasks();
+
+        // go back to dashboard if it is Admin
+        if (!empty($_SESSION['admin_role']) && (int)$_SESSION['admin_role'] >= ADMIN_ROLE_MIN) {
+            $_SESSION['success_message'] = 'Due Tasks have been run.'; 
+            header('Location: /admin');
+            exit;
+        }
     }
 }

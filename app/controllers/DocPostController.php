@@ -390,7 +390,7 @@ class DocPostController extends BaseController
 				$errors['author_list_json'] = 'Author list can not be empty.';
 			} else {
 				$authorData = json_decode($postData['author_list_json'], true);
-				if (!is_array($authorData) || !isset($authorData['authors'])) {
+				if (!is_array($authorData) || !isset($authorData['authors']) || !isset($authorData['affiliations'])) {
 					$errors['author_list_json'] = 'Invalid author list format.';
 				} else {
 					$hasDuty100 = false;
@@ -398,8 +398,17 @@ class DocPostController extends BaseController
 					$validDuties = true;
 					$totDuty = 0;
 					$author_array = [];
+					$numAff = !empty($authorData['affiliations']) ? count($authorData['affiliations']) : 0;
+					$validAff = array_fill(1, $numAff, false);
 					foreach ($authorData['authors'] as $author) {
 						// Author array format: [name, mID, duty, affRefs]
+						$affRefs = $author[3] ?? [];
+						if (!$isUniqueID($affRefs)) { $errors['affiliation_list_unique'] = 'The affiliation list for ' . $author[0] . ' is not unique.'; }
+						foreach ($affRefs as $affRef) {
+						    $affId = (int)$affRef;
+						    if ($affId < 0 || $affId > $numAff) { $errors['affiliation_list_' . $affId] = 'The affiliation #' . $affId . ' for ' . $author[0] . ' does not exist.'; }
+						    else { $validAff[$affId] = true; }
+						}
 						$duty = (int)($author[2] ?? 0);
 					
 						if ($duty === 100) {
@@ -417,6 +426,9 @@ class DocPostController extends BaseController
 							$validDuties = false;
 							break;
 						}
+					}
+					foreach ($validAff as $num => $vA) {
+					    if (!$vA) $errors['affiliation_number_' . $num] = 'The affiliation #'. $num . ' is not used.'; 
 					}
 
 					if (!$validDuties) {
@@ -502,7 +514,7 @@ class DocPostController extends BaseController
 							$errors['link_list_json_' . $index] = 'Link names cannot exceed 30 characters.'; $err = true;
 						}
 
-	                    if (isset($link[2]) && $this->draftService->checkExternalLinkExists($url)) {
+	                    if (isset($link[2]) && $this->draftService->checkExternalLinkExists($url, (int)($postData['dID'] ?? 0))) {
     	                    $errors['link_exists_' . $index] = 'The link/DOI ' . $link[2] . ' already exists in our database.'; $err = true;
         	            }
 					}

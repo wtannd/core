@@ -25,3 +25,18 @@ $adminName = $_SESSION['display_name'] ?? 'Administrator';
             <a href="/logout" class="admin-link text-danger">Logout</a>
         </div>
     </header>
+<div class="global-alerts-container">
+    <?php if (isset($_SESSION['success_message'])): ?>
+        <div class="alert alert-success">
+            <?php echo htmlspecialchars($_SESSION['success_message']); ?>
+            <?php unset($_SESSION['success_message']); ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['error_message'])): ?>
+        <div class="alert alert-danger">
+            <?php echo htmlspecialchars($_SESSION['error_message']); ?>
+            <?php unset($_SESSION['error_message']); ?>
+        </div>
+    <?php endif; ?>
+</div>

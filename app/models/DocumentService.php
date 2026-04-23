@@ -99,7 +99,8 @@ class DocumentService
             $data['submission_time'] = $recvDate . ' 00:00:00';
         } else {
             $data['datetime_added'] = date('Y-m-d H:i:s');
-            $data['pubdate'] = DateTimeImmutable::createFromFormat('Y-m-d', $data['datetime_added']);
+            $pubdate = date('Y-m-d', strtotime($data['datetime_added']));
+            $data['pubdate'] = $pubdate;
         }
 
         // 2. Define Upload Directory & Set file versions
@@ -136,7 +137,7 @@ class DocumentService
             }
             
             if (!empty($data['tID'])) {  // tID = 0 means no topic
-                $this->saveTopic($dID, $data['tID']);
+                $this->saveTopic($dID, (int)$data['tID']);
             }
 
             // 5. File Movement
@@ -155,7 +156,7 @@ class DocumentService
                 } else {
                     $moveMain = move_uploaded_file($files['main_file']['tmp_name'], $mainDest);
                 }
-                if (!moveMain) {
+                if (!$moveMain) {
                     throw new Exception("Failed to move main file to the document directory.");
                 }
             }
@@ -168,7 +169,7 @@ class DocumentService
                 } else {
                     $moveSuppl = move_uploaded_file($files['supplemental_file']['tmp_name'], $supplDest);
                 }
-                if (!moveSuppl) {
+                if (!$moveSuppl) {
                     throw new Exception("Failed to move supplemental file to the document directory.");
                 }
             }
@@ -208,7 +209,7 @@ class DocumentService
         // 1. Retrieve old data
         $stmt = $this->db->prepare("SELECT doi, pubdate, version, ver_suppl, suppl_ext, revision_history, last_revision_time, main_size, suppl_size FROM Documents WHERE dID = :dID");
         $stmt->execute(['dID' => $dID]);
-        $old = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $old = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$old) {
             error_log("DocumentService::reviseFull(): Document $dID not found in database.", 3, LOG_PATH_TRIMMED . '/error.log');

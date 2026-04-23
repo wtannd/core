@@ -63,16 +63,20 @@ class CronService
 
         foreach ($tasks as $task) {
             $result = $this->executeTask($task);
-            $executed[] = $task['task_name'] . ($result ? ' [OK]' : ' [FAIL]');
+            if (is_array($result)) {
+                $executed[] = $task['task_name'] . ' [' . $result['ok'] . ' OKs and ' . $result['fail'] . ' FAILs]';
+            } else {
+                $executed[] = $task['task_name'] . ($result ? ' [OK]' : ' [FAIL]');
+            }
         }
 
-        error_log("Cron ran at " . date('Y-m-d H:i:s') . " — " . implode(', ', $executed), 3, $this->logFile);
+        error_log("Cron ran at " . date('Y-m-d H:i:s') . " — " . implode(', ', $executed) . "\n", 3, $this->logFile);
     }
 
     /**
-     * Execute a single task. Returns true on success, false on failure.
+     * Execute a single task. Returns true on success, false on failure or an array of numbers of success and failures.
      */
-    private function executeTask(array $task): bool
+    private function executeTask(array $task): array|bool
     {
         try {
             switch ($task['task_name']) {
@@ -80,7 +84,7 @@ class CronService
                     // (new \app\models\CommentService())->announce();
                     break;
                 case 'announce_doc':
-                    (new $this->announceDoc();
+                    $result = $this->announceDoc();
                     break;
                 case 'calc_ecp':
                     // (new \app\models\evaluations\EcpRecord())->calculateAll();
@@ -105,11 +109,11 @@ class CronService
                 "UPDATE SystemTasks SET is_running = 0, last_run = NOW() WHERE task_id = ?"
             )->execute([$task['task_id']]);
 
-            return true;
+            return $result ?? true;
 
         } catch (Exception $e) {
             $errorMsg = $e->getMessage();
-            error_log("Cron error [{$task['task_name']}]: $errorMsg", 3, $this->logFile);
+            error_log("Cron error [{$task['task_name']}]: $errorMsg\n", 3, $this->logFile);
 
             // Failure: unlock and record error, but do NOT advance last_run
             $this->db->prepare(
@@ -123,9 +127,12 @@ class CronService
     /**
      * Finds documents on hold for >24 hours, assigns them a DOI,
      * renames their files, makes them public, and notifies the submitter.
+     * Return an array of numbers of success and failures
      */
-    public function announceDoc(): void
+    public function announceDoc(): array
     {
+        $result['ok'] = 0; $result['fail'] = 0;
+
         // 1. Fetch all documents due for announcement
         // We join the Members table to get the submitter's email address for the notification
         $sql = "SELECT d.dID, d.pubdate, d.submitter_ID, m.email, m.display_name 
@@ -139,11 +146,12 @@ class CronService
         $documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         if (empty($documents)) {
-            return; // Nothing to announce
+            return $result; // Nothing to announce
         }
 
         // 2. Process each document individually
         foreach ($documents as $doc) {
+            $isOk = true;
             $dID = (int)$doc['dID'];
             $pubdate = $doc['pubdate'];
             $uploadDir = UPLOAD_PATH_TRIMMED . '/' . str_replace('-', '/', $pubdate);
@@ -205,6 +213,16 @@ class CronService
                 // 7. Commit Transaction
                 $this->db->commit();
 
+            } catch (PDOException $e) {
+                $this->db->rollBack();
+                error_log("DB Error announcing document dID {$dID}: " . $e->getMessage(), 3, $this->logFile);
+                $isOk = false;
+            } catch (Exception $e) {
+                $this->db->rollBack();
+                error_log("System Error announcing document dID {$dID}: " . $e->getMessage(), 3, $this->logFile);
+                $isOk = false;
+            }
+            try {
                 // 8. Send Notification Email
                 if (!empty($doc['email'])) {
                     $to = $doc['email'];
@@ -222,14 +240,16 @@ class CronService
                     
                     mail($to, $subject, $body, $headers);
                 }
-
-            } catch (PDOException $e) {
-                $this->db->rollBack();
-                error_log("DB Error announcing document dID {$dID}: " . $e->getMessage(), 3, $this->logFile);
             } catch (Exception $e) {
-                $this->db->rollBack();
-                error_log("System Error announcing document dID {$dID}: " . $e->getMessage(), 3, $this->logFile);
+                error_log("Error of sending email when announcing document dID {$dID}: " . $e->getMessage(), 3, $this->logFile);
+                $isOk = false;
+            }
+            if ($isOk) {
+                $result['ok'] += 1;
+            } else {
+                $result['fail'] += 1;
             }
         }
+        return $result;
     }
 }

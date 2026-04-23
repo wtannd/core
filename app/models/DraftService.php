@@ -275,7 +275,7 @@ class DraftService
     /**
      * Approve a draft for a specific member.
      */
-    public function approveDraft(int $dID, int $mID, int $lock = 0): bool
+    public function approveDraft(int $dID, int $mID, bool $lock = false): bool
     {
         $sql = "UPDATE DocDraftAuthors SET is_approved = 1, is_locked = :lock WHERE dID = :dID AND mID = :mID";
         $stmt = $this->db->prepare($sql);
@@ -304,11 +304,11 @@ class DraftService
     /**
      * Check if an external link already exists.
      */
-    public function checkExternalLinkExists(string $link): bool
+    public function checkExternalLinkExists(string $link, int $dID = 0): bool
     {
-        $sql = "SELECT COUNT(*) FROM ExternalDocs WHERE link = :link";
+        $sql = "SELECT COUNT(*) FROM ExternalDocs WHERE link = :link AND dID <> :dID";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(['link' => $link]);
+        $stmt->execute(['link' => $link, 'dID' => $dID]);
         return ((int)$stmt->fetchColumn()) > 0;
     }
 }

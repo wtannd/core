@@ -36,9 +36,9 @@ class DraftController extends BaseController
         $mID = $this->requireLogin();
         
         $doc = $this->draftRepo->getMyDraft((int)$id, $mID);
+        $draftAuthors = $this->draftRepo->getDraftAuthors((int)$id);
 
         if (!$doc) {
-            $draftAuthors = $this->draftRepo->getDraftAuthors((int)$id);
             $isCoAuthor = false;
             foreach ($draftAuthors as $da) {
                 if ((int)$da['mID'] === $mID) {
@@ -57,10 +57,19 @@ class DraftController extends BaseController
             exit;
         }
 
+		$userApprovalNeeded = false;
+		foreach ($draftAuthors as $da) {
+			if ((int)($da['mID'] ?? 0) === $mID && (int)($da['is_approved'] ?? 0) === 0) {
+				$userApprovalNeeded = true;
+				break;
+			}
+		}
+
         $docData = [
             'doc'            => $doc,
-            'draftAuthors'   => $this->draftRepo->getDraftAuthors((int)$id),
+            'draftAuthors'   => $draftAuthors,
             'isFullyApproved'=> $this->draftRepo->isDraftFullyApproved((int)$id),
+            'userApprovalNeeded' => $userApprovalNeeded,
             'branches'       => $this->draftRepo->getDraftBranches($doc->branch_list),
             'topic'          => !empty($doc->tID) ? $this->topicModel->getTopicById((int)$doc->tID) : null,
             'extLinks'       => $doc->getExtLinks(),
@@ -94,8 +103,9 @@ class DraftController extends BaseController
             $this->render('errors/403.php');
             exit;
         }
+        $lock = isset($postData['lock_approval']);
 
-        if ($this->draftService->approveDraft($dID, $mID)) {
+        if ($this->draftService->approveDraft($dID, $mID, $lock)) {
             $_SESSION['success_message'] = "Draft approved successfully.";
         }
 

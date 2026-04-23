@@ -10,19 +10,10 @@
  *   $page            — Current page number
  *   $buildPageUrl    — Closure(int $page): string
  */
+$pageTitle = 'Member Search';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo SITE_TITLE; ?> - Member Search</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="alternate icon" type="image/png" href="/favicon.ico">
-    <link rel="stylesheet" href="/css/style.css">
-</head>
-<body>
-    <?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
+<?php include VIEWS_PATH_TRIMMED . '/partials/head.php'; ?>
+<?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
 
     <main>
         <div class="main-container doc-container">
@@ -55,8 +46,8 @@
                             $formattedId = substr($paddedId, 0, 3) . '-' . substr($paddedId, 3, 3) . '-' . substr($paddedId, 6, 3);
                         ?>
                         <div class="member-item">
-                            <a href="/member/<?php echo htmlspecialchars($rawId); ?>" class="member-name">
-                                <?php echo htmlspecialchars($member['display_name']); ?>
+                            <a href="/member/<?php echo htmlspecialchars($formattedId); ?>" class="member-name">
+                                <?php echo htmlspecialchars($member['pub_name']); ?>
                             </a>
                             <span class="member-core-id"><?php echo $formattedId; ?></span>
                             <?php if (!empty($member['iname'])): ?>

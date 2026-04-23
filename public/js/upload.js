@@ -17,6 +17,8 @@
 function toggleBlock(blockId, btn) {
     const block = document.getElementById(blockId);
     if (!block) return;
+    const listId = blockId.replace(/^block-(author|branch|link)e?s$/,"$1_list_json");
+    const listInput = document.getElementById(listId);
 
     const body = block.querySelector('.block-body');
     const fieldset = body.querySelector('fieldset');
@@ -32,6 +34,8 @@ function toggleBlock(blockId, btn) {
         // Update button appearance
         btn.textContent = 'Disable';
         btn.classList.add('btn-is-editing');
+
+        if (listInput) listInput.removeAttribute('disabled'); 
     } else {
         // Disable it (won't be sent in $_POST)
         fieldset.setAttribute('disabled', 'disabled');
@@ -40,6 +44,8 @@ function toggleBlock(blockId, btn) {
         // Update button appearance
         btn.textContent = 'Edit';
         btn.classList.remove('btn-is-editing');
+
+        if (listInput) listInput.setAttribute('disabled', 'disabled');
     }
 }
 

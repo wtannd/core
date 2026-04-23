@@ -74,7 +74,7 @@ class DraftRepository
      */
     public function getDraftAuthors(int $dID): array
     {
-        $sql = "SELECT dda.*, m.email, m.CoreID as CORE_ID
+        $sql = "SELECT dda.*, m.email, m.CoreID, m.pub_name
                 FROM DocDraftAuthors dda
                 LEFT JOIN Members m ON dda.mID = m.mID
                 WHERE dda.dID = :dID

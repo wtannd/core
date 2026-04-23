@@ -1,15 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo SITE_TITLE; ?> - 403 Forbidden</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="alternate icon" type="image/png" href="/favicon.ico">
-    <link rel="stylesheet" href="/css/style.css">
-</head>
-<body>
-    <?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
+<?php
+/**
+ * 403 Forbidden Page
+ */
+$pageTitle = '403 Forbidden';
+?>
+<?php include VIEWS_PATH_TRIMMED . '/partials/head.php'; ?>
+<?php include VIEWS_PATH_TRIMMED . '/partials/header.php'; ?>
     <main>
         <div class="main-container auth-container">
             <h1>403 - Forbidden</h1>
