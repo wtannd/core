@@ -125,7 +125,7 @@ $pageTitle = 'Member Profile: ' . htmlspecialchars($member['pub_name']);;
                     <?php $documents = $authoredDocs; include VIEWS_PATH_TRIMMED . '/partials/document_feed.php'; ?>
                     <?php
                         $buildPageUrl = function (int $p) use ($member) {
-                            return '/member/' . $member['CoreID'] . '?page=' . $p;
+                            return '/member/' . $member['formatted_id'] . '?page=' . $p;
                         };
                         include VIEWS_PATH_TRIMMED . '/partials/paginate.php';
                     ?>

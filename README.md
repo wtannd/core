@@ -25,8 +25,9 @@ CORE introduces a **Rigorous Dual Evaluation System** for STEM and other researc
 |---------|-------------|
 | **Authentication** | Email/password registration and login with "Remember Me" support |
 | **ORCID Integration** | Login and register via [ORCID](https://orcid.org/) |
-| **ePrint Repository** | Upload, view, and stream PDF documents |
+| **ePrint Repository** | Upload, view, revise, and stream PDF documents |
 | **Draft Workflow** | Draft submission → approval → finalization pipeline |
+| **Math Support** | MathJax for Tex/Latex to SVG ($...$, \$ to Escape)|
 | **Member Profiles** | View and edit profiles with extended metadata |
 | **Research Branches** | 4-level hierarchy: Discipline → Field → Area → Direction |
 | **Research Topics** | Multi-parent emerging cross-disciplinary topics |

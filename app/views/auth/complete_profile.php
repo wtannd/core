@@ -7,6 +7,7 @@
  * @var string $preFamilyName Pre-filled family name from ORCID
  * @var array $researchBranches List of branches for the checkbox lists
  */
+$formData = $_POST;
 $pageTitle = 'Complete Your Profile';
 ?>
 <?php include VIEWS_PATH_TRIMMED . '/partials/head.php'; ?>

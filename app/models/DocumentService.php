@@ -229,16 +229,17 @@ class DocumentService
         }
 
         // 4. Set the new revision time
-        if ($hasNewMain || $hasNewSuppl) { $data['last_revision_time'] = date('Y-m-d H:i:s'); }
+        if ($hasNewMain || $hasNewSuppl) {
+            $data['last_revision_time'] = date('Y-m-d H:i:s');
 
-        // 5. Build the Revision History
-        // Only append to history if there is actually a file update and it's a version > 1
-        if (($data['version'] > 1 || $data['ver_suppl'] > 1) && ($hasNewMain || $hasNewSuppl)) {
-            $history = json_decode($old['revision_history'] ?? '[]', true);
+            // 5. Build the Revision History
+            // Only append to history if there is actually a file update and it's a version > 1
+            if ($data['version'] > 1 || $data['ver_suppl'] > 1) {
+                $history = json_decode($old['revision_history'] ?? '[]', true);
             
-            // Format: [version, ver_suppl, suppl_ext, last_revision_time, revision_notes, main_size, suppl_size]
-            // We append the OLD state, but apply the NEW notes submitted in this request
-            $history[] = [
+                // Format: [version, ver_suppl, suppl_ext, last_revision_time, revision_notes, main_size, suppl_size]
+                // We append the OLD state, but apply the NEW notes submitted in this request
+                $history[] = [
                 (int)$old['version'],
                 (int)$old['ver_suppl'],
                 $old['suppl_ext'],
@@ -246,9 +247,10 @@ class DocumentService
                 $data['revision_notes'] ?? '', // The new revision notes
                 (int)$old['main_size'],
                 (int)$old['suppl_size']
-            ];
+                ];
             
-            $data['revision_history'] = json_encode($history);
+                $data['revision_history'] = json_encode($history);
+            }
         }
 
         // 6. Define Upload Directory

@@ -34,9 +34,9 @@ class DraftRepository
     }
 
     /**
-     * Fetch a draft class by dID, ensuring owner access.
+     * Fetch a draft class by dID, ensuring submitter-only access.
      */
-    public function getMyDraft(int $dID, int $mID): Draft|false
+    public function getMySubmittedDraft(int $dID, int $mID): Draft|false
     {
         if ($dID < 1 || $mID < 1) return false;
         $sql = "SELECT * FROM DocDrafts WHERE dID = :dID AND submitter_ID = :mID LIMIT 1";
@@ -47,14 +47,18 @@ class DraftRepository
     }
 
     /**
-     * Fetch a draft array with all data by dID, ensuring owner access.
+     * Fetch a draft class by dID, ensuring owner or coauthor access.
      */
-    public function copyDraft(int $dID, int $mID): array|false
+    public function getMyDraft(int $dID, int $mID): Draft|false
     {
-        $sql = "SELECT * FROM DocDrafts WHERE dID = :dID AND submitter_ID = :mID LIMIT 1";
+        if ($dID < 1 || $mID < 1) return false;
+        $sql = "SELECT dd.*, m.pub_name as submitter_name, m.CoreID as submitter_coreid FROM DocDrafts dd JOIN Members m ON dd.submitter_ID = m.mID
+                WHERE dd.dID = :dID AND (dd.submitter_ID = :mID
+                OR EXISTS (SELECT 1 FROM DocDraftAuthors dda WHERE dda.dID = dd.dID AND dda.mID = :mID2)) LIMIT 1";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(['dID' => $dID, 'mID' => $mID]);
-        return $stmt->fetch();
+        $stmt->execute(['dID' => $dID, 'mID' => $mID, 'mID2' => $mID]);
+        $row = $stmt->fetch();
+        return $row ? new Draft($row) : false;
     }
 
     // check if dID is the user saved draft
@@ -99,13 +103,27 @@ class DraftRepository
     }
 
     /**
-     * Get drafts for a member.
+     * Get all drafts submitted by a member.
      */
-    public function getMyDrafts(int $mID): array
+    public function getMySubmittedDrafts(int $mID): array
     {
         $sql = "SELECT * FROM DocDrafts WHERE submitter_ID = :mID ORDER BY datetime_added DESC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['mID' => $mID]);
+        $rows = $stmt->fetchAll();
+        return array_map(fn($row) => new Draft($row), $rows);
+    }
+
+    /**
+     * Get all drafts submitted or coauthored by a member.
+     */
+    public function getMyDrafts(int $mID): array
+    {
+        $sql = "SELECT dd.* FROM DocDrafts dd WHERE (dd.submitter_ID = :mID
+                OR EXISTS (SELECT 1 FROM DocDraftAuthors dda WHERE dda.dID = dd.dID AND dda.mID = :mID2))
+                ORDER BY dd.datetime_added DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['mID' => $mID, 'mID2' => $mID]);
         $rows = $stmt->fetchAll();
         return array_map(fn($row) => new Draft($row), $rows);
     }

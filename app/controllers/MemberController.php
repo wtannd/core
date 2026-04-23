@@ -66,7 +66,7 @@ class MemberController extends BaseController
         $totalAuthored = $authoredResult['total'];
         $totalPages = max(1, (int)ceil($totalAuthored / $perPage));
 
-        $this->render('member/profile.php', ['member' => $member, 'authoredDocs' => $authoredDocs, 'currentPage' => $currentPage, 'totalPages' => $totalPages]);
+        $this->render('member/profile.php', ['member' => $member, 'authoredDocs' => $authoredDocs, 'totalAuthored' => $totalAuthored, 'currentPage' => $currentPage, 'totalPages' => $totalPages]);
     }
 
     /**

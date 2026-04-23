@@ -10,7 +10,7 @@ $pageTitle = 'Edit Profile';
     <main>
         <div class="main-container profile-container">
             <h1>Edit Your Profile</h1>
-<a href="/member/<?php echo htmlspecialchars($formData['CoreID']); ?>" class="edit-profile-btn">View Public Profile</a>
+<a href="/member/<?php echo htmlspecialchars($formData['formatted_id']); ?>" class="edit-profile-btn">View Public Profile</a>
             <?php 
             if (isset($_SESSION['warning_message'])) {
                 echo '<div class="alert alert-warning">' . htmlspecialchars($_SESSION['warning_message']) . '</div>';
@@ -91,7 +91,7 @@ $pageTitle = 'Edit Profile';
 
                 <div class="form-submit">
                     <button type="submit" class="btn btn-primary">Save Changes</button>
-                    <a href="/member/<?php echo $formData['CoreID']; ?>" class="btn btn-secondary">Cancel</a> 
+                    <a href="/member/<?php echo $formData['formatted_id']; ?>" class="btn btn-secondary">Cancel</a> 
                 </div>
             </form>
         </div>

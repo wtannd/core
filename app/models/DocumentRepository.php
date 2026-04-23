@@ -73,7 +73,7 @@ class DocumentRepository
             throw new \InvalidArgumentException("Invalid search column.");
         }
 
-        $sql = "SELECT d.*, m.pub_name as submitter_name, m.CoreID as submitter_coreid
+        $sql = "SELECT d.*, m.pub_name AS submitter_name, REGEXP_REPLACE(LPAD(m.CoreID, 9, '0'), '(.{3})(?=.)', '\\\\1-') AS submitter_coreid
                 FROM Documents d
                 JOIN Members m ON d.submitter_ID = m.mID
                 WHERE d.$column = :idValue AND (:mRole2 >= d.visibility OR EXISTS (
@@ -93,6 +93,24 @@ class DocumentRepository
     }
 
     // get my submitted document
+    public function getMySubmittedDoc(string $column, mixed $idValue, int $mID = 0): ?Document
+    {
+        // Security check: Only allow specific columns to prevent SQL Injection
+        $allowedColumns = ['dID', 'doi'];
+        if (!in_array($column, $allowedColumns, true)) {
+            throw new \InvalidArgumentException("Invalid search column.");
+        }
+
+        $sql = "SELECT * FROM Documents WHERE $column = :idValue AND submitter_ID = :mID LIMIT 1";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['idValue' => $idValue, 'mID' => $mID]);
+
+        $row = $stmt->fetch();
+        return $row ? new Document($row) : null;
+    }
+
+    // get my co-authored or submitted document
     public function getMyDoc(string $column, mixed $idValue, int $mID = 0): ?Document
     {
         // Security check: Only allow specific columns to prevent SQL Injection
@@ -101,26 +119,14 @@ class DocumentRepository
             throw new \InvalidArgumentException("Invalid search column.");
         }
 
-        $sql = "SELECT * FROM Documents 
-                WHERE $column = :idValue AND submitter_ID = :mID LIMIT 1";
+        $sql = "SELECT d.* FROM Documents d WHERE d.$column = :idValue AND (d.submitter_ID = :mID OR
+                EXISTS (SELECT 1 FROM DocAuthors da WHERE da.dID = d.dID AND da.mID = :mID2)) LIMIT 1";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            'idValue' => $idValue,
-            'mID'    => $mID
-        ]);
+        $stmt->execute(['idValue' => $idValue, 'mID' => $mID, 'mID2' => $mID]);
 
         $row = $stmt->fetch();
         return $row ? new Document($row) : null;
-    }
-
-    // fetch a document array (all data) by dID, ensuring owner access
-    public function copyDoc(int $dID, int $mID): array|false
-    {
-        $sql = "SELECT * FROM Documents WHERE dID = :dID AND submitter_ID = :mID LIMIT 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['dID' => $dID, 'mID' => $mID]);
-        return $stmt->fetch();
     }
 
     // check if dID is the user submitted document

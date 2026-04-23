@@ -34,6 +34,9 @@ class Draft
     public ?int $main_figs = null;
     public ?int $main_tabs = null;
 
+    public ?string $submitter_name = null;
+    public ?string $submitter_coreid = null;
+
     private ?array $decodedAuthors = null;
     private ?array $decodedAffiliations = null;
     private ?array $decodedBranches = null;

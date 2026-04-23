@@ -170,10 +170,16 @@ $pageTitle = '[Draft] ' . htmlspecialchars($doc->title ?: '[Untitled]');
                         </tr>
                     </thead>
                     <tbody>
+                        <?php if (!$isSubmitter): ?>
+                            <tr><td><?php echo htmlspecialchars($doc->submitter_name ?? 'Submitter'); ?></td>
+                            <td>Submitter</td><td><span class="status-approved">
+                            <?php echo $isFullyApproved ? "&#9989; Can Submit" : "&#10227; Waiting"; ?></span></td>
+                            </tr>
+                        <?php endif; ?>
                         <?php foreach ($draftAuthors as $da): ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($da['pub_name'] ?? 'Author'); ?></td>
-                                <td><?php echo $da['mID'] ? 'Member' : 'External'; ?></td>
+                                <td><?php echo $da['mID'] ? 'Co-Author' : 'External'; ?></td>
                                 <td>
                                     <?php if ($da['is_approved']): ?>
                                         <span class="status-approved">&#10003; Approved</span>

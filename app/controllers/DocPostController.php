@@ -42,7 +42,7 @@ class DocPostController extends BaseController
 
         $dID = (int)($postData['dID'] ?? 0);
 
-        $draft = $this->draftRepo->copyDraft($dID, $mID);
+        $draft = $this->draftRepo->getMySubmittedDraft($dID, $mID);
         if (!$draft) {
             http_response_code(403);
             $this->render('errors/403.php');
@@ -55,6 +55,7 @@ class DocPostController extends BaseController
             exit;
         }
 
+        $draft = (array)$draft;
         if (!empty($draft['author_list'])) {
             $authorData = json_decode($draft['author_list'], true);
             $totDuty = 0; $author_array = [];

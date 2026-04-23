@@ -31,9 +31,8 @@ class ProfileController extends BaseController
     public function showRegister(): void
     {
         $errors = [];
-        $message = '';
         $researchBranches = $this->branchModel->getAllBranches();
-        $this->render('auth/register.php', ['errors' => $errors, 'message' => $message, 'researchBranches' => $researchBranches]);
+        $this->render('auth/register.php', ['errors' => $errors, 'researchBranches' => $researchBranches]);
     }
 
     /**
@@ -86,7 +85,8 @@ class ProfileController extends BaseController
         $pending = $_SESSION['pending_orcid_registration'] ?? null;
         if (!$pending) {
             $errors = ['general' => 'No pending ORCID registration found.'];
-            $this->render('auth/complete_profile.php', ['errors' => $errors]);
+            $researchBranches = $this->branchModel->getAllBranches();
+            $this->render('auth/complete_profile.php', ['errors' => $errors, 'researchBranches' => $researchBranches]);
             exit;
         }
 
@@ -103,7 +103,8 @@ class ProfileController extends BaseController
             exit;
         } else {
             $errors = $result['errors'] ?? ['general' => $result['message']];
-            $this->render('auth/complete_profile.php', ['errors' => $errors]);
+            $researchBranches = $this->branchModel->getAllBranches();
+            $this->render('auth/complete_profile.php', ['errors' => $errors, 'researchBranches' => $researchBranches]);
         }
     }
 
@@ -180,7 +181,7 @@ class ProfileController extends BaseController
 
         $researchBranches = $this->branchModel->getAllBranches();
 
-        $this->render('member/edit_profile.php', ['formData' => $formData, 'researchBranches' => $researchBranches]);
+        $this->render('member/edit_profile.php', ['errors' => $errors, 'formData' => $formData, 'researchBranches' => $researchBranches]);
     }
 
     /**
@@ -317,7 +318,8 @@ class ProfileController extends BaseController
             
             // Get alphanum ID for redirect
             $updatedUser = $this->memberService->findUser('mID', $mID);
-            header('Location: /member/' . $updatedUser['CoreID']);
+            $formatted_id = MemberService::formatCoreID($updatedUser['CoreID']);
+            header('Location: /member/' . $formatted_id);
             exit;
         } else {
             $_SESSION['error_message'] = 'Failed to update profile. Please try again.';

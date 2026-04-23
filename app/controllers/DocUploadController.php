@@ -59,7 +59,7 @@ class DocUploadController extends BaseController
         $mID = $this->requireGoodStanding();
         
         $dID = (int)$id;
-        $draft = $this->draftRepo->getMyDraft($dID, $mID);
+        $draft = $this->draftRepo->getMySubmittedDraft($dID, $mID);
 
         if (!$draft) {
             http_response_code(403);
@@ -77,7 +77,7 @@ class DocUploadController extends BaseController
         $mID = $this->requireGoodStanding();
         
         $dID = (int)$id;
-        $doc = $this->docRepo->getMyDoc('dID', $dID, $mID);
+        $doc = $this->docRepo->getMySubmittedDoc('dID', $dID, $mID);
 
         if (!$doc) {
             http_response_code(403);

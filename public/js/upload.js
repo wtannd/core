@@ -78,13 +78,14 @@ function toggleDateGroup() {
 }
 
 function toggleFullText() {
+    const block = document.getElementById('block-fulltext');
+    if (!block) return;
+    const body = block.querySelector('.block-body');
+    const fieldset = body.querySelector('fieldset');
+
     const mainFile = document.getElementById('main_file').files.length;
     const supplFile = document.getElementById('supplemental_file').files.length;
     const showFullText = (mainFile === 0 && supplFile === 0);
-
-    const block = document.getElementById('block-fulltext');
-    const body = block.querySelector('.block-body');
-    const fieldset = body.querySelector('fieldset');
 
     // Check if the block is currently disabled
     const isCurrentlyDisabled = fieldset.hasAttribute('disabled');

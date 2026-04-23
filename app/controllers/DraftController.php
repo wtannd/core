@@ -39,19 +39,6 @@ class DraftController extends BaseController
         $draftAuthors = $this->draftRepo->getDraftAuthors((int)$id);
 
         if (!$doc) {
-            $isCoAuthor = false;
-            foreach ($draftAuthors as $da) {
-                if ((int)$da['mID'] === $mID) {
-                    $isCoAuthor = true;
-                    break;
-                }
-            }
-            if ($isCoAuthor) {
-                $doc = $this->draftRepo->getDraftById((int)$id);
-            }
-        }
-
-        if (!$doc) {
             http_response_code(403);
             $this->render('errors/403.php');
             exit;

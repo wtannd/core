@@ -2,6 +2,7 @@
 /**
  * Registration View
  */
+$formData = $_POST;
 $pageTitle = 'Register';
 ?>
 <?php include VIEWS_PATH_TRIMMED . '/partials/head.php'; ?>
