@@ -131,8 +131,7 @@ INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Ga
 INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Stellar Physics & Astronomy', 'Phys.AA.stellar' FROM ResearchBranches WHERE abbr = 'Phys.AA';
 INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Solar Physics', 'Phys.AA.solar' FROM ResearchBranches WHERE abbr = 'Phys.AA';
 INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, '(Exo)Planets & Astrobiology)', 'Phys.AA.planetary' FROM ResearchBranches WHERE abbr = 'Phys.AA';
-INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'High-Energy Astrophysical Processes
-& Phenomena', 'Phys.AA.highenergy' FROM ResearchBranches WHERE abbr = 'Phys.AA';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'High-Energy Astrophysical Processes & Phenomena', 'Phys.AA.highenergy' FROM ResearchBranches WHERE abbr = 'Phys.AA';
 INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'AA Instrumentation & Methods', 'Phys.AA.im' FROM ResearchBranches WHERE abbr = 'Phys.AA';
 INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'AA Other Areas', 'Phys.AA.other' FROM ResearchBranches WHERE abbr = 'Phys.AA';
 -- Areas within AMOQ
@@ -170,6 +169,22 @@ INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Co
 INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Developmental Neuroscience', 'Cross.BRAIN.devel' FROM ResearchBranches WHERE abbr = 'Cross.BRAIN';
 INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Systems Neuroscience', 'Cross.BRAIN.sys' FROM ResearchBranches WHERE abbr = 'Cross.BRAIN';
 INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 3, 'Neurophilosophy', 'Cross.BRAIN.phil' FROM ResearchBranches WHERE abbr = 'Cross.BRAIN';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Algebraic Geometry', 'Math.AG' FROM ResearchBranches WHERE abbr = 'Math';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Algebraic Topology', 'Math.AT' FROM ResearchBranches WHERE abbr = 'Math';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Analysis of PDEs', 'Math.AP' FROM ResearchBranches WHERE abbr = 'Math';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Category Theory', 'Math.CT' FROM ResearchBranches WHERE abbr = 'Math';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Differential Geometry', 'Math.DG' FROM ResearchBranches WHERE abbr = 'Math';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Dynamical Systems', 'Math.DS' FROM ResearchBranches WHERE abbr = 'Math';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Geometric Topology', 'Math.GT' FROM ResearchBranches WHERE abbr = 'Math';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'K-Theory and Homology', 'Math.KT' FROM ResearchBranches WHERE abbr = 'Math';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Logic', 'Math.LO' FROM ResearchBranches WHERE abbr = 'Math';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Number Theory', 'Math.NT' FROM ResearchBranches WHERE abbr = 'Math';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Probability', 'Math.PR' FROM ResearchBranches WHERE abbr = 'Math';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Quantum Algebra', 'Math.QA' FROM ResearchBranches WHERE abbr = 'Math';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Representation Theory', 'Math.RT' FROM ResearchBranches WHERE abbr = 'Math';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Rings and Algebras', 'Math.RA' FROM ResearchBranches WHERE abbr = 'Math';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Statistics Theory', 'Math.ST' FROM ResearchBranches WHERE abbr = 'Math';
+INSERT INTO ResearchBranches (parent_bID, btype, bname, abbr) SELECT bID, 2, 'Symplectic Geometry', 'Math.SG' FROM ResearchBranches WHERE abbr = 'Math';
 
 CREATE TABLE BranchParameters (  -- parameters that depend on different research branches 
     pname VARCHAR(255) NOT NULL,
@@ -701,6 +716,7 @@ INSERT INTO ExternalSources (sID,ext_type,esname,pattern,publisher,detail) VALUE
 INSERT INTO ExternalSources (sID,ext_type,esname,pattern,publisher,detail) VALUES (16,2,'Symmetry','10.3390/sym','MDPI','Symmetry');
 INSERT INTO ExternalSources (sID,ext_type,esname,pattern,detail) VALUES (17,3,'OSF','10.31219/osf.io','OSF Preprints');
 INSERT INTO ExternalSources (sID,ext_type,esname,pattern,detail) VALUES (18,3,'Preprints.org','10.20944/preprints','Preprints.org by MDPI');
+INSERT INTO ExternalSources (sID,ext_type,esname,pattern,detail) VALUES (19,3,'zenodo.org','10.5281/zenodo.','by EU OpenAIRE and CERN');
 
 CREATE TABLE ExternalDocs ( -- external DOIs/links/sources to documents (typically o/r-docs)
     ID BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
