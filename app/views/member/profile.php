@@ -4,7 +4,7 @@
  * 
  * @var array $member The sanitized member data array.
  */
-$pageTitle = 'Member Profile: ' . htmlspecialchars($member['pub_name']);;
+$pageTitle = 'Member Profile: ' . htmlspecialchars($member['pub_name']);
 ?>
 <?php include VIEWS_PATH_TRIMMED . '/partials/head.php'; ?>
     <script src="/js/load_mathjax.js" async></script>
@@ -100,7 +100,7 @@ $pageTitle = 'Member Profile: ' . htmlspecialchars($member['pub_name']);;
                 <?php if (!empty($member['metadata'])): ?>
                 <section class="meta-section">
                     <h2>Professional Background</h2>
-                    <div class="info-grid">
+                    <div class="info-group">
                         <?php foreach ($member['metadata'] as $key => $value): ?>
                             <div class="meta-item">
                                 <span class="field-label"><?php echo htmlspecialchars(str_replace('_', ' ', $key)); ?></span>

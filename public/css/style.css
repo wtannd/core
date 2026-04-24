@@ -20,7 +20,7 @@
     --surface-white: #ffffff;
     --font-ui: 'Inter', system-ui, sans-serif;
     --font-academic: 'Lora', 'Georgia', serif;
-    --max-content-width: 1600px;
+    --max-content-width: 1400px;
     --link-color: #007bff;
     --success-color: #28a745;
     --success-bg: #d4edda;
@@ -103,7 +103,7 @@ hr {
     text-transform: uppercase;
     color: var(--text-muted);
     font-weight: 700;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem;
     letter-spacing: 0.05em;
 }
 
@@ -1303,11 +1303,11 @@ hr {
 .info-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2rem;
-    margin-bottom: 2rem;
+    gap: 1.2rem;
+    margin-bottom: 1.2rem;
 }
 .info-group {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.4rem;
 }
 .info-value {
     font-size: 1.05rem;
@@ -1324,8 +1324,8 @@ hr {
 
 .meta-section {
     border-top: 1px solid var(--border-subtle);
-    padding-top: 2.5rem;
-    margin-top: 1rem;
+    padding-top: 1.5rem;
+    margin-top: 0.5rem;
 }
 .meta-section h2 {
     font-size: 1.25rem;
@@ -1334,10 +1334,7 @@ hr {
     font-weight: 600;
 }
 .meta-item {
-    margin-bottom: 1.5rem;
-}
-.meta-item .info-value {
-    white-space: pre-wrap;
+    margin-bottom: 0.7rem;
 }
 
 .link-academic {
@@ -1610,6 +1607,121 @@ details > summary + div { margin-top: 1rem; }
 }
 
 .status-pending { color: var(--warning-color); font-weight: bold; }
+
+
+/* ====================================
+   Static Pages
+   ==================================== */
+
+/* Container & Layout */
+.static-container {
+    max-width: 800px; /* Optimal reading width */
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Spacing Utilities */
+.mt-4 { margin-top: 1.5rem; }
+.mb-3 { margin-bottom: 1rem; }
+.mb-5 { margin-bottom: 3rem; }
+
+/* Base Typography */
+.about-page {
+    font-family: var(--font-academic);
+    color: var(--text-main);
+    line-height: 1.7;
+    font-size: 1.1rem;
+}
+
+.about-page p {
+    margin-bottom: 1.25rem;
+}
+
+/* Headings */
+.about-page h1, 
+.about-page h2, 
+.about-page h3 {
+    font-family: var(--font-ui);
+    margin-top: 0;
+    margin-bottom: 1.25rem;
+    font-weight: 600;
+}
+
+.about-page h2 {
+    font-size: 1.45rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+/* Specific Text Elements */
+.display-4 {
+    font-size: 2.0rem;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.lead {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    font-family: var(--font-ui);
+    font-weight: 400;
+    line-height: 1.6;
+}
+
+.font-weight-bold {
+    font-weight: 700;
+}
+
+/* Standard Lists */
+.about-page ul:not(.list-group) {
+    padding-left: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.about-page ul:not(.list-group) li {
+    margin-bottom: 0.75rem;
+}
+
+/* Custom List Group (Vanilla CSS Implementation) */
+.list-group {
+    display: flex;
+    flex-direction: column;
+    padding-left: 0;
+    margin-bottom: 0;
+    list-style: none;
+}
+
+.list-group-flush .list-group-item {
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+}
+
+.list-group-flush .list-group-item:first-child {
+    border-top: 0;
+}
+
+.list-group-flush .list-group-item:last-child {
+    border-bottom: 0;
+}
+
+.list-group-item {
+    display: block;
+    padding: 1.25rem 0;
+    background-color: transparent;
+    border-bottom: 1px solid var(--border-light);
+    font-family: var(--font-ui); /* Keep list items modern and scannable */
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.list-group-item strong {
+    color: var(--brand-dark);
+    font-size: 1.1rem;
+    display: block;
+    margin-bottom: 0.25rem;
+}
 
 
 /* ====================================

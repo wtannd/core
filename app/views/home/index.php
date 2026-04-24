@@ -21,7 +21,7 @@ $pageTitle = 'Dashboard';
                 <?php if ($isLoggedIn): ?>
                     Welcome back to <?php echo SITE_TITLE; ?>. Explore the latest original research, publish your own work, evaluate peer contributions, and track your Achievement Level (AL) and Earned Credit Points (ECP) to advance within your community.
                 <?php else: ?>
-                    <?php echo SITE_TITLE; ?> is a Community-driven Open Research Ecosystem designed to revolutionize how basic research is shared, evaluated, and rewarded. By replacing outdated publishing, funding, and hiring models with a properly incentivized feedback system, CORE puts the power back in the hands of researchers. Our rigorous, community-governed metrics ensure your work is judged by its true quality, not sheer quantity. Join us to build a self-sustaining future for scientific advancement—explore the project on (<a href="https://github.com/wtannd/core" target="_blank" rel="noopener noreferrer">GitHub</a>).
+                    <?php echo SITE_TITLE; ?> is a Community-driven Open Research Ecosystem designed to revolutionize how basic research is shared, evaluated, and rewarded. By replacing outdated publishing, funding, and hiring models with a properly incentivized feedback system, CORE puts the power back in the hands of researchers. Our rigorous, community-governed metrics ensure your work is judged by its true quality, not sheer quantity. Join us to build a self-sustaining future for scientific advancement—explore the project on <a href="https://github.com/wtannd/core" target="_blank" rel="noopener noreferrer">GitHub</a>.
                 <?php endif; ?>
             </div>
 

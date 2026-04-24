@@ -7,15 +7,22 @@ use app\controllers\AuthController;
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $requestMethod = $_SERVER['REQUEST_METHOD'];
 
-if (preg_match('#^/doc/(\d{4,8}\.[A-Za-z0-9]{1,6})$#', $requestUri, $matches)) {
+if (preg_match('#^/doc/(\d{4,8}\.[A-Za-z0-9]{1,6})$#', $requestUri, $matches)) {  // view document
     $doi = $matches[1];
     (new \app\controllers\DocController())->viewDocDoi($doi);
     exit;
 }
 
-if (preg_match('#^/member/([A-Za-z0-9\-]{4,11})$#', $requestUri, $matches)) {
+if (preg_match('#^/member/([A-Za-z0-9\-]{4,11})$#', $requestUri, $matches)) { // view member profile
     $coreId = $matches[1];
     (new \app\controllers\MemberController())->show($coreId);
+    exit;
+}
+
+if (preg_match('#^/p/([a-zA-Z0-9-]+)$#', $requestUri, $matches)) { // view static pages
+    // $matches[1] contains the captured slug (e.g., "privacy-policy")
+    $slug = $matches[1]; 
+    (new \app\controllers\PageController())->showPage($slug);
     exit;
 }
 
@@ -211,6 +218,25 @@ switch ($requestUri) {
         } else {
             (new \app\controllers\DocController())->streamDocPdf($id, $suppl, $ver);
         }
+        break;
+
+    // --- Static Pages ---
+    case '/about':
+        (new \app\controllers\PageController())->about();
+        break;
+    case '/contact':
+        $controller = new \app\controllers\PageController();
+        if ($requestMethod === 'POST') {
+            $controller->submitContact();
+        } else {
+            $controller->contact();
+        }
+        break;
+    case '/faq':
+        (new \app\controllers\PageController())->faq();
+        break;
+    case '/announcements':
+        (new \app\controllers\PageController())->news();
         break;
 
     // --- AJAX lookups ---
