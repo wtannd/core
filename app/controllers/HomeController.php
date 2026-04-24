@@ -47,6 +47,11 @@ class HomeController extends BaseController
         $result = $this->docRepo->getRecentDocuments(1, 20, $mRole);
         $recentDocs = $result['results'];
 
+        $branchMap = [];
+        foreach ($branches as $branch) {
+            $branchMap[$branch['bID']] = $branch;
+        }
+
         $userWorkAreas = [];
         $userInterestAreas = [];
 
@@ -54,8 +59,8 @@ class HomeController extends BaseController
         if ($currentUserId > 0) {
             $user = $this->authService->findUser('mID', $currentUserId);
             if ($user) {
-                $userWorkAreas = $this->parseAreasForDisplay($user['work_areas'] ?? '', $branches);
-                $userInterestAreas = $this->parseAreasForDisplay($user['interest_areas'] ?? '', $branches);
+                $userWorkAreas = $this->parseAreasForDisplay($user['work_areas'] ?? '', $branchMap);
+                $userInterestAreas = $this->parseAreasForDisplay($user['interest_areas'] ?? '', $branchMap);
 
                 if (!empty($user['last_login']) && empty($user['email_verified'])) {
                     $_SESSION['warning_message'] = 'Please verify your email to access all features.';
