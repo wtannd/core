@@ -52,7 +52,8 @@ class ProfileController extends BaseController
 
         $errors = [];
         $researchBranches = $this->branchModel->getAllBranches();
-        $this->render('auth/complete_profile.php', ['errors' => $errors, 'researchBranches' => $researchBranches]);
+        $this->render('auth/complete_profile.php', ['pending' => $pending, 'preFirstName' => $preFirstName, 
+            'preFamilyName' => $preFamilyName, 'errors' => $errors, 'researchBranches' => $researchBranches]);
     }
 
     /**
@@ -84,9 +85,8 @@ class ProfileController extends BaseController
 
         $pending = $_SESSION['pending_orcid_registration'] ?? null;
         if (!$pending) {
-            $errors = ['general' => 'No pending ORCID registration found.'];
-            $researchBranches = $this->branchModel->getAllBranches();
-            $this->render('auth/complete_profile.php', ['errors' => $errors, 'researchBranches' => $researchBranches]);
+            $_SESSION['error_message'] = 'No pending ORCID registration found.';
+            header('Location: /register');
             exit;
         }
 
@@ -104,7 +104,7 @@ class ProfileController extends BaseController
         } else {
             $errors = $result['errors'] ?? ['general' => $result['message']];
             $researchBranches = $this->branchModel->getAllBranches();
-            $this->render('auth/complete_profile.php', ['errors' => $errors, 'researchBranches' => $researchBranches]);
+            $this->render('auth/complete_profile.php', ['pending' => $pending, 'errors' => $errors, 'researchBranches' => $researchBranches]);
         }
     }
 
