@@ -33,7 +33,10 @@ class CronController
 
         // 4. FastCGI trick: Send immediate success response to the authorized caller
         if (function_exists('fastcgi_finish_request')) {
-            echo "Cron triggered securely.";
+            if (!empty($_SESSION['admin_role']) && (int)$_SESSION['admin_role'] >= ADMIN_ROLE_MIN) {
+                $_SESSION['success_message'] = "Cron triggered securely.";
+                header('Location: /admin');
+            }
             fastcgi_finish_request();
         }
 
@@ -41,7 +44,7 @@ class CronController
         (new CronService())->runDueTasks();
 
         // go back to dashboard if it is Admin
-        if (!empty($_SESSION['admin_role']) && (int)$_SESSION['admin_role'] >= ADMIN_ROLE_MIN) {
+        if (!function_exists('fastcgi_finish_request') && !empty($_SESSION['admin_role']) && (int)$_SESSION['admin_role'] >= ADMIN_ROLE_MIN) {
             $_SESSION['success_message'] = 'Due Tasks have been run.'; 
             header('Location: /admin');
             exit;
