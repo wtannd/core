@@ -91,6 +91,7 @@ class DocumentService
     public function submitFull(array $data, array $files, int $draftID = 0): int|false
     {
         // 1. Determine Dates based on provided rules
+        $data['datetime_added'] = date('Y-m-d H:i:s');
         if (!empty($data['pub_date'])) {
             $pubdate = trim($data['pub_date']);
             $recvDate = !empty($data['recv_date']) ? trim($data['recv_date']) : $pubdate;
@@ -98,13 +99,13 @@ class DocumentService
             $data['pubdate'] = $pubdate;
             $data['submission_time'] = $recvDate . ' 00:00:00';
         } else {
-            $data['datetime_added'] = date('Y-m-d H:i:s');
             $pubdate = date('Y-m-d', strtotime($data['datetime_added']));
             $data['pubdate'] = $pubdate;
         }
 
         // 2. Define Upload Directory & Set file versions
         $uploadDir = UPLOAD_PATH_TRIMMED . '/'. str_replace('-', '/', $pubdate);
+        $data['version'] = 0;
         if (!empty($data['main_size'])) {
             $data['version'] = 1;
         }

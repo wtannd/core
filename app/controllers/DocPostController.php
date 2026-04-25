@@ -404,7 +404,7 @@ class DocPostController extends BaseController
 					foreach ($authorData['authors'] as $author) {
 						// Author array format: [name, mID, duty, affRefs]
 						$affRefs = $author[3] ?? [];
-						if (!$isUniqueID($affRefs)) { $errors['affiliation_list_unique'] = 'The affiliation list for ' . $author[0] . ' is not unique.'; }
+						if (!empty($affRefs) && !$isUniqueID($affRefs)) { $errors['affiliation_list_unique'] = 'The affiliation list for ' . $author[0] . ' is not unique.'; }
 						foreach ($affRefs as $affRef) {
 						    $affId = (int)$affRef;
 						    if ($affId < 0 || $affId > $numAff) { $errors['affiliation_list_' . $affId] = 'The affiliation #' . $affId . ' for ' . $author[0] . ' does not exist.'; }

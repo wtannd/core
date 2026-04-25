@@ -28,9 +28,10 @@ class DraftService
      */
     public function saveDraft(array $data): int|bool
     {
-        $fields = []; $placeholders = []; $params = [];
+        $fields = []; $placeholders = []; $params = []; $data['datetime_added'] = date('Y-m-d H:i:s');
+        if (isset($data['tID']) && empty($data['tID'])) $data['tID'] = null;
 
-        $requiredFields = ['submitter_ID', 'title', 'abstract', 'author_list', 'dtype', 'branch_list'];
+        $requiredFields = ['submitter_ID', 'title', 'abstract', 'author_list', 'dtype', 'branch_list', 'datetime_added'];
         foreach ($requiredFields as $f) {
             $fields[] = $f;
             $placeholders[] = ":$f";
@@ -62,6 +63,7 @@ class DraftService
     {
         $fields = [];
         $params = ['dID' => $dID];
+        if (isset($data['tID']) && empty($data['tID'])) $data['tID'] = null;
 
         $optionalFields = ['title', 'abstract', 'dtype', 'notes', 'author_list', 'recv_date', 'pub_date', 'full_text', 'link_list', 'branch_list', 'tID',
                            'main_size', 'suppl_size', 'suppl_ext', 'main_pages', 'main_figs', 'main_tabs'];

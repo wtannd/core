@@ -1723,6 +1723,7 @@ details > summary + div { margin-top: 1rem; }
     margin-bottom: 0.25rem;
 }
 
+.contact-form-wrapper .form-submit { margin-top: 0; padding-top: 0.1rem;}
 
 /* ====================================
    Responsive Adjustments
