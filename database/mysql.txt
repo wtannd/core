@@ -908,8 +908,8 @@ CREATE TABLE AnonymityTypes (
 );
 INSERT INTO AnonymityTypes (ID,atname,f_o,detail) VALUES (1,'Open',1,'full credit');
 INSERT INTO AnonymityTypes (ID,atname,f_o,detail) VALUES (2,'Open After Semi-Anonymous',0.5,'half credit');
-INSERT INTO AnonymityTypes (ID,atname,f_o,detail) VALUES (3,'Semi-Anonymous',0.5,'half credit');
-INSERT INTO AnonymityTypes (ID,atname,f_o,detail) VALUES (4,'Open After Anonymous',0.25,'quarter credit');
+INSERT INTO AnonymityTypes (ID,atname,f_o,detail) VALUES (3,'Open After Anonymous',0.25,'quarter credit');
+INSERT INTO AnonymityTypes (ID,atname,f_o,detail) VALUES (4,'Semi-Anonymous',0.5,'half credit');
 INSERT INTO AnonymityTypes (ID,atname,f_o,detail) VALUES (5,'Anonymous',0.25,'quarter credit');
 
 CREATE TABLE CommentTypes (
@@ -953,8 +953,8 @@ CREATE TABLE CRComments (      -- extra information for creditable comments / co
     ID_alphanum VARCHAR(4) COLLATE ascii_general_ci NOT NULL default (CONV(ID_num,10,36)),
     inviter_id BIGINT UNSIGNED NULL,           -- ID of the inviter if it is an invited review
     author_list JSON,        -- JSON array of authors without affiliations: [[author_name=pub_name, mID , significance_factor=duty], ...] (author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author  -- more complex: {"authors" : [[pub_name, mID, duty, [list of order numbers of affiliations]], ...], "affiliations": [[order#, name], ...]}
-    anonymity TINYINT UNSIGNED default 1,      -- anonymity level: 1='open', 2='open-after-semi-anonym', 3='semi-anonymous', 4='open-after-anonym', 5='anonymous'
-    passcode VARCHAR(255) COLLATE utf8mb4_general_ci,     -- needed only if anonymity_level=4
+    anonymity TINYINT UNSIGNED default 1,      -- anonymity level: 1='open', 2='open-after-semi-anonym', 3='open-after-anonym', 4='semi-anonymous', 5='anonymous'
+    passcode VARCHAR(255) COLLATE utf8mb4_general_ci,     -- needed only if anonymity = 5
     Nth INT UNSIGNED NOT NULL default 1,   -- this is the N-th comment/review in current phase, set to 0 if phase is changed
     T INT UNSIGNED NOT NULL default 0,     -- time lapse in the current or old phase in units of minutes
     N_ratings INT UNSIGNED NOT NULL DEFAULT 0,      -- number of ratings received in the current phase
@@ -963,7 +963,7 @@ CREATE TABLE CRComments (      -- extra information for creditable comments / co
     -- ... more metadata
 --    UNIQUE (dID, ID_alphanum),
 --    UNIQUE (dID, ID_num),
-    CONSTRAINT CHK_passcode CHECK (anonymity < 4 OR passcode IS NOT NULL),
+    CONSTRAINT CHK_passcode CHECK (anonymity < 5 OR passcode IS NOT NULL),
     FOREIGN KEY (cID) REFERENCES Comments (cID),
     FOREIGN KEY (inviter_id) REFERENCES Members (mID),
     FOREIGN KEY (anonymity) REFERENCES AnonymityTypes (ID),
@@ -981,11 +981,11 @@ CREATE TABLE CommentDrafts (  -- submitter can continue to modify it; for credit
     author_list JSON,        -- JSON array of authors without affiliations: [[author_name=pub_name, mID , significance_factor=duty], ...] (author list in order, editors for c/m/w docs, organizers for f/s/t docs), null means submitter is the sole author  -- more complex: {"authors" : [[pub_name, mID, duty, [list of order numbers of affiliations]], ...], "affiliations": [[order#, name], ...]}
     ts DATETIME DEFAULT CURRENT_TIMESTAMP,
     comment_text TEXT COLLATE utf8mb4_general_ci NOT NULL,
-    anonymity TINYINT UNSIGNED default 1,      -- anonymity level: 1='open', 2='open-after-semi-anonym', 3='semi-anonymous', 4='open-after-anonym', 5='anonymous'
-    passcode VARCHAR(255) COLLATE utf8mb4_general_ci NULL,     -- needed only if anonymity_level=4
+    anonymity TINYINT UNSIGNED default 1,      -- anonymity level: 1='open', 2='open-after-semi-anonym', 3='open-after-anonym', 4='semi-anonymous', 5='anonymous'
+    passcode VARCHAR(255) COLLATE utf8mb4_general_ci NULL,     -- needed only if anonymity = 5
     to_be_moderated TINYINT(1) NOT NULL default 0,    -- set to 1 if anonymous / untrustable submitter click 'submit'  -- use last timestamp to determine N / T values if approved and moved to the Comments table
     -- ... more metadata
-    CONSTRAINT CHK_passcode CHECK (anonymity < 4 OR passcode IS NOT NULL),
+    CONSTRAINT CHK_passcode CHECK (anonymity < 5 OR passcode IS NOT NULL),
     CONSTRAINT CHK_submitterID CHECK (anonymity = 5 OR submitter_ID IS NOT NULL),
     FOREIGN KEY (ctype) REFERENCES CommentTypes(ID),
     FOREIGN KEY (dID) REFERENCES Documents(dID),
